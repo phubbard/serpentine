@@ -17,7 +17,7 @@ cp ~/code/claude-cowork/serpentine/infra/docker-compose.yml .
 cp ~/code/claude-cowork/serpentine/infra/graphhopper/config.yml data/
 cp ~/code/claude-cowork/serpentine/infra/graphhopper/custom_models/serpentine.json data/custom_models/
 
-# Docker Desktop > Settings > Resources > Memory >= 20 GB, then:
+# Docker Desktop > Settings > Resources > Memory >= 24 GB (default 7.57 GB OOM-kills the import), then:
 docker compose up -d
 docker compose logs -f     # first run: import + urban density + LM prep, expect 30-60 min
 ```
@@ -83,6 +83,22 @@ Then from the phone: `https://serpentine.phfactor.net/health`.
   custom model penalising the first leg's area, or a small server-side patch.
 - Real traffic. `urban_density` is the stand-in.
 - Apple Maps handoff URL builder — trivial, belongs in the app.
+
+## Gotchas (each cost real time)
+
+- **Docker Desktop VM memory.** Default cap was 7.57 GB; the container sat at 92 % and would have
+  been OOM-killed mid-import. Settings > Resources > Memory ≥ 24 GB, Apply & Restart, then
+  `rm -rf data/graph-cache` before re-running — a partial import is not trustworthy.
+- **`motorcycle.json` is a reserved name.** GraphHopper ships a built-in custom model with that
+  name and exits with `Custom model file name 'motorcycle.json' is already used for built-in
+  profiles`. Ours is `serpentine.json`; the API profile is still called `motorcycle`.
+- **Corrupt SRTM tiles after an interrupted run.** Symptom: `Could not parse OSM file` caused by
+  `Unexpected end of ZLIB input stream` on `/data/elevation/demNNNNNN`. GraphHopper caches tiles
+  from `srtm.kurviger.de` without checksumming, so a killed download poisons every later start.
+  `rm -rf data/elevation data/graph-cache` and restart. If a *different* tile fails next time,
+  delete just that file.
+- **Timing reference (M4 Max, 16 vCPU to Docker):** pass1 over 43 M ways in 51 s; ~200 SRTM tiles
+  download during pass2; whole import + urban density + LM prep should be under an hour.
 
 ## Memory budget on axiom
 

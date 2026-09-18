@@ -8,3 +8,5 @@ Status: feasibility done, routing POC being stood up in-house.
 
 - `FEASIBILITY.md` — market survey, technical feasibility, costs, risks, sources (Sept 2026)
 - `infra/` — GraphHopper 11 motorcycle profile, docker-compose, Caddy site block, setup + smoke tests
+- `docs/` — roadmap, decisions, API contract
+- `CLAUDE.md` — orientation for agents and future me: architecture, conventions, gotchas
