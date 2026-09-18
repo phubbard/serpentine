@@ -1,0 +1,55 @@
+// Serpentine motorcycle profile — v0.1, untuned.
+//
+// Goals, in order: paved, curvy, rural, moderate posted speed. Time still matters
+// (distance_influence) so loops don't become absurd detours.
+//
+// Notes:
+// - All priority multipliers are <= 1 so this model is LM-compatible and requests
+//   may tighten it further. "Prefer curvy" is expressed as "penalise straight".
+// - curvature = beeline / edge_length. 1.0 is dead straight; 0.9 is properly twisty.
+// - max_speed is km/h. 105 ~ 65 mph, 40 ~ 25 mph. With max_speed_calculator on,
+//   untagged roads get the state legal default so the > 105 rule doesn't misfire on
+//   "unknown" (which would otherwise be +Infinity).
+// - Tune by hitting /maps on axiom:8989, pasting an edited model into the custom
+//   model box, and eyeballing a known loop (e.g. Palomar / Mesa Grande / 79 / 76).
+{
+  "distance_influence": 60,
+
+  "priority": [
+    { "if": "!car_access", "multiply_by": "0" },
+    { "if": "road_access == PRIVATE || road_access == NO", "multiply_by": "0" },
+
+    // road class: avoid freeways and neighbourhood streets
+    { "if": "road_class == MOTORWAY",  "multiply_by": "0.15" },
+    { "else_if": "road_class == TRUNK", "multiply_by": "0.35" },
+    { "else_if": "road_class == RESIDENTIAL || road_class == LIVING_STREET || road_class == SERVICE", "multiply_by": "0.35" },
+    { "else_if": "road_class == TRACK || road_class == UNCLASSIFIED", "multiply_by": "0.5" },
+
+    // surface: SR/S on street tyres — no dirt
+    { "if": "surface == GRAVEL || surface == FINE_GRAVEL || surface == COMPACTED || surface == UNPAVED || surface == DIRT || surface == GROUND || surface == GRASS || surface == SAND", "multiply_by": "0.05" },
+    { "else_if": "surface == COBBLESTONE", "multiply_by": "0.5" },
+
+    // traffic proxy until we have real AADT: stay out of built-up areas
+    { "if": "urban_density == CITY", "multiply_by": "0.3" },
+    { "else_if": "urban_density == RESIDENTIAL", "multiply_by": "0.6" },
+
+    // curviness: penalise straight edges (this is the whole point)
+    { "if": "curvature >= 0.99", "multiply_by": "0.3" },
+    { "else_if": "curvature >= 0.97", "multiply_by": "0.55" },
+    { "else_if": "curvature >= 0.94", "multiply_by": "0.8" },
+
+    // moderate speeds: no 70 mph sweepers, no 25 mph crawl
+    { "if": "max_speed > 105", "multiply_by": "0.5" },
+    { "else_if": "max_speed < 40", "multiply_by": "0.7" },
+
+    // ferries and roundabouts are annoying on a bike
+    { "if": "road_environment == FERRY", "multiply_by": "0.2" },
+    { "if": "roundabout", "multiply_by": "0.8" }
+  ],
+
+  "speed": [
+    { "if": "road_environment == FERRY", "limit_to": "ferry_speed" },
+    { "else": "", "limit_to": "car_average_speed" },
+    { "if": "true", "limit_to": "max_speed * 0.9" }
+  ]
+}

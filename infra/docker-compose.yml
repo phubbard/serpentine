@@ -1,0 +1,36 @@
+# Serpentine — GraphHopper routing POC on axiom
+#
+# Prereqs on axiom:
+#   mkdir -p /Volumes/2TBSSD/serpentine/data
+#   curl -L -o /Volumes/2TBSSD/serpentine/data/us-west-latest.osm.pbf \
+#        https://download.geofabrik.de/north-america/us-west-latest.osm.pbf
+#   cp graphhopper/config.yml graphhopper/custom_models/* /Volumes/2TBSSD/serpentine/data/   (see README)
+#
+# Docker Desktop: Settings > Resources > Memory must be >= 20 GB or the JVM
+# below gets OOM-killed during import. First run imports (~30-60 min on M4 Max),
+# later runs load the cache in seconds.
+
+services:
+  graphhopper:
+    image: israelhikingmap/graphhopper:11.0
+    container_name: serpentine-gh
+    restart: unless-stopped
+    platform: linux/arm64
+    command: >
+      -c /data/config.yml
+      -i /data/us-west-latest.osm.pbf
+      -o /data/graph-cache
+      --host 0.0.0.0
+      --port 8989
+    environment:
+      JAVA_OPTS: "-Xmx14g -Xms4g -XX:+UseParallelGC"
+    volumes:
+      - /Volumes/2TBSSD/serpentine/data:/data
+    ports:
+      - "8989:8989"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8989/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90m   # import takes a while the first time
+      retries: 3

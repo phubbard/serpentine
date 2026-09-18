@@ -1,0 +1,76 @@
+# Serpentine GraphHopper config — motorcycle "curvy, moderate speed, low traffic" profile.
+# Based on graphhopper 11 config-example.yml; only the parts we need.
+graphhopper:
+  datareader.file: /data/us-west-latest.osm.pbf
+  graph.location: /data/graph-cache
+
+  custom_models.directory: /data/custom_models
+
+  profiles:
+    - name: motorcycle
+      # Instructions/turn text use the car rules; access uses car_access.
+      custom_model_files: [motorcycle.json]
+
+  # No CH: it would freeze the weighting and forbid per-request tuning.
+  profiles_ch: []
+  # Landmarks (hybrid mode) so 200-300 km loops don't take 10+ s.
+  # Per-request custom models may only *tighten* (multiply_by <= 1) on top of this.
+  profiles_lm:
+    - profile: motorcycle
+  prepare.lm.landmarks: 16
+  prepare.lm.threads: 4
+
+  # Everything motorcycle.json references must be listed here.
+  graph.encoded_values: |
+    car_access, car_average_speed, road_access, road_class, road_environment, roundabout,
+    max_speed, ferry_speed, surface, curvature, average_slope, max_slope, lanes,
+    country, urban_density
+
+  # Motorized-only: skip pedestrian/cycle ways to shrink the graph.
+  import.osm.ignored_highways: footway,construction,cycleway,path,steps,pedestrian,bridleway,corridor
+
+  #### Elevation (gives average_slope / max_slope) ####
+  graph.elevation.provider: srtm
+  graph.elevation.cache_dir: /data/elevation
+  graph.elevation.dataaccess: RAM
+  graph.elevation.interpolate: bilinear
+  graph.elevation.edge_smoothing: ramer
+  graph.elevation.edge_smoothing.ramer.max_elevation: 5
+
+  #### Legal default speed limits where OSM has no maxspeed tag ####
+  # Requires urban_density + country encoded value (both set above).
+  max_speed_calculator.enabled: true
+
+  #### Urban density classification (rural / residential / city) ####
+  graph.urban_density.threads: 6
+  graph.urban_density.residential_radius: 400
+  graph.urban_density.residential_sensitivity: 6000
+  graph.urban_density.city_radius: 1500
+  graph.urban_density.city_sensitivity: 1000
+
+  prepare.min_network_size: 200
+  prepare.subnetworks.threads: 2
+
+  #### Routing guards ####
+  routing.max_visited_nodes: 3000000
+  routing.non_ch.max_waypoint_distance: 1000000
+
+  graph.dataaccess.default_type: RAM
+
+server:
+  application_connectors:
+    - type: http
+      port: 8989
+      bind_host: 0.0.0.0
+      max_request_header_size: 50k
+  request_log:
+    appenders: []
+  admin_connectors:
+    - type: http
+      port: 8990
+      bind_host: 0.0.0.0
+logging:
+  appenders:
+    - type: console
+      time_zone: UTC
+      log_format: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

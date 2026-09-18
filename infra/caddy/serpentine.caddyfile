@@ -1,0 +1,32 @@
+# Paste into /etc/caddy/Caddyfile on webserver (Pi 5), then `sudo systemctl reload caddy`.
+# DNS: add serpentine.phfactor.net -> same A record as the other Caddy hosts (Cloudflare, per
+# /infrastructure/dns-and-cloudflare.md). Caddy will fetch the cert automatically.
+#
+# Only the routing endpoints are exposed; /maps (the GraphHopper UI) and the admin port stay LAN-only.
+# The `basic_auth` block is a placeholder until the app has its own key scheme — generate the hash with
+#   caddy hash-password --plaintext '<something>'
+
+serpentine.phfactor.net {
+	encode zstd gzip
+
+	@api path /route /route/* /info /health /nearest /isochrone
+	handle @api {
+		basic_auth {
+			serpentine <bcrypt-hash-here>
+		}
+		reverse_proxy axiom:8989 {
+			header_up Host {upstream_hostport}
+			transport http {
+				read_timeout 60s
+			}
+		}
+	}
+
+	handle {
+		respond "serpentine" 404
+	}
+
+	log {
+		output file /var/log/caddy/serpentine.log
+	}
+}
