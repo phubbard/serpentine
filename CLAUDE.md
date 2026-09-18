@@ -32,6 +32,10 @@ infra/
   docker-compose.yml GraphHopper 11 on axiom
   graphhopper/config.yml, custom_models/serpentine.json
   caddy/serpentine.caddyfile   Pi 5 site block
+demo/
+  utc-ramona-sunrise.json  hardwired demo ride (UTC → Ramona → Julian → Sunrise Hwy S1 → Alpine → UTC)
+tools/
+  demo_route.py      routes a demo through GraphHopper; prints roads, GPX/GeoJSON, Apple/Google Maps URLs
 server/              (phase 1) Go API in front of GraphHopper + NREL — not yet created
 ios/                 (phase 2) SwiftUI app — not yet created
 ```

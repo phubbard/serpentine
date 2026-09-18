@@ -16,6 +16,7 @@ Update the checkboxes as things land and note the commit.
 - [ ] Hand-built Apple Maps `/directions` URL with 12–15 waypoints from a real loop: note the waypoint
       cap and how many legs Apple re-routes onto the wrong road. **This measurement decides how much
       of phase 3 is needed.**
+      Use the demo ride: `tools/demo_route.py` prints the URL for `demo/utc-ramona-sunrise.json` (7 waypoints).
 
 ## Phase 1 — `server/`: serpentine-api (Go)
 

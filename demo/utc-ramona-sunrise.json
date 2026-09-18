@@ -1,0 +1,29 @@
+{
+  "name": "utc-ramona-sunrise",
+  "title": "UTC → Ramona → Julian → Sunrise Highway loop",
+  "description": "Hardwired demo ride: Westfield UTC out via Pomerado and 67 to Ramona, 78 through Santa Ysabel to Julian, 79 south to Sunrise Highway (S1) over Mount Laguna, Old 80 / Alpine home. ~224 km, ~3.3 h with the v0.2 profile. Used to exercise the routing engine and the Apple Maps handoff end to end.",
+  "notes": [
+    "route_points are what GraphHopper routes through (lon, lat, GraphHopper order).",
+    "handoff_waypoints are the Apple Maps via-points, hand-picked at junctions where Apple's fastest route would otherwise leave ours. Phase 1 replaces them with the divergence heuristic in docs/API.md.",
+    "The return reuses ~15 km of Pomerado Road; accepted for a demo."
+  ],
+  "request": {
+    "profile": "motorcycle",
+    "route_points": [
+      {"name": "Westfield UTC",            "lon": -117.2108, "lat": 32.8704},
+      {"name": "Ramona (Main St)",         "lon": -116.8681, "lat": 33.0417},
+      {"name": "Julian",                   "lon": -116.6019, "lat": 33.0786},
+      {"name": "Mount Laguna (S1)",        "lon": -116.4185, "lat": 32.8700},
+      {"name": "Westfield UTC",            "lon": -117.2108, "lat": 32.8704}
+    ]
+  },
+  "handoff_waypoints": [
+    {"name": "Ramona (Main St)",          "lon": -116.8690, "lat": 33.0420},
+    {"name": "Julian",                    "lon": -116.6020, "lat": 33.0790},
+    {"name": "79 / Sunrise Hwy junction", "lon": -116.5610, "lat": 33.0110},
+    {"name": "Mount Laguna",              "lon": -116.4170, "lat": 32.8730},
+    {"name": "S1 / Old Hwy 80",           "lon": -116.5090, "lat": 32.8130},
+    {"name": "Descanso",                  "lon": -116.5940, "lat": 32.8520},
+    {"name": "Alpine",                    "lon": -116.7780, "lat": 32.8380}
+  ]
+}
