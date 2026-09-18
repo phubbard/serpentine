@@ -1,4 +1,5 @@
 // Serpentine motorcycle profile — v0.1, untuned.
+// (File is named serpentine.json because GraphHopper ships a built-in motorcycle.json and refuses the clash.)
 //
 // Goals, in order: paved, curvy, rural, moderate posted speed. Time still matters
 // (distance_influence) so loops don't become absurd detours.

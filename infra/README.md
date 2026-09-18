@@ -15,7 +15,7 @@ curl -L -o data/us-west-latest.osm.pbf https://download.geofabrik.de/north-ameri
 # Config + profile from this repo
 cp ~/code/claude-cowork/serpentine/infra/docker-compose.yml .
 cp ~/code/claude-cowork/serpentine/infra/graphhopper/config.yml data/
-cp ~/code/claude-cowork/serpentine/infra/graphhopper/custom_models/motorcycle.json data/custom_models/
+cp ~/code/claude-cowork/serpentine/infra/graphhopper/custom_models/serpentine.json data/custom_models/
 
 # Docker Desktop > Settings > Resources > Memory >= 20 GB, then:
 docker compose up -d
@@ -67,7 +67,7 @@ curl -s -X POST http://axiom:8989/route -H 'Content-Type: application/json' -d '
 
 Visual tuning: open `http://axiom:8989/maps/` in a browser, pick the `motorcycle` profile, expand
 **Custom Model**, paste edits, drag points around. Iterate there, then copy the winner back into
-`motorcycle.json` and `docker compose restart` (custom model files are read at startup; no re-import
+`serpentine.json` and `docker compose restart` (custom model files are read at startup; no re-import
 needed unless you add encoded values).
 
 ## 3. Expose it (Pi 5 / Caddy)

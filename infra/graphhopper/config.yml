@@ -9,7 +9,7 @@ graphhopper:
   profiles:
     - name: motorcycle
       # Instructions/turn text use the car rules; access uses car_access.
-      custom_model_files: [motorcycle.json]
+      custom_model_files: [serpentine.json]
 
   # No CH: it would freeze the weighting and forbid per-request tuning.
   profiles_ch: []
