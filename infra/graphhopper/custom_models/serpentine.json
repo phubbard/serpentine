@@ -1,4 +1,4 @@
-// Serpentine motorcycle profile — v0.1, untuned.
+// Serpentine motorcycle profile — v0.2 (base profile; tune per request, see ADR-009).
 // (File is named serpentine.json because GraphHopper ships a built-in motorcycle.json and refuses the clash.)
 //
 // Goals, in order: paved, curvy, rural, moderate posted speed. Time still matters
@@ -11,8 +11,9 @@
 // - max_speed is km/h. 105 ~ 65 mph, 40 ~ 25 mph. With max_speed_calculator on,
 //   untagged roads get the state legal default so the > 105 rule doesn't misfire on
 //   "unknown" (which would otherwise be +Infinity).
-// - Tune by hitting /maps on axiom:8989, pasting an edited model into the custom
-//   model box, and eyeballing a known loop (e.g. Palomar / Mesa Grande / 79 / 76).
+// - Editing this file changes the profile hash and forces a FULL re-import (~25 min).
+//   Tune with a per-request custom_model instead (tighten only: multiply_by <= 1), e.g. in the
+//   Custom Model box on axiom:8989/maps/. Fold winners in here only when re-importing anyway.
 {
   "distance_influence": 60,
 
@@ -24,7 +25,8 @@
     { "if": "road_class == MOTORWAY",  "multiply_by": "0.15" },
     { "else_if": "road_class == TRUNK", "multiply_by": "0.35" },
     { "else_if": "road_class == RESIDENTIAL || road_class == LIVING_STREET || road_class == SERVICE", "multiply_by": "0.35" },
-    { "else_if": "road_class == TRACK || road_class == UNCLASSIFIED", "multiply_by": "0.5" },
+    { "else_if": "road_class == TRACK", "multiply_by": "0.1" },
+    { "else_if": "road_class == UNCLASSIFIED", "multiply_by": "0.5" },
 
     // surface: SR/S on street tyres — no dirt
     { "if": "surface == GRAVEL || surface == FINE_GRAVEL || surface == COMPACTED || surface == UNPAVED || surface == DIRT || surface == GROUND || surface == GRASS || surface == SAND", "multiply_by": "0.05" },

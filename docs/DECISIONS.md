@@ -60,3 +60,30 @@ with the Rapid Charger module but assume 6.6 kW at public L2 (most pedestals are
 destination chargers usable via Tesla Tap Mini (not Superchargers); no CCS until Zero's 2027 option.
 Charger filter: NREL `ev_connector_type` in {J1772, TESLA} and `ev_charging_level` Level 2. Twisty
 consumption assumed between city and highway figures until a ride log says otherwise.
+
+## ADR-009 · 2026-09-18 · Tune per request; `serpentine.json` is a base profile
+
+Supersedes the "changing multipliers = restart" assumption in CLAUDE.md. GraphHopper 11 writes
+`name|Profile.getVersion()` for every profile into the graph properties; the version hashes the
+profile hints, which include the resolved custom model. On load, any mismatch throws `Profiles do not
+match` — a full re-import (~25 min), not a restart. `profiles_lm[].preparation_profile` shares
+landmarks but the served profile is still hashed, so it doesn't help.
+
+So: `serpentine.json` is a conservative base (access, surface, road class, density, curvature,
+speed) changed only when re-importing anyway. All tuning — twistiness slider, per-ride preferences,
+the Phase 0 "rides Paul would choose" work — is a per-request `custom_model` that serpentine-api
+layers on. LM allows that as long as every multiplier is ≤ 1. Cost: LM's heuristic gets looser the
+more a request tightens, so queries slow down; measured headroom is large (loops 35–200 ms vs 3 s
+target). v0.2 of the base (this import) splits `TRACK` out to 0.1.
+
+## ADR-010 · 2026-09-18 · Loops: generate candidates and score, don't trust one round_trip
+
+GraphHopper's `round_trip` builds a triangle of beeline vertices and snaps each to the nearest
+drivable edge. Observed on the first import: 150 km requests return 163–349 km; from downtown SD
+every east/south heading fails because a vertex lands in Mexico (outside the extract); seed 1 heading
+45 snapped a vertex onto Marron Valley Road (a border track) that no weighting change routed around;
+Ramona loops were good rides but crossed Clairemont on Genesee. serpentine-api will fan out ~6–12
+seed × heading requests (each 35–200 ms), request `details`, score each on the share of
+track/unpaved/city/trunk distance and on distance error, retry with a scaled `round_trip.distance`
+to hit the target within ~10 %, and return the best. The scoring rules are serpentine's, not
+GraphHopper's, and they're the natural home for the traffic proxy later.

@@ -11,7 +11,7 @@ the reference for competitor and API facts; don't re-research what it already an
 
 ## Status (2026-09-18)
 
-- Feasibility done. Routing engine POC stood up on axiom, first successful import pending (see infra gotchas).
+- Feasibility done. GraphHopper serving on axiom:8989 (first good import 2026-09-18); loops 35–200 ms.
 - No app code yet. No server API code yet. `infra/` is the only executable content.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.
 - Shared agent memory: Memento page `/projects/serpentine.md` at `http://webserver:8321/mcp` (see
@@ -56,10 +56,11 @@ Principles that constrain every design choice here:
 1. **The phone talks to serpentine.phfactor.net and nothing else.** No Mapbox, no analytics, no font CDN,
    no NREL key on device. Map display is MapKit (Apple, free, already on the phone). This is Paul's
    house privacy rule (`/skills/privacy-and-third-party-policy.md` in Memento) and it is not negotiable.
-2. **Routing cost is data-driven and tunable without a re-import.** All "curvy / moderate / rural"
-   logic lives in `infra/graphhopper/custom_models/serpentine.json`. Changing multipliers = restart.
-   Adding an encoded value = re-import (~1 h). Per-request `custom_model` may only tighten (≤1
-   multipliers) because the profile uses LM preparation.
+2. **Routing cost is data-driven and tuned per request.** `infra/graphhopper/custom_models/serpentine.json`
+   is the baked-in *base* profile; **editing it forces a full re-import (~25 min)** because GraphHopper
+   hashes every profile into the graph (ADR-009). Tuning lives in the per-request `custom_model`
+   (serpentine-api sends it), which in LM mode may only tighten (multipliers ≤ 1). Fold tuned rules
+   into the base file only when re-importing anyway (new OSM extract, new encoded value).
 3. **The energy model is conservative.** SR/S: 17.3 kWh max / 15.1 nominal, 116 mi highway / 171 mi
    city, **J1772 AC only**, 6.6 kW stock (12.6 kW with Rapid Charger — assume 6.6 at public L2).
    No CCS until Zero's 2027 option. A charge stop is 1–2 h. Being wrong here loses trust faster than
@@ -111,14 +112,19 @@ Principles that constrain every design choice here:
 - Corrupt SRTM tiles from an interrupted run (`Unexpected end of ZLIB input stream` on
   `/data/elevation/demNNNNNN`) → `rm -rf data/elevation data/graph-cache` and restart. Tiles come
   from `srtm.kurviger.de`.
-- Pass1 of the us-west import is ~50 s on the M4 Max; the whole import incl. urban density and LM
-  prep should be well under an hour. If it's much longer, something is swapping.
+- Full us-west import is ~25 min on the M4 Max (pass2 10 min, urban density 4.5, LM ~5). Much
+  longer means swapping.
+- `graph.dataaccess.default_type` must be `RAM_STORE`; plain `RAM` never writes `graph-cache/` and
+  every restart re-imports.
+- Round trips: POST key is `headings` (plural); `heading` is silently ignored. Downtown SD can't loop
+  east/south (Mexico is outside the extract); Ramona can't loop due north. Loops overshoot distance 10–130 % and can snap vertices
+  onto tracks — serpentine-api must generate and score several candidates.
 - `bind_host: 0.0.0.0` in `config.yml`: port 8989 and the `/maps` tuning UI are open to the whole
   LAN. Fine, but the LAN is a public /24 (`204.128.136.0/24`) — anything that does "is this a
   private network?" checks will be confused (SABnzbd was). Caddy exposes only `/route /info /health
   /nearest /isochrone` publicly, behind basic auth.
 - GraphHopper request shape (POST `/route`): `points` are `[lon, lat]`, `profile: "motorcycle"`,
-  `algorithm: "round_trip"` + `round_trip.distance` (m) + `round_trip.seed` + `heading` for loops,
+  `algorithm: "round_trip"` + `round_trip.distance` (m) + `round_trip.seed` + `headings` for loops,
   `custom_model` for per-request tightening, `details: ["curvature","max_speed","urban_density",
   "road_class","surface"]` to get per-segment attributes back for scoring/diagnostics.
 

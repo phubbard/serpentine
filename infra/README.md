@@ -22,8 +22,10 @@ docker compose up -d
 docker compose logs -f     # first run: import + urban density + LM prep, expect 30-60 min
 ```
 
-Import is done when the log shows `Started server` / `Started application@...`. After that
-`docker compose restart` comes back in seconds (graph cache is on the SSD).
+Import is done when the log shows `Started server` / `Started application@...` (measured
+2026-09-18: pass1 47 s, pass2 10 min, urban density 4.5 min, LM ~5 min — **~25 min total**). After
+that `docker compose restart` loads `data/graph-cache/` from the SSD in seconds — *unless* the profile
+changed (see gotchas).
 
 If you'd rather not run Docker Desktop on a headless box: `brew install openjdk@21`, download
 `graphhopper-web-11.0.jar` from the GitHub release, and run
@@ -46,14 +48,17 @@ curl -s -X POST http://axiom:8989/route -H 'Content-Type: application/json' -d '
   "details": ["road_class", "max_speed", "curvature", "urban_density", "surface"]
 }' | jq '.paths[0] | {distance, time, instructions: (.instructions | length)}'
 
-# 150 km loop from home, heading east, seeded so it's reproducible
+# 150 km loop from Ramona, seeded so it's reproducible. POST uses "headings" (plural); "heading"
+# is silently ignored. Downtown SD is a bad loop start: ocean west, Mexico (not in the extract) south,
+# so headings 90-180 fail with "Could not find a valid point after 3 tries". Ramona heading 0 fails
+# for most seeds too (vertex lands in roadless backcountry). Failures return in ~20 ms.
 curl -s -X POST http://axiom:8989/route -H 'Content-Type: application/json' -d '{
   "profile": "motorcycle",
-  "points": [[-117.16, 32.72]],
+  "points": [[-116.868, 33.042]],
   "algorithm": "round_trip",
   "round_trip.distance": 150000,
   "round_trip.seed": 7,
-  "heading": [90],
+  "headings": [90],
   "points_encoded": false
 }' | jq '.paths[0] | {distance, time}'
 
@@ -66,9 +71,10 @@ curl -s -X POST http://axiom:8989/route -H 'Content-Type: application/json' -d '
 ```
 
 Visual tuning: open `http://axiom:8989/maps/` in a browser, pick the `motorcycle` profile, expand
-**Custom Model**, paste edits, drag points around. Iterate there, then copy the winner back into
-`serpentine.json` and `docker compose restart` (custom model files are read at startup; no re-import
-needed unless you add encoded values).
+**Custom Model**, paste edits, drag points around. The box is a *per-request* model layered on top of
+`serpentine.json`, and in LM mode it may only tighten (`multiply_by` ≤ 1). Keep the winning rules as a
+per-request model (serpentine-api will send it); **do not** edit `serpentine.json` to tune — that
+forces a full re-import (ADR-009).
 
 ## 3. Expose it (Pi 5 / Caddy)
 
@@ -97,8 +103,19 @@ Then from the phone: `https://serpentine.phfactor.net/health`.
   from `srtm.kurviger.de` without checksumming, so a killed download poisons every later start.
   `rm -rf data/elevation data/graph-cache` and restart. If a *different* tile fails next time,
   delete just that file.
-- **Timing reference (M4 Max, 16 vCPU to Docker):** pass1 over 43 M ways in 51 s; ~200 SRTM tiles
-  download during pass2; whole import + urban density + LM prep should be under an hour.
+- **`graph.dataaccess.default_type: RAM` never writes the graph.** It stays in the JVM only;
+  `data/graph-cache/` is never created and every restart re-imports. Use `RAM_STORE` (GraphHopper's
+  default: in memory, flushed to disk). Check with `du -sh data/graph-cache` after an import.
+- **Any profile change = full re-import.** GraphHopper 11 stores `name|hash` for every profile in the
+  graph, the hash covers the custom model contents, and a mismatch aborts startup with `Profiles do
+  not match … delete /data/graph-cache`. `preparation_profile` does not avoid this. Tune per request.
+- **Round-trip loops: `headings`, not `heading`,** in POST bodies. With the wrong key every heading
+  gives the same result. Loops overshoot the requested distance by 10–130 % (150 km asked → 163–349 km)
+  and GraphHopper snaps its triangle vertices to any drivable edge, tracks included (seed 1 from SD
+  ran ~20 km of Marron Valley Road on the border). The weighting can't fix that; serpentine-api must
+  generate several seed × heading candidates and score them on the returned `details`.
+- **Timing reference (M4 Max, 16 vCPU to Docker):** pass1 47 s, pass2 10 min (~200 SRTM tiles),
+  urban density 4.5 min, LM ~5 min: ~25 min. Loops 35–200 ms, A→B < 100 ms.
 
 ## Memory budget on axiom
 

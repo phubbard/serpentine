@@ -15,12 +15,14 @@ graphhopper:
   profiles_ch: []
   # Landmarks (hybrid mode) so 200-300 km loops don't take 10+ s.
   # Per-request custom models may only *tighten* (multiply_by <= 1) on top of this.
+  # GraphHopper stores a hash of every profile (custom model included) in the graph and refuses to
+  # start if it changes: editing serpentine.json = full re-import. Tune per request instead (ADR-009).
   profiles_lm:
     - profile: motorcycle
   prepare.lm.landmarks: 16
   prepare.lm.threads: 4
 
-  # Everything motorcycle.json references must be listed here.
+  # Everything serpentine.json references must be listed here.
   graph.encoded_values: |
     car_access, car_average_speed, road_access, road_class, road_environment, roundabout,
     max_speed, ferry_speed, surface, curvature, average_slope, max_slope, lanes,
@@ -55,7 +57,9 @@ graphhopper:
   routing.max_visited_nodes: 3000000
   routing.non_ch.max_waypoint_distance: 1000000
 
-  graph.dataaccess.default_type: RAM
+  # RAM_STORE = in memory AND flushed to graph.location. Plain RAM never writes the graph to disk,
+  # so every container restart silently re-imports (~25 min). GraphHopper's default is RAM_STORE.
+  graph.dataaccess.default_type: RAM_STORE
 
 server:
   application_connectors:

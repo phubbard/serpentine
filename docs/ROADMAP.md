@@ -7,11 +7,12 @@ Update the checkboxes as things land and note the commit.
 
 - [x] GraphHopper 11 config + `serpentine.json` custom model (`infra/`)
 - [x] Docker Desktop memory raised to ≥ 24 GB
-- [ ] Clean us-west import completes; `curl http://axiom:8989/health` → 200
-- [ ] Seeded 150 km loop from home returns in < 3 s (`infra/README.md` smoke test)
+- [x] Clean us-west import completes; `curl http://axiom:8989/health` → 200 (2026-09-18, ~25 min; graph persisted with `RAM_STORE`)
+- [x] Seeded 150 km loop returns in < 3 s (35–200 ms; quality issues → ADR-010)
 - [ ] Caddy front works: `https://serpentine.phfactor.net/health` with basic auth
 - [ ] Profile tuned on `/maps` against Palomar / Mesa Grande / 79 / 76 until three different seeded
-      loops all look like rides Paul would choose. Record the multipliers that won in `DECISIONS.md`.
+      loops all look like rides Paul would choose. Tune as a per-request `custom_model` (ADR-009), save
+      it as `infra/graphhopper/custom_models/tuning.json`, record the reasoning in `DECISIONS.md`.
 - [ ] Hand-built Apple Maps `/directions` URL with 12–15 waypoints from a real loop: note the waypoint
       cap and how many legs Apple re-routes onto the wrong road. **This measurement decides how much
       of phase 3 is needed.**
@@ -35,6 +36,8 @@ Acceptance:
 - [ ] `launchd` plist on axiom, same pattern as LM Studio's `ai.lmstudio.server.plist`
 - [ ] Out-and-back returns a different road home: second leg computed with a per-request
       `custom_model` that penalises edges within ~300 m of the outbound polyline (see DECISIONS ADR-005)
+- [ ] Loops via candidate fan-out + scoring (ADR-010): no track/unpaved vertices, distance within
+      ~10 % of target, falls back gracefully when a heading points off the map
 - [ ] Route cache keyed on request hash; repeat requests served in < 50 ms
 - [ ] NREL key read from env, never logged, never returned
 - [ ] Energy model unit-tested against the SR/S spec numbers and one real ride log
