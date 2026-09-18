@@ -9,7 +9,7 @@ Update the checkboxes as things land and note the commit.
 - [x] Docker Desktop memory raised to ≥ 24 GB
 - [x] Clean us-west import completes; `curl http://axiom:8989/health` → 200 (2026-09-18, ~25 min; graph persisted with `RAM_STORE`)
 - [x] Seeded 150 km loop returns in < 3 s (35–200 ms; quality issues → ADR-010)
-- [ ] Caddy front works: `https://serpentine.phfactor.net/health` with basic auth
+- [x] Caddy front works: `https://serpentine.phfactor.net/health` → 200 (2026-09-18; no auth by decision, path allowlist in `infra/caddy/`)
 - [ ] Profile tuned on `/maps` against Palomar / Mesa Grande / 79 / 76 until three different seeded
       loops all look like rides Paul would choose. Tune as a per-request `custom_model` (ADR-009), save
       it as `infra/graphhopper/custom_models/tuning.json`, record the reasoning in `DECISIONS.md`.

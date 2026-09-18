@@ -125,8 +125,10 @@ Principles that constrain every design choice here:
   onto tracks — serpentine-api must generate and score several candidates.
 - `bind_host: 0.0.0.0` in `config.yml`: port 8989 and the `/maps` tuning UI are open to the whole
   LAN. Fine, but the LAN is a public /24 (`204.128.136.0/24`) — anything that does "is this a
-  private network?" checks will be confused (SABnzbd was). Caddy exposes only `/route /info /health
-  /nearest /isochrone` publicly, behind basic auth.
+  private network?" checks will be confused (SABnzbd was). `https://serpentine.phfactor.net` is live
+  (2026-09-18), **no auth by decision**. The repo's `infra/caddy/serpentine.caddyfile` allowlists
+  `/route /info /health /nearest`; the first deployed block was a bare `reverse_proxy` exposing
+  `/maps`, `/spt`, `/isochrone` too — check the Pi's `/etc/caddy/Caddyfile` matches the repo.
 - GraphHopper request shape (POST `/route`): `points` are `[lon, lat]`, `profile: "motorcycle"`,
   `algorithm: "round_trip"` + `round_trip.distance` (m) + `round_trip.seed` + `headings` for loops,
   `custom_model` for per-request tightening, `details: ["curvature","max_speed","urban_density",

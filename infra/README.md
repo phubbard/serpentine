@@ -78,8 +78,11 @@ forces a full re-import (ADR-009).
 
 ## 3. Expose it (Pi 5 / Caddy)
 
-See `caddy/serpentine.caddyfile`. Add the DNS record, paste the block, `sudo systemctl reload caddy`.
-Then from the phone: `https://serpentine.phfactor.net/health`.
+Live since 2026-09-18 at `https://serpentine.phfactor.net`, no auth by decision. The block in
+`caddy/serpentine.caddyfile` is the source of truth: it allowlists `/route /info /health /nearest` so
+the `/maps` UI and the expensive `/spt` / `/isochrone` endpoints stay LAN-only. After editing it,
+paste into `/etc/caddy/Caddyfile` on webserver and `sudo systemctl reload caddy`. Check:
+`curl -s -o /dev/null -w '%{http_code}' https://serpentine.phfactor.net/maps/` should be 404.
 
 ## 4. What's deliberately not here yet
 

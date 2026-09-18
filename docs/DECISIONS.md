@@ -87,3 +87,13 @@ seed × heading requests (each 35–200 ms), request `details`, score each on th
 track/unpaved/city/trunk distance and on distance error, retry with a scaled `round_trip.distance`
 to hit the target within ~10 %, and return the best. The scoring rules are serpentine's, not
 GraphHopper's, and they're the natural home for the traffic proxy later.
+
+## ADR-011 · 2026-09-18 · Public endpoint without auth; path allowlist instead
+
+`serpentine.phfactor.net` fronts GraphHopper with no basic auth (Paul's call). The app has no
+accounts, and a secret baked into an app binary isn't a secret anyway. Cost control comes from
+exposing only the endpoints the phone needs (`/route /info /health /nearest`); the `/maps` UI,
+`/spt`, `/isochrone` and `/mvt` stay LAN-only. GraphHopper's own guards (`routing.max_visited_nodes`
+3 M, `non_ch.max_waypoint_distance` 1000 km) bound any single request. Revisit if logs show abuse:
+Caddy has no built-in rate limiter, so the next step would be limits inside serpentine-api (Phase 1),
+which replaces GraphHopper as the upstream here.
