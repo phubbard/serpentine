@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>serpentine test</title>
+<!-- Test page for serpentine-api, served by the API itself at /v1/. No external resources (CSP
+     enforces it): the one-host rule applies here too. -->
+<style>
+  :root {
+    --bg: #f6f5f2; --panel: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #e2e0dc;
+    --accent: #0a6c5a; --accent-ink: #ffffff; --stop: #b3541e; --bad: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151517; --panel: #1f1f22; --ink: #ececef; --muted: #9a9aa2; --line: #333338;
+            --accent: #3fb59c; --accent-ink: #0c1b17; --stop: #e08a55; --bad: #f08a80; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 22px; margin: 4px 0 2px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+  label { display: block; font-size: 14px; color: var(--muted); margin: 10px 0 4px; }
+  label:first-child { margin-top: 0; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row > * { flex: 1; }
+  input[type=text], select { width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line);
+         background: var(--bg); color: var(--ink); font-size: 16px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .val { flex: 0 0 64px; text-align: right; font-variant-numeric: tabular-nums; }
+  button { font-size: 16px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line);
+         background: var(--bg); color: var(--ink); cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; width: 100%; padding: 13px; }
+  button:disabled { opacity: .5; cursor: default; }
+  .toggle { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+  .toggle input { width: 44px; height: 24px; accent-color: var(--accent); }
+  .ev { margin-top: 6px; }
+  .hidden { display: none; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+  .stats b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .stats span { font-size: 12px; color: var(--muted); }
+  .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .links a { flex: 1 1 auto; text-align: center; padding: 11px; border-radius: 10px; text-decoration: none;
+         background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .links a.secondary { background: var(--bg); color: var(--ink); border: 1px solid var(--line); font-weight: 400; }
+  ol, ul { margin: 6px 0 0; padding-left: 22px; }
+  li { margin: 2px 0; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .stop { color: var(--stop); font-weight: 600; }
+  .error { color: var(--bad); }
+  h2 { font-size: 15px; margin: 0 0 6px; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+  pre { overflow-x: auto; font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>serpentine</h1>
+  <div class="sub">Loop planner test page · <span id="health">checking…</span></div>
+
+  <section>
+    <label for="start">Start</label>
+    <div class="row">
+      <select id="preset">
+        <option value="-116.868,33.042">Ramona</option>
+        <option value="-117.2116,32.867">UTC (Nobel Dr)</option>
+        <option value="-116.6019,33.0786">Julian</option>
+        <option value="-116.8,32.84">Alpine</option>
+        <option value="here">My location</option>
+        <option value="custom">Custom lat, lon…</option>
+      </select>
+    </div>
+    <input id="custom" class="hidden" type="text" placeholder="lat, lon  e.g. 33.042, -116.868" style="margin-top:8px">
+
+    <label for="dist">Distance</label>
+    <div class="row"><input id="dist" type="range" min="40" max="400" step="10" value="150"><span class="val" id="distv"></span></div>
+
+    <label for="twist">Twistiness</label>
+    <div class="row"><input id="twist" type="range" min="0" max="1" step="0.1" value="0.5"><span class="val" id="twistv"></span></div>
+
+    <label for="heading">Direction</label>
+    <select id="heading">
+      <option value="">Any (try all)</option>
+      <option value="0">North</option><option value="45">Northeast</option><option value="90">East</option>
+      <option value="135">Southeast</option><option value="180">South</option><option value="225">Southwest</option>
+      <option value="270">West</option><option value="315">Northwest</option>
+    </select>
+
+    <div class="toggle"><span>EV charging (Zero SR/S)</span><input id="ev" type="checkbox"></div>
+    <div id="evopts" class="ev hidden">
+      <label for="soc">Starting charge</label>
+      <div class="row"><input id="soc" type="range" min="20" max="100" step="5" value="100"><span class="val" id="socv"></span></div>
+    </div>
+  </section>
+
+  <button id="go" class="primary">Plan loop</button>
+  <div class="row" style="margin-top:8px">
+    <button id="again" disabled>Another loop (next seed)</button>
+  </div>
+  <p id="status" class="muted"></p>
+
+  <div id="result" class="hidden">
+    <section>
+      <div class="stats">
+        <div><b id="km"></b><span>km</span></div>
+        <div><b id="time"></b><span id="timelabel">riding</span></div>
+        <div><b id="ascent"></b><span>m climb</span></div>
+      </div>
+      <div class="links">
+        <a id="apple" href="#">Open in Apple Maps</a>
+        <a id="google" class="secondary" href="#">Google Maps</a>
+        <a id="gpx" class="secondary" href="#">GPX</a>
+      </div>
+      <p class="muted" id="loopinfo"></p>
+    </section>
+
+    <section id="energybox" class="hidden">
+      <h2>Energy</h2>
+      <div id="energy"></div>
+      <ul id="stops"></ul>
+      <details style="margin-top:8px"><summary>All chargers along the route</summary><ul id="chargers"></ul></details>
+    </section>
+
+    <section>
+      <h2>Handoff stops (<span id="wpcount"></span>)</h2>
+      <ol id="waypoints"></ol>
+      <details style="margin-top:8px"><summary>All roads, in order</summary><ol id="roads"></ol></details>
+      <details><summary>Raw response</summary><pre id="raw"></pre></details>
+    </section>
+  </div>
+</main>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+let seed = 1, busy = false;
+
+function bind(input, out, fmt) { const f = () => out.textContent = fmt(input.value); input.oninput = f; f(); }
+bind($("dist"), $("distv"), v => v + " km");
+bind($("twist"), $("twistv"), v => Number(v).toFixed(1));
+bind($("soc"), $("socv"), v => v + " %");
+$("ev").onchange = () => $("evopts").classList.toggle("hidden", !$("ev").checked);
+$("preset").onchange = () => $("custom").classList.toggle("hidden", $("preset").value !== "custom");
+
+fetch("health").then(r => r.json()).then(h => {
+  $("health").textContent = h.ok ? `API ${h.version}, GraphHopper ${h.graphhopper}${h.chargers ? "" : ", no chargers"}` : "routing engine down";
+}).catch(() => $("health").textContent = "API unreachable");
+
+function start() {
+  const p = $("preset").value;
+  if (p === "here") {
+    return new Promise((ok, fail) => navigator.geolocation.getCurrentPosition(
+      pos => ok([pos.coords.longitude, pos.coords.latitude]),
+      err => fail(new Error("location: " + err.message)), { enableHighAccuracy: true, timeout: 15000 }));
+  }
+  if (p === "custom") {
+    const m = $("custom").value.split(",").map(s => parseFloat(s.trim()));
+    if (m.length !== 2 || m.some(isNaN)) return Promise.reject(new Error("custom start must be 'lat, lon'"));
+    return Promise.resolve([m[1], m[0]]); // API wants [lon, lat]
+  }
+  return Promise.resolve(p.split(",").map(Number));
+}
+
+const hm = s => `${Math.floor(s / 3600)}:${String(Math.round(s % 3600 / 60)).padStart(2, "0")}`;
+const pct = x => Math.round(x * 100) + " %";
+function li(parent, html, cls) { const e = document.createElement("li"); e.innerHTML = html; if (cls) e.className = cls; parent.appendChild(e); }
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+async function plan() {
+  if (busy) return;
+  busy = true; $("go").disabled = $("again").disabled = true;
+  $("status").className = "muted"; $("status").textContent = "Planning…";
+  try {
+    const body = {
+      mode: "loop", start: await start(), distance_m: Number($("dist").value) * 1000,
+      twistiness: Number($("twist").value), seed,
+    };
+    if ($("heading").value !== "") body.heading_deg = Number($("heading").value);
+    if ($("ev").checked) body.charging = { enabled: true, soc_start: Number($("soc").value) / 100 };
+    const t0 = performance.now();
+    const r = await fetch("plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const res = await r.json();
+    if (!r.ok) throw new Error(res.error || r.statusText);
+    show(res);
+    $("status").textContent = `Planned in ${Math.round(performance.now() - t0)} ms · seed ${seed}`;
+  } catch (e) {
+    $("status").className = "error"; $("status").textContent = e.message;
+  } finally {
+    busy = false; $("go").disabled = false; $("again").disabled = false;
+  }
+}
+
+function show(res) {
+  $("result").classList.remove("hidden");
+  $("km").textContent = Math.round(res.distance_m / 1000);
+  const e = res.energy;
+  $("time").textContent = hm(e ? e.total_time_s : res.time_s);
+  $("timelabel").textContent = e && e.stops ? "incl. charging" : "riding";
+  $("ascent").textContent = Math.round(res.ascend_m);
+  $("apple").href = res.handoff.apple_maps_url;
+  $("google").href = res.handoff.google_maps_url;
+  $("gpx").href = res.gpx_url;
+  const l = res.loop;
+  $("loopinfo").textContent = l ? `Target ${l.target_m / 1000} km · heading ${l.heading_deg}° · seed ${l.seed} · score ${l.score} · ${l.candidates - l.failed}/${l.candidates} candidates routed · ${Math.round(res.stats.curvy_km)} km curvy` : "";
+
+  $("energybox").classList.toggle("hidden", !e);
+  $("stops").innerHTML = ""; $("chargers").innerHTML = "";
+  if (e) {
+    $("energy").innerHTML = `${e.kwh_est} kWh of ${e.usable_kwh} · start ${pct(e.soc_start)} → end ${pct(e.soc_end_est)} · ` +
+      (e.stops ? `${e.stops} stop${e.stops > 1 ? "s" : ""}, ${e.charge_min} min charging` : "no stop needed") +
+      (e.feasible ? "" : `<div class="error">${esc(e.warning)}</div>`);
+    for (const c of res.chargers) {
+      const line = `${c.km_from_start} km · ${esc(c.name)} · ${c.ports} ports${c.power_kw ? ", " + c.power_kw + " kW" : ""} · ${c.off_route_km} km off · arrive ${pct(c.soc_arrival_est)}`;
+      if (c.stop) li($("stops"), `Charge ${c.dwell_min} min: ${line}`, "stop");
+      li($("chargers"), line, c.stop ? "stop" : "");
+    }
+    if (!res.chargers.length) li($("chargers"), "none within 2 mi of the route");
+  }
+
+  $("waypoints").innerHTML = ""; $("roads").innerHTML = "";
+  $("wpcount").textContent = res.handoff.waypoints.length;
+  res.handoff.waypoint_roads.forEach(n => li($("waypoints"), esc(n), n.startsWith("Charge: ") ? "stop" : ""));
+  res.roads.filter(r => r.km >= 1).forEach(r => li($("roads"), `${esc(r.name || "(unnamed)")} <span class="muted">${r.km.toFixed(1)} km</span>`));
+  const raw = { ...res, polyline: `[${res.polyline.length} points]`, instructions: `[${res.instructions.length} steps]` };
+  $("raw").textContent = JSON.stringify(raw, null, 2);
+}
+
+$("go").onclick = () => { seed = 1; plan(); };
+$("again").onclick = () => { seed += 2; plan(); }; // each plan tries seeds n and n+1
+</script>
+</body>
+</html>

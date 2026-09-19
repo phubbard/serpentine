@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -21,6 +22,14 @@ import (
 )
 
 var version = "dev" // -ldflags "-X main.version=..."
+
+// testPage is the browser test UI at /v1/ (server/web/index.html).
+//
+//go:embed web/index.html
+var testPage []byte
+
+// testPageCSP forbids loading anything from anywhere else: the one-host rule holds for the page too.
+const testPageCSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'"
 
 type server struct {
 	gh    *ghClient
@@ -93,10 +102,18 @@ func envOr(k, def string) string {
 
 func (s *server) routes() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /v1/{$}", handleTestPage)
 	mux.HandleFunc("GET /v1/health", s.handleHealth)
 	mux.HandleFunc("POST /v1/plan", s.handlePlan)
 	mux.HandleFunc("GET /v1/plan/{file}", s.handleGPX)
 	return s.logRequests(mux)
+}
+
+func handleTestPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Security-Policy", testPageCSP)
+	w.Header().Set("Cache-Control", "no-cache")
+	_, _ = w.Write(testPage)
 }
 
 func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {

@@ -373,3 +373,29 @@ func TestHealth(t *testing.T) {
 		t.Errorf("health with GraphHopper down: %d, want 503", resp.StatusCode)
 	}
 }
+
+func TestTestPage(t *testing.T) {
+	var calls atomic.Int32
+	gh := fakeGH(t, nil, &calls)
+	defer gh.Close()
+	api := testServer(gh)
+	defer api.Close()
+	resp, err := http.Get(api.URL + "/v1/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 200 || !strings.Contains(string(body), "Plan loop") {
+		t.Fatalf("test page: %d", resp.StatusCode)
+	}
+	if csp := resp.Header.Get("Content-Security-Policy"); !strings.Contains(csp, "default-src 'none'") || !strings.Contains(csp, "connect-src 'self'") {
+		t.Errorf("CSP must forbid third-party loads, got %q", csp)
+	}
+	// The page must not reference any other host.
+	for _, bad := range []string{"http://", "https://", "//cdn", "googleapis"} {
+		if strings.Contains(string(body), bad) {
+			t.Errorf("test page references %q", bad)
+		}
+	}
+}
