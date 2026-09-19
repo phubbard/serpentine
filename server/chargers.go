@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -95,13 +96,37 @@ func sitesFromStations(stations []nrelStation) []charger {
 		}
 		if !merged {
 			sites = append(sites, charger{
-				ID: fmt.Sprintf("nrel:%d", s.ID), Name: s.Name, LonLat: [2]float64{s.Lon, s.Lat},
+				ID: fmt.Sprintf("nrel:%d", s.ID), Name: siteName(s.Name), LonLat: [2]float64{s.Lon, s.Lat},
 				Address: s.Street + ", " + s.City, Network: s.Network, Ports: ports, PowerKW: kw,
 				Connectors: conns, Hours: s.Hours, Pricing: s.Pricing, OffRouteKM: s.OffRouteKM,
 			})
 		}
 	}
 	return sites
+}
+
+// bayCode matches the pedestal suffixes networks append to a site name: "A07-A08", "A05", "#2", "1".
+var bayCode = regexp.MustCompile(`^(#?\d+|[A-Z]\d{1,3}(-[A-Z]?\d{1,3})?)$`)
+
+// siteName tidies an NREL station name for display: drops trailing bay codes ("EL CAPITAN
+// A07-A08" → "El Capitan") and title-cases names shouted in capitals. Mixed-case names are kept.
+func siteName(name string) string {
+	words := strings.Fields(name)
+	for len(words) > 1 && bayCode.MatchString(words[len(words)-1]) {
+		words = words[:len(words)-1]
+	}
+	out := strings.Join(words, " ")
+	if out != strings.ToUpper(out) {
+		return out // already mixed case: trust it
+	}
+	for i, w := range words {
+		lower := strings.ToLower(w)
+		if len(w) <= 3 && strings.ContainsAny(w, "0123456789") {
+			continue // keep codes like "CA" or "76" as they are
+		}
+		words[i] = strings.ToUpper(lower[:1]) + lower[1:]
+	}
+	return strings.Join(words, " ")
 }
 
 func contains(xs []string, x string) bool {

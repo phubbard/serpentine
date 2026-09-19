@@ -108,7 +108,7 @@ struct RouteMap: View {
     var body: some View {
         Map(initialPosition: .automatic) {
             MapPolyline(coordinates: plan.polyline.map(\.coordinate))
-                .stroke(.tint, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round)) // .tint follows MapKit, not the app, on iOS 26
             Marker("Start", systemImage: "flag.checkered", coordinate: plan.handoff.source.coordinate)
                 .tint(.primary)
             ForEach(Array(zip(plan.handoff.waypoints, plan.handoff.waypointRoads).enumerated()), id: \.offset) { _, pair in

@@ -237,3 +237,20 @@ func TestSiteQuality(t *testing.T) {
 		}
 	}
 }
+
+func TestSiteName(t *testing.T) {
+	for in, want := range map[string]string{
+		"EL CAPITAN A07-A08":             "El Capitan",
+		"SANPASQUALPARK A05 A06":         "Sanpasqualpark",
+		"RAMONA SHOPPING SUNVALLEY #2":   "Ramona Shopping Sunvalley",
+		"DGS RAMONA CRC 2":               "Dgs Ramona Crc",
+		"Felicita Plaza (Escondido, CA)": "Felicita Plaza (Escondido, CA)",
+		"Solana at Grand":                "Solana at Grand",
+		"EFCC EV #3":                     "Efcc Ev",
+		"A1":                             "A1", // never strip the whole name
+	} {
+		if got := siteName(in); got != want {
+			t.Errorf("siteName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
