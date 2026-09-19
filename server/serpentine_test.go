@@ -494,3 +494,67 @@ func TestPrivacyPage(t *testing.T) {
 		t.Error("privacy page must carry the no-third-party CSP")
 	}
 }
+
+func TestDurationRejectsBadRequests(t *testing.T) {
+	var calls atomic.Int32
+	gh := fakeGH(t, nil, &calls)
+	defer gh.Close()
+	api := testServer(gh)
+	defer api.Close()
+	for _, tc := range []struct{ name, body string }{
+		{"point to point", `{"mode":"point_to_point","start":[-117.2,32.9],"end":[-116.8,33.0],"duration_s":7200}`},
+		{"both budgets", `{"mode":"loop","start":[-116.868,33.042],"distance_m":100000,"duration_s":7200}`},
+		{"too short", `{"mode":"loop","start":[-116.868,33.042],"duration_s":600}`},
+		{"too long", `{"mode":"loop","start":[-116.868,33.042],"duration_s":40000}`},
+	} {
+		if code, _ := post(t, api.URL+"/v1/plan", tc.body); code != 400 {
+			t.Errorf("%s: got %d, want 400", tc.name, code)
+		}
+	}
+}
+
+func TestDurationBudget(t *testing.T) {
+	var calls atomic.Int32
+	gh := fakeGH(t, nil, &calls)
+	defer gh.Close()
+	api := testServer(gh)
+	defer api.Close()
+	// The fake returns the same 341-minute loop whatever distance we ask for, so the correction can
+	// never converge: the point is that it gives up rather than looping, and reports the overrun.
+	code, res := post(t, api.URL+"/v1/plan", `{"mode":"loop","start":[-116.868,33.042],"duration_s":7200}`)
+	if code != 200 {
+		t.Fatalf("plan: %d", code)
+	}
+	b, ok := res["budget"].(map[string]any)
+	if !ok {
+		t.Fatal("no budget block on a duration_s plan")
+	}
+	if b["target_s"].(float64) != 7200 {
+		t.Errorf("target_s = %v", b["target_s"])
+	}
+	if b["fits"].(bool) {
+		t.Errorf("a 341-minute ride can't fit a 2-hour budget: %v", b)
+	}
+	if b["total_s"].(float64) != res["time_s"].(float64) {
+		t.Errorf("total_s %v should be the ride time %v when there's no charging", b["total_s"], res["time_s"])
+	}
+	// Three plans at most (candidate fan-out is 16 + up to one rescale each).
+	if n := calls.Load(); n > 3*17 {
+		t.Errorf("%d routing calls: the budget correction isn't bounded", n)
+	}
+}
+
+func TestDistancePlanHasNoBudget(t *testing.T) {
+	var calls atomic.Int32
+	gh := fakeGH(t, nil, &calls)
+	defer gh.Close()
+	api := testServer(gh)
+	defer api.Close()
+	code, res := post(t, api.URL+"/v1/plan", `{"mode":"loop","start":[-116.868,33.042],"distance_m":150000}`)
+	if code != 200 {
+		t.Fatalf("plan: %d", code)
+	}
+	if _, ok := res["budget"]; ok {
+		t.Error("distance plans shouldn't carry a budget block")
+	}
+}

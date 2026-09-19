@@ -17,6 +17,8 @@ built.
   "end": [-116.60, 33.08],          // point_to_point only
   "turnaround": [-116.60, 33.08],   // out_and_back: optional; else chosen from distance_m
   "distance_m": 150000,             // loop, out_and_back (total, both legs): 20 000 – 500 000
+  "duration_s": 7200,               // loop, out_and_back: time budget instead of distance_m
+                                    //   (1800 – 28800); see "budget" in the response
   "heading_deg": 90,                // loop, out_and_back: optional; omitted = try 8 directions
   "seed": 7,                        // loop, out_and_back: optional, default 1; change it for another
   "twistiness": 0.5,                // 0..1, default 0.5 → per-request custom_model (ADR-009)
@@ -161,3 +163,27 @@ itself is not re-routed through the charger; the charger becomes a handoff waypo
 the detour. Detours are costed as 2 × off-route distance. The response returns stops, backups and
 alternates rather than every site (urban corridors have hundreds); ranking favours more ports, full
 power, 24 h access, J1772 over Tesla-only, and closeness to the route.
+
+## Time budgets (`duration_s`)
+
+`duration_s` replaces `distance_m` for `loop` and `out_and_back`: "I have two hours". Sending both is
+a 400, as is `duration_s` on `point_to_point`.
+
+The server converts the budget into a first distance at `budgetSpeedKMH` (55 km/h — serpentine's roads
+are slow), plans, then corrects the distance against GraphHopper's own time for the winning route.
+At most three plans (`budgetTries`); it stops early once the ride lands inside the budget. It aims at
+97 % of the budget and prefers the longest ride that still fits: finishing early is fine, running over
+is a broken promise.
+
+With `charging` on, the budget covers **total** time — riding plus charging dwell plus charger
+detours — so a ride that needs a 90-minute stop shrinks until the stop fits.
+
+The response carries a `budget` block on these requests:
+
+```json
+"budget": { "target_s": 7200, "total_s": 6759, "fits": true }
+```
+
+`fits` is false when even the shortest correction ran over (rare: a 30-minute budget in an area whose
+shortest loop is longer, or charging that can't be avoided). Show the ride anyway; it's the best
+available, and `total_s` says what it really costs.

@@ -23,8 +23,7 @@ struct ResultView: View {
             Section {
                 HStack {
                     stat(Format.distance(km: plan.distanceM / 1000), "distance")
-                    stat(Format.duration(seconds: plan.energy?.totalTimeS ?? plan.timeS),
-                         (plan.energy?.stops ?? 0) > 0 ? "incl. charging" : "riding")
+                    stat(Format.duration(seconds: plan.energy?.totalTimeS ?? plan.timeS), timeLabel)
                     stat(Format.climb(meters: plan.ascendM), "climb")
                 }
                 Button {
@@ -92,9 +91,20 @@ struct ResultView: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// Under a time budget the second number is what matters, so label it against the budget.
+    private var timeLabel: String {
+        if let b = plan.budget {
+            return "of \(Format.duration(seconds: b.targetS))"
+        }
+        return (plan.energy?.stops ?? 0) > 0 ? "incl. charging" : "riding"
+    }
+
     private var footnote: String {
         let curvy = Format.distance(km: plan.stats.curvyKm)
         var s = "\(curvy) of properly twisty road. Apple Maps gets \(plan.handoff.waypoints.count) stops so it follows this route."
+        if let b = plan.budget, !b.fits {
+            s += " This is the shortest ride we could find here; it runs over your \(Format.duration(seconds: b.targetS))."
+        }
         if let o = plan.outAndBack {
             s += " Out \(Format.distance(km: o.outKm)), back \(Format.distance(km: o.backKm)) on different roads."
         }

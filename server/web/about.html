@@ -28,6 +28,8 @@
   .lede { font-size: clamp(18px, 2.2vw, 22px); color: var(--muted); max-width: 40ch; margin: 0 auto 28px; }
   .cta { display: inline-block; background: var(--accent); color: var(--accent-ink); text-decoration: none;
          font-weight: 600; padding: 13px 24px; border-radius: 999px; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 0; }
+  .cta.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
   .cta-note { display: block; margin-top: 12px; font-size: 15px; color: var(--muted); }
 
   .hero-shot { margin: 40px auto 0; max-width: 640px; }
@@ -68,7 +70,10 @@
   <h1>The twisty way there and back.</h1>
   <p class="lede">Pick a start and how far you want to ride. Serpentine finds a loop on curvy, quiet
   roads, then hands it to Apple Maps for turn-by-turn voice guidance.</p>
-  <a class="cta" href="mailto:pfh@phfactor.net?subject=Serpentine%20beta">Join the beta</a>
+  <p class="ctas">
+    <a class="cta" href="mailto:pfh@phfactor.net?subject=Serpentine%20beta">Join the beta</a>
+    <a class="cta secondary" href="/v1/">Try it live in your browser</a>
+  </p>
   <span class="cta-note">In TestFlight now · coming to the App Store · iPhone and iPad</span>
   <div class="hero-shot">
     <img src="/v1/img/ipad-loop.jpg" width="1200" height="1600" alt="Serpentine on iPad: an 88-mile loop from Ramona through Julian, Descanso and Alpine, with a charging stop at El Capitan">
@@ -89,6 +94,17 @@
 
   <section class="feature flip">
     <div class="text">
+      <div class="kicker">Time</div>
+      <h2>Two hours on a Saturday.</h2>
+      <p>Say how long you've got instead of how far you want to go. Serpentine works out the distance
+      from how fast its own roads actually ride, and comes in under your time, not over.</p>
+      <p>With charging on, the wait at the charger counts against the clock too.</p>
+    </div>
+    <div class="phone"><img src="/v1/img/phone-05-time.jpg" width="552" height="1200" alt="A ride planned to a two-hour budget, showing 1 h 50 min of 2 h 00 min"></div>
+  </section>
+
+  <section class="feature">
+    <div class="text">
       <div class="kicker">Out and back</div>
       <h2>Different roads on the way home.</h2>
       <p>Pick a direction and Serpentine rides you out to a turnaround, then brings you back on other
@@ -97,7 +113,7 @@
     <div class="phone"><img src="/v1/img/phone-04-out-and-back.jpg" width="552" height="1200" alt="An out-and-back ride with a turnaround marker"></div>
   </section>
 
-  <section class="feature">
+  <section class="feature flip">
     <div class="text">
       <div class="kicker">Electric</div>
       <h2>Charging stops for the Zero SR/S.</h2>
@@ -108,7 +124,7 @@
     <div class="phone"><img src="/v1/img/phone-03-charging.jpg" width="552" height="1200" alt="Charging details: energy used, state of charge and a planned stop"></div>
   </section>
 
-  <section class="feature flip">
+  <section class="feature">
     <div class="text">
       <div class="kicker">Ride</div>
       <h2>Voice guidance you already trust.</h2>
@@ -117,6 +133,14 @@
     </div>
     <div class="phone"><img src="/v1/img/phone-01-plan.jpg" width="552" height="1200" alt="The plan screen: start, ride type, distance, twistiness and charging"></div>
   </section>
+
+  <section class="feature" style="justify-items:center">
+  <div class="text" style="grid-column:1/-1; text-align:center">
+    <h2>No phone needed to see what it does.</h2>
+    <p style="margin-inline:auto">The planner runs in a browser too: pick a spot, plan a loop or an
+    out-and-back, see the roads it chose. <a href="/v1/">Try it live</a>.</p>
+  </div>
+</section>
 
   <div class="facts">
     <div class="fact"><h3>No account, no tracking</h3><p>No sign-up, ads or analytics. Your start point is used

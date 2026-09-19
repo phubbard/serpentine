@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -211,26 +212,14 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	start := time.Now()
 	cm := customModelFor(*req.Twistiness, req.Avoid)
-	var (
-		path    *ghPath
-		loop    *loopInfo
-		ob      *outBackInfo
-		turnIdx = -1
-		err     error
-	)
-	switch req.Mode {
-	case "point_to_point":
-		path, err = s.gh.route(ctx, ghRequest{Points: [][2]float64{*req.Start, *req.End}, CustomModel: cm})
-	case "loop":
-		path, loop, err = s.planLoop(ctx, &req, cm)
-	case "out_and_back":
-		path, turnIdx, ob, err = s.planOutBack(ctx, &req, cm)
-	}
+	res, attempts, err := s.planForBudget(ctx, &req, cm, id)
 	if err != nil {
 		var ge *ghError
 		switch {
 		case errors.As(err, &ge):
 			writeError(w, http.StatusUnprocessableEntity, ge.Message)
+		case errors.Is(err, errChargerData):
+			writeError(w, http.StatusBadGateway, "charger data unavailable")
 		case errors.Is(err, errNoLoop), errors.Is(err, errNoOutBack):
 			writeError(w, http.StatusUnprocessableEntity, err.Error())
 		default:
@@ -240,23 +229,16 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request) {
 		s.log.Info("plan", "mode", req.Mode, "failed", true, "ms", time.Since(start).Milliseconds())
 		return
 	}
-	var stations []nrelStation
-	if req.Charging != nil {
-		stations, err = s.nrel.nearbyRoute(ctx, path.Points.Coordinates, chargerCorridorMiles)
-		if err != nil {
-			s.log.Error("plan: charger data", "err", err)
-			writeError(w, http.StatusBadGateway, "charger data unavailable")
-			return
-		}
-	}
-	res := buildResult(id, req.Mode, path, loop, ob, turnIdx, stations, req.Charging)
 	s.cache.put(id, res)
 	attrs := []any{"mode", req.Mode, "km", res.DistanceM / 1000, "ms", time.Since(start).Milliseconds(), "waypoints", len(res.Handoff.Waypoints)}
-	if loop != nil {
+	if loop := res.Loop; loop != nil {
 		attrs = append(attrs, "target_km", loop.TargetM/1000, "candidates", loop.Candidates, "failed", loop.Failed, "score", loop.Score)
 	}
-	if ob != nil {
+	if ob := res.OutAndBack; ob != nil {
 		attrs = append(attrs, "out_km", ob.OutKM, "back_km", ob.BackKM, "shared_km", ob.SharedKM, "candidates", ob.Candidates, "failed", ob.Failed)
+	}
+	if b := res.Budget; b != nil {
+		attrs = append(attrs, "budget_s", b.TargetS, "budget_used_s", b.TotalS, "budget_fits", b.Fits, "attempts", attempts)
 	}
 	if res.Energy != nil {
 		attrs = append(attrs, "kwh", res.Energy.KWhEst, "chargers", len(res.Chargers), "stops", res.Energy.Stops, "feasible", res.Energy.Feasible)
@@ -374,3 +356,105 @@ func writeGPX(w io.Writer, name string, coords [][]float64) {
 	}
 	fmt.Fprint(w, "    </trkseg>\n  </trk>\n</gpx>\n")
 }
+
+// planForBudget plans the ride, and when the request gave a time budget rather than a distance,
+// corrects it: GraphHopper's own time for the winning route replaces budgetSpeedKMH's guess. Up to
+// budgetTries attempts, keeping the best plan that fits. Charging dwell counts towards the budget —
+// a 90-minute charge stop is 90 minutes the rider doesn't have — so a charging plan that overruns
+// shrinks the ride until it fits or runs out of attempts.
+func (s *server) planForBudget(ctx context.Context, req *planRequest, cm *customModel, id string) (*planResult, int, error) {
+	res, err := s.planOnce(ctx, req, cm, id)
+	if err != nil || req.DurationS == 0 {
+		return res, 1, err
+	}
+	// Aim just under: finishing early is fine, running over is a broken promise.
+	target := req.DurationS * 0.97
+	best, attempts := res, 1
+	for attempts < budgetTries && !withinBudget(res, target) {
+		scaled := clamp(req.DistanceM*target/budgetUsedS(res), 20_000, 500_000)
+		if math.Abs(scaled-req.DistanceM) < 1_000 {
+			break // as close as the distance limits allow
+		}
+		retry := *req
+		retry.DistanceM = math.Round(scaled)
+		next, err := s.planOnce(ctx, &retry, cm, id)
+		if err != nil {
+			break // the corrected ride didn't route; keep the one that did
+		}
+		attempts++
+		res = next
+		if closerToBudget(next, best, req.DurationS) {
+			best = next
+		}
+	}
+	best.Budget = &budgetInfo{
+		TargetS: req.DurationS,
+		TotalS:  math.Round(budgetUsedS(best)),
+		Fits:    budgetUsedS(best) <= req.DurationS,
+	}
+	return best, attempts, nil
+}
+
+// budgetTries: the first plan plus two corrections. Each is a full fan-out, so this is the ceiling
+// on a time-budget request's cost.
+const budgetTries = 3
+
+// budgetUsedS is what the rider spends: riding, plus charging and charger detours when planned.
+func budgetUsedS(res *planResult) float64 {
+	if res.Energy != nil {
+		return res.Energy.TotalTimeS
+	}
+	return res.TimeS
+}
+
+// closerToBudget prefers a plan that fits the budget; between two that fit, the longer ride; between
+// two that don't, the shorter overrun.
+func closerToBudget(a, b *planResult, budget float64) bool {
+	ua, ub := budgetUsedS(a), budgetUsedS(b)
+	if (ua <= budget) != (ub <= budget) {
+		return ua <= budget
+	}
+	if ua <= budget {
+		return ua > ub
+	}
+	return ua < ub
+}
+
+// withinBudget accepts anything from target (budget less its safety margin) up to the budget itself.
+func withinBudget(res *planResult, target float64) bool {
+	used := budgetUsedS(res)
+	return used >= target*0.9 && used <= target/0.97
+}
+
+// planOnce is one whole plan: route, chargers, result.
+func (s *server) planOnce(ctx context.Context, req *planRequest, cm *customModel, id string) (*planResult, error) {
+	var (
+		path    *ghPath
+		loop    *loopInfo
+		ob      *outBackInfo
+		turnIdx = -1
+		err     error
+	)
+	switch req.Mode {
+	case "point_to_point":
+		path, err = s.gh.route(ctx, ghRequest{Points: [][2]float64{*req.Start, *req.End}, CustomModel: cm})
+	case "loop":
+		path, loop, err = s.planLoop(ctx, req, cm)
+	case "out_and_back":
+		path, turnIdx, ob, err = s.planOutBack(ctx, req, cm)
+	}
+	if err != nil {
+		return nil, err
+	}
+	var stations []nrelStation
+	if req.Charging != nil {
+		stations, err = s.nrel.nearbyRoute(ctx, path.Points.Coordinates, chargerCorridorMiles)
+		if err != nil {
+			s.log.Error("plan: charger data", "err", err)
+			return nil, errChargerData
+		}
+	}
+	return buildResult(id, req.Mode, path, loop, ob, turnIdx, stations, req.Charging), nil
+}
+
+var errChargerData = errors.New("charger data unavailable")

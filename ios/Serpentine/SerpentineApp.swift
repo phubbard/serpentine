@@ -46,6 +46,7 @@ struct RootView: View {
                                        coordinate: CLLocationCoordinate2D(latitude: 33.0417, longitude: -116.8681))
             planner.charging = true
             if ProcessInfo.processInfo.arguments.contains("-outAndBack") { planner.mode = .outAndBack }
+            if ProcessInfo.processInfo.arguments.contains("-timeBudget") { planner.budget = .time }
             await planner.plan()
         }
         #endif

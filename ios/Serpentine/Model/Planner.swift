@@ -12,6 +12,13 @@ struct StartPoint: Equatable, Sendable {
     }
 }
 
+/// How the rider says how big a ride they want: a distance, or the time they have.
+enum RideBudget: String, CaseIterable, Identifiable, Sendable {
+    case distance, time
+    var id: String { rawValue }
+    var label: String { self == .distance ? "Distance" : "Time" }
+}
+
 /// Compass directions offered for "head this way first"; nil = let the server try all eight.
 enum Heading: Double, CaseIterable, Identifiable {
     case north = 0, northeast = 45, east = 90, southeast = 135, south = 180, southwest = 225, west = 270, northwest = 315
@@ -34,7 +41,9 @@ enum Heading: Double, CaseIterable, Identifiable {
 @MainActor @Observable
 final class Planner {
     var mode: RideMode = .loop
+    var budget: RideBudget = .distance
     var distanceKm: Double = 150
+    var durationMin: Double = 120
     var twistiness: Double = 0.5
     var heading: Heading?
     var charging = false
@@ -57,7 +66,8 @@ final class Planner {
         return PlanRequest(
             mode: mode,
             start: start.coordinate.lonLat,
-            distanceM: distanceKm * 1000,
+            distanceM: budget == .distance ? distanceKm * 1000 : nil,
+            durationS: budget == .time ? durationMin * 60 : nil,
             headingDeg: heading?.rawValue,
             seed: seed,
             twistiness: twistiness,

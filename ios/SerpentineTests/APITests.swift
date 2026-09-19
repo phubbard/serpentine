@@ -71,6 +71,18 @@ private func fixture(_ name: String) throws -> PlanResult {
     #expect(p.request(seed: 1)?.charging?.socStart == 0.7)
 }
 
+@MainActor @Test func timeBudgetReplacesDistance() throws {
+    let p = Planner()
+    p.start = StartPoint(name: "Ramona", coordinate: [-116.868, 33.042].coordinate)
+    p.budget = .time
+    p.durationMin = 120
+    let r = try #require(p.request(seed: 1))
+    #expect(r.durationS == 7200 && r.distanceM == nil, "the server rejects both together")
+    // The wire must omit distance_m entirely, not send null.
+    let json = String(data: try SerpentineAPI.encoder().encode(r), encoding: .utf8) ?? ""
+    #expect(json.contains("\"duration_s\":7200") && !json.contains("distance_m"))
+}
+
 @Test func climbUsesFeetOrMetres() {
     #expect(Format.climb(meters: 1000, locale: Locale(identifier: "en_US")) == "3,281 ft")
     #expect(Format.climb(meters: 1000, locale: Locale(identifier: "en_GB")).hasSuffix("m"))

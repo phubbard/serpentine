@@ -22,6 +22,7 @@ type planRequest struct {
 	End        *[2]float64   `json:"end,omitempty"`
 	Turnaround *[2]float64   `json:"turnaround,omitempty"`
 	DistanceM  float64       `json:"distance_m,omitempty"`
+	DurationS  float64       `json:"duration_s,omitempty"` // loop, out_and_back: ride time instead of distance
 	HeadingDeg *float64      `json:"heading_deg,omitempty"`
 	Seed       *int64        `json:"seed,omitempty"`
 	Twistiness *float64      `json:"twistiness,omitempty"`
@@ -41,6 +42,9 @@ func (r *planRequest) normalize() error {
 		return badf("start is required")
 	}
 	if err := checkLonLat("start", *r.Start); err != nil {
+		return err
+	}
+	if err := r.normalizeDuration(); err != nil {
 		return err
 	}
 	switch r.Mode {
@@ -94,6 +98,32 @@ func (r *planRequest) normalize() error {
 	}
 	return nil
 }
+
+// budgetSpeedKMH turns a time budget into a first distance guess. Deliberately low: serpentine's
+// roads are slow, and a ride that comes in under the budget is fine while one that runs over is a
+// broken promise. The plan is corrected against GraphHopper's own time afterwards (planForBudget).
+const budgetSpeedKMH = 55
+
+// normalizeDuration converts a time budget into the distance the rest of the pipeline works in.
+func (r *planRequest) normalizeDuration() error {
+	if r.DurationS == 0 {
+		return nil
+	}
+	if r.Mode == "point_to_point" {
+		return badf("duration_s applies to loop and out_and_back only")
+	}
+	if r.DistanceM != 0 {
+		return badf("give distance_m or duration_s, not both")
+	}
+	if r.DurationS < 1800 || r.DurationS > 28800 {
+		return badf("duration_s must be between 1800 and 28800")
+	}
+	r.DurationS = math.Round(r.DurationS)
+	r.DistanceM = math.Round(clamp(r.DurationS/3600*budgetSpeedKMH*1000, 20_000, 500_000))
+	return nil
+}
+
+func clamp(v, lo, hi float64) float64 { return math.Min(math.Max(v, lo), hi) }
 
 func (r *planRequest) normalizeHeadingSeed() {
 	if r.HeadingDeg != nil {
@@ -191,6 +221,14 @@ type loopInfo struct {
 	RequestedM float64 `json:"requested_m"` // round_trip.distance actually sent for the winner
 }
 
+// budgetInfo answers "does this fit in the time I have?" for a duration_s request. TotalS includes
+// charging when it was planned.
+type budgetInfo struct {
+	TargetS float64 `json:"target_s"`
+	TotalS  float64 `json:"total_s"`
+	Fits    bool    `json:"fits"`
+}
+
 type planResult struct {
 	ID           string           `json:"id"`
 	Mode         string           `json:"mode"`
@@ -202,6 +240,7 @@ type planResult struct {
 	Instructions []instructionOut `json:"instructions"`
 	Stats        routeStats       `json:"stats"`
 	Loop         *loopInfo        `json:"loop,omitempty"`
+	Budget       *budgetInfo      `json:"budget,omitempty"` // duration_s requests only
 	OutAndBack   *outBackInfo     `json:"out_and_back,omitempty"`
 	Energy       *energySummary   `json:"energy,omitempty"`   // charging requests only
 	Chargers     []charger        `json:"chargers,omitempty"` // charging requests only

@@ -5,10 +5,9 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [Unreleased]
 
-- iPad: the plan form sits beside a large map, in portrait or landscape.
-
 ## [0.1.0]
 
+- iPad: the plan form sits beside a large map, in portrait or landscape.
 - Plan a loop or an out-and-back from your location or any searched place: pick a distance, how
   twisty, and optionally a direction to head first.
 - Routes favour curvy, rural roads with moderate speed limits and avoid dirt.

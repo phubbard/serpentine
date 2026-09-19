@@ -101,6 +101,10 @@ Principles that constrain every design choice here:
   `Serpentine.local.xcconfig`, `Build.gen.xcconfig`, the generated `.xcodeproj` and `build/`.
 - No cloud CI. Everything builds and ships from the dev Mac via Makefile. Copy
   `apple-deployment-playbook.md` from `~/code/mapbook/` into `ios/` when that phase starts and follow it.
+- **Ship a feature, update the shop window.** `server/web/about.html` is the public product page
+  (`/` and `/v1/about`); `server/web/support.html` answers questions about what the app does. A
+  user-visible feature isn't done until both say the truth about it — and the page's screenshots come
+  from the build that shipped the feature, not an older one. Same for `README.md` and `docs/API.md`.
 - Write scar tissue down: every gotcha that cost more than 10 minutes goes in `infra/README.md`
   (ops) or `docs/DECISIONS.md` (design). Future agents read those before touching anything.
 

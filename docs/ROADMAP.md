@@ -108,7 +108,8 @@ Acceptance:
 
 - [ ] Traffic proxy v2: HPMS AADT for CA state highways conflated onto GraphHopper edges as a
       custom encoded value (`aadt_bucket`), or rejected with reasons in DECISIONS
-- [ ] **Plan by time, not distance** ("I have 2 hours on Saturday"): `duration_s` in `POST /v1/plan`
+- [x] **Plan by time, not distance** ("I have 2 hours on Saturday") — server side, 2026-09-19 (ADR-018);
+      app switch still to do: `duration_s` in `POST /v1/plan`
       as an alternative to `distance_m`. The server seeds candidates from `duration_s` × a twisty-road
       speed (start ~55 km/h, then learn it from GraphHopper's own `time_s` on scored loops). It scores
       against the *total* time, including charging dwell and detours when `charging` is on, and

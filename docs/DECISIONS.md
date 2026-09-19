@@ -223,3 +223,32 @@ The privacy policy lives at `https://serpentine.phfactor.net/v1/privacy` (`serve
 embedded) and describes exactly this: start point to our server, kept in memory ≤ 24 h
 (`planCacheTTL`, tested against the page), route shape to NREL only when charging is on, Apple for
 maps/search/navigation, truncated-IP 30-day access log. Any change to data flow must update the page.
+
+## ADR-018 · 2026-09-19 · Time budgets are planned by correction, not by predicting speed
+
+Riders have hours, not kilometres: "two hours on Saturday" is the real request. `duration_s` on a
+`loop` or `out_and_back` now replaces `distance_m` (`docs/API.md`).
+
+Predicting distance from a time budget needs a speed, and no single number works: the same two hours
+buys 75 mi around Ramona and rather less on Palomar's switchbacks, and GraphHopper's motorcycle
+speeds are themselves optimistic on tight roads. So the server doesn't try to be right first time. It
+guesses low (`budgetSpeedKMH` = 55), plans, then rescales the distance by the ratio of the budget to
+the *route's own* time and plans again — at most `budgetTries` (3) attempts, stopping as soon as the
+ride lands inside the budget. The fan-out is cheap (35–200 ms a candidate), so worst case is about
+three times a normal plan and comfortably inside the 60 s request timeout. Measured from Ramona:
+90 min → 87 min ride, 2 h → 113 min, 4 h → 236 min.
+
+Two rules make the result trustworthy. It aims at **97 % of the budget and prefers the longest ride
+that still fits**, because finishing early is a mild disappointment and running over strands someone
+in the dark. And with charging on, the budget counts **total** time — dwell and charger detours
+included — so a ride needing a 90-minute stop shrinks rather than quietly costing 5½ hours; the
+4-hour Ramona test came back 136 mi with one stop, 3 h 41 total.
+
+The response's `budget` block (`target_s`, `total_s`, `fits`) exists so the app can say "1 h 52 of
+2 h" without re-deriving anything, and so `fits: false` (shortest possible loop still too long)
+is visible rather than silent.
+
+Not done: the candidate *scoring* still uses the estimated distance, so a time-budget plan is scored
+against a target that may be 10 % off. It matters little because the rescale fixes the winner, but if
+time budgets become the common case, score against time directly. Calibrate `budgetSpeedKMH` from the
+first real ride logs (ADR-014).

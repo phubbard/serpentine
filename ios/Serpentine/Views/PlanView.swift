@@ -29,8 +29,18 @@ struct PlanView: View {
                     Text("Out and back").tag(RideMode.outAndBack)
                 }
                 .pickerStyle(.segmented)
-                LabeledContent("Distance", value: Format.distance(km: planner.distanceKm))
-                Slider(value: $planner.distanceKm, in: 40...400, step: 10)
+                Picker("Plan by", selection: $planner.budget) {
+                    ForEach(RideBudget.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                switch planner.budget {
+                case .distance:
+                    LabeledContent("Distance", value: Format.distance(km: planner.distanceKm))
+                    Slider(value: $planner.distanceKm, in: 40...400, step: 10)
+                case .time:
+                    LabeledContent("Time", value: Format.duration(seconds: planner.durationMin * 60))
+                    Slider(value: $planner.durationMin, in: 30...480, step: 15)
+                }
                 LabeledContent("Twistiness", value: twistLabel)
                 Slider(value: $planner.twistiness, in: 0...1, step: 0.1)
                 Picker("Head", selection: $planner.heading) {

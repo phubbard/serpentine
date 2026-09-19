@@ -18,6 +18,7 @@ struct PlanRequest: Encodable, Sendable {
     var start: [Double]
     var end: [Double]?
     var distanceM: Double?
+    var durationS: Double?
     var headingDeg: Double?
     var seed: Int?
     var twistiness: Double
@@ -40,6 +41,7 @@ struct PlanResult: Decodable, Sendable, Identifiable, Hashable {
     let instructions: [Instruction]
     let stats: Stats
     let loop: LoopInfo?
+    let budget: Budget?
     let outAndBack: OutAndBackInfo?
     let energy: Energy?
     let chargers: [Charger]?
@@ -48,6 +50,14 @@ struct PlanResult: Decodable, Sendable, Identifiable, Hashable {
 
     static func == (a: PlanResult, b: PlanResult) -> Bool { a.id == b.id }
     func hash(into h: inout Hasher) { h.combine(id) }
+}
+
+/// Present when the ride was planned against a time budget: what was asked for, what it costs
+/// (charging included) and whether it fits.
+struct Budget: Decodable, Sendable {
+    let targetS: Double
+    let totalS: Double
+    let fits: Bool
 }
 
 struct Road: Decodable, Sendable {
