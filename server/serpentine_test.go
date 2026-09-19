@@ -425,3 +425,32 @@ func TestRepeatedKMFindsSpur(t *testing.T) {
 		t.Errorf("straight line repeated %.1f km", r)
 	}
 }
+
+func TestPrivacyPage(t *testing.T) {
+	var calls atomic.Int32
+	gh := fakeGH(t, nil, &calls)
+	defer gh.Close()
+	api := testServer(gh)
+	defer api.Close()
+	resp, err := http.Get(api.URL + "/v1/privacy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 200 || !strings.Contains(string(body), "Serpentine — Privacy") {
+		t.Fatalf("privacy page: %d", resp.StatusCode)
+	}
+	// Claims the page makes that the code must keep true.
+	for _, claim := range []string{"24 hours", "developer.nlr.gov", "30 days", "pfh@phfactor.net"} {
+		if !strings.Contains(string(body), claim) {
+			t.Errorf("privacy page lost %q", claim)
+		}
+	}
+	if planCacheTTL != 24*time.Hour {
+		t.Errorf("page says plans are kept 24 h; planCacheTTL is %v", planCacheTTL)
+	}
+	if !strings.Contains(resp.Header.Get("Content-Security-Policy"), "default-src 'none'") {
+		t.Error("privacy page must carry the no-third-party CSP")
+	}
+}

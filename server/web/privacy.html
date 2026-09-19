@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Serpentine — Privacy</title>
+<!-- Served by serpentine-api at /v1/privacy. Keep it true: it describes what the app, the server,
+     Caddy's access log and NREL actually see (ADR-017). Update the date when anything changes. -->
+<style>
+  :root { --bg: #f6f5f2; --ink: #1d1d1f; --muted: #6b6b70; --line: #e2e0dc; --accent: #0a6c5a; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151517; --ink: #ececef; --muted: #9a9aa2; --line: #333338; --accent: #3fb59c; }
+  }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 17px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 32px 0 8px; }
+  .updated { color: var(--muted); font-size: 15px; margin-bottom: 20px; }
+  .lede { font-size: 19px; }
+  a { color: var(--accent); }
+  li { margin: 6px 0; }
+  code { font-size: 15px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Serpentine — Privacy</h1>
+<p class="updated">Last updated: 2026-09-19.</p>
+
+<p class="lede">Serpentine plans motorcycle rides. To do that it sends your starting point to
+Serpentine's own server, which plans the route and forgets it. No accounts. No analytics. No ads.
+No tracking.</p>
+
+<h2>What the app sends, and to whom</h2>
+<ul>
+  <li><b>Your ride request, to Serpentine's server.</b> When you tap Plan, the app sends the start
+    point (your location or a place you searched for), the kind of ride, distance, twistiness,
+    direction and, if you turned on charging, your starting battery level, over HTTPS to
+    <code>serpentine.phfactor.net</code>. That server is run by Paul Hubbard, an individual developer,
+    on his own hardware. There is no account and nothing that identifies you or your device in the
+    request.</li>
+  <li><b>What the server keeps.</b> The planned ride (including its start point and route) stays in
+    the server's memory for up to 24 hours so that "Share GPX" and repeat requests work, then it is
+    discarded. It is never written to disk, never logged and never shared, except as below.</li>
+  <li><b>Charging stops, via NREL.</b> Only if you turn on charging: to find chargers along the ride,
+    Serpentine's server sends the shape of the route (a line on the map, with nothing about you or
+    your device) to the U.S. Department of Energy's Alternative Fuel Stations API
+    (<code>developer.nlr.gov</code>, formerly NREL). Your phone never contacts it directly.</li>
+  <li><b>Maps, place search and navigation, via Apple.</b> The map, the place search and turn-by-turn
+    guidance are Apple Maps. Search terms go to Apple, not to Serpentine, and when you tap
+    "Navigate in Apple Maps" the planned stops are handed to the Maps app. Apple's privacy policy
+    covers those.</li>
+</ul>
+<p>Serpentine contacts no other services. It contains no third-party code, SDKs, analytics or crash
+reporting beyond Apple's own.</p>
+
+<h2>Location</h2>
+<p>Serpentine asks for location "While Using the App" and reads it only when you tap
+<b>Use my location</b>, once, to set the start of the ride. It never tracks you in the background.
+You can revoke it at any time in Settings → Privacy &amp; Security → Location Services → Serpentine,
+and plan from a searched place instead.</p>
+
+<h2>Server logs</h2>
+<p>The web server in front of Serpentine keeps an access log to spot abuse: the time, the kind of
+request (for example <code>/v1/plan</code>), whether it worked and how long it took, and a
+<b>truncated IP address</b> (only the first half of an IPv4 address). It does not record locations,
+routes, request contents or browser details. Log entries are deleted after 30 days.
+Serpentine's own server log records only the kind of ride and summary numbers such as its length and how long planning took.</p>
+
+<h2>On your phone</h2>
+<p>Your plan settings stay in the app. When you share a GPX file, the app saves it to its own
+temporary storage so the share sheet can send it where you choose. Nothing is uploaded anywhere else.</p>
+
+<h2>The web test page</h2>
+<p><code>serpentine.phfactor.net/v1/</code> is a test page for the same planner. It loads nothing
+from other websites: its map images are fetched by Serpentine's server from OpenStreetMap and
+cached there, so OpenStreetMap never sees you. Map data © OpenStreetMap contributors.</p>
+
+<h2>Children</h2>
+<p>Serpentine is a route planner for licensed motorcycle riders and is not directed at children.</p>
+
+<h2>Contact</h2>
+<p>Questions or concerns about Serpentine and your data:
+<a href="mailto:pfh@phfactor.net">pfh@phfactor.net</a>.</p>
+</main>
+</body>
+</html>

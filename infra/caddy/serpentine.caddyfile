@@ -8,8 +8,24 @@
 
 serpentine.phfactor.net {
 	encode zstd gzip
+	# Access log for abuse spotting only (ADR-017): IPs masked to /16 (v4) and /32 (v6), headers
+	# dropped, tile paths (which are map locations) collapsed, 30 days' retention. Plan request
+	# bodies (start points) are never logged by Caddy or by serpentine-api.
 	log {
-		output file /var/log/caddy/serpentine.log
+		output file /var/log/caddy/serpentine.log {
+			roll_keep_for 720h
+		}
+		format filter {
+			wrap json
+			fields {
+				request>remote_ip ip_mask 16 32
+				request>client_ip ip_mask 16 32
+				request>remote_port delete
+				request>headers delete
+				resp_headers delete
+				request>uri regexp ^/v1/tiles/.* /v1/tiles
+			}
+		}
 	}
 
 	# serpentine-api: what the app uses.

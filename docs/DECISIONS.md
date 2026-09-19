@@ -205,3 +205,21 @@ It's a stopgap: the goal is self-hosted **vector** tiles (Protomaps PMTiles for 
 us-west, a few GB to low tens of GB; planet ~120 GB) rendered with vendored MapLibre GL, a
 self-hosted style, glyphs and sprites — zero third-party requests ever, and the same stack Phase 4
 (Ferrostar) would need. Roadmap item.
+
+## ADR-017 · 2026-09-19 · No third party in the request path; minimal access log; privacy policy
+
+Preparing the external-TestFlight privacy policy exposed two gaps between principle 1 and the
+deployment. (1) Publicly, `serpentine.phfactor.net` was **Cloudflare-proxied** (orange cloud;
+split-horizon DNS hid it on the LAN), so Cloudflare terminated TLS and could read every plan
+request, start coordinates included, from any rider on cellular. Paul switched it to **DNS-only**
+(grey cloud, CNAME → `webserver.phfactor.net`), like news/raven/ping: the home WAN IP was already
+public through those, and small JSON gains nothing from a CDN. Cost: no Cloudflare DDoS absorption;
+revisit with rate limits in serpentine-api if abused. (2) **Caddy's access log** kept full client IPs,
+all headers and the test page's tile paths (map locations) under default retention. The site block now
+filters it: IPs masked to /16 (v4) and /32 (v6), request/response headers and remote port dropped,
+`/v1/tiles/z/x/y` collapsed to `/v1/tiles`, 30-day retention. Plan bodies were never logged.
+
+The privacy policy lives at `https://serpentine.phfactor.net/v1/privacy` (`server/web/privacy.html`,
+embedded) and describes exactly this: start point to our server, kept in memory ≤ 24 h
+(`planCacheTTL`, tested against the page), route shape to NREL only when charging is on, Apple for
+maps/search/navigation, truncated-IP 30-day access log. Any change to data flow must update the page.

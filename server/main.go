@@ -29,6 +29,11 @@ var version = "dev" // -ldflags "-X main.version=..."
 //go:embed web/index.html
 var testPage []byte
 
+// privacyPage is the privacy policy at /v1/privacy, linked from TestFlight and the App Store listing.
+//
+//go:embed web/privacy.html
+var privacyPage []byte
+
 // Vendored Leaflet for the test page's map, served at /v1/static/.
 //
 //go:embed web/vendor
@@ -56,7 +61,7 @@ func main() {
 	flag.Parse()
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	s := &server{gh: newGHClient(strings.TrimRight(*ghURL, "/")), cache: newPlanCache(500, 24*time.Hour), log: log}
+	s := &server{gh: newGHClient(strings.TrimRight(*ghURL, "/")), cache: newPlanCache(500, planCacheTTL), log: log}
 	if *tileCache != "" {
 		s.tiles = newTileProxy(*tileCache, *tileURL)
 	}
@@ -116,6 +121,7 @@ func envOr(k, def string) string {
 func (s *server) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /v1/{$}", handleTestPage)
+	mux.HandleFunc("GET /v1/privacy", servePage(privacyPage))
 	mux.HandleFunc("GET /v1/tiles/{z}/{x}/{y}", s.tiles.handle)
 	static, _ := fs.Sub(vendorFS, "web/vendor")
 	mux.Handle("GET /v1/static/", http.StripPrefix("/v1/static/", staticHandler(http.FileServerFS(static))))
@@ -132,11 +138,15 @@ func staticHandler(h http.Handler) http.Handler {
 	})
 }
 
-func handleTestPage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Content-Security-Policy", testPageCSP)
-	w.Header().Set("Cache-Control", "no-cache")
-	_, _ = w.Write(testPage)
+func handleTestPage(w http.ResponseWriter, r *http.Request) { servePage(testPage)(w, r) }
+
+func servePage(page []byte) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Content-Security-Policy", testPageCSP)
+		w.Header().Set("Cache-Control", "no-cache")
+		_, _ = w.Write(page)
+	}
 }
 
 func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -285,6 +295,10 @@ func (w *statusWriter) WriteHeader(code int) {
 	w.status = code
 	w.ResponseWriter.WriteHeader(code)
 }
+
+// planCacheTTL is how long a plan (start point included) stays in memory. The privacy page states
+// it (web/privacy.html, "24 hours"); change both together.
+const planCacheTTL = 24 * time.Hour
 
 // planCache is a bounded in-memory map: repeat requests (and GPX downloads) skip GraphHopper.
 type planCache struct {
