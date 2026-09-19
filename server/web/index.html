@@ -207,7 +207,7 @@ function show(res) {
   $("energybox").classList.toggle("hidden", !e);
   $("stops").innerHTML = ""; $("chargers").innerHTML = "";
   if (e) {
-    $("energy").innerHTML = `${e.kwh_est} kWh of ${e.usable_kwh} · start ${pct(e.soc_start)} → end ${pct(e.soc_end_est)} · ` +
+    $("energy").innerHTML = `Needs ${e.kwh_est} kWh (pack ${e.usable_kwh}) · start ${pct(e.soc_start)} → end ${pct(e.soc_end_est)} · ` +
       (e.stops ? `${e.stops} stop${e.stops > 1 ? "s" : ""}, ${e.charge_min} min charging` : "no stop needed") +
       (e.feasible ? "" : `<div class="error">${esc(e.warning)}</div>`);
     for (const c of res.chargers) {
