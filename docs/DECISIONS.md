@@ -88,6 +88,11 @@ track/unpaved/city/trunk distance and on distance error, retry with a scaled `ro
 to hit the target within ~10 %, and return the best. The scoring rules are serpentine's, not
 GraphHopper's, and they're the natural home for the traffic proxy later.
 
+*Amended 2026-09-18:* round_trip can leave **spurs** — ride up a road to a turning point and back
+(Palomar loop: 4.2 km each way; see ADR-012). `pass_through` doesn't prevent it without turn costs.
+Stats now carry `repeated_km` (road ridden more than once, sampled every 50 m, 60 m match) and loop
+candidates pay 5 × its fraction, the same weight as dirt.
+
 ## ADR-011 · 2026-09-18 · Public endpoint without auth; path allowlist instead
 
 `serpentine.phfactor.net` fronts GraphHopper with no basic auth (Paul's call). The app has no
