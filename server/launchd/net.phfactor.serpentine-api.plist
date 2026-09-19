@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- serpentine-api on axiom. Installed by `make deploy` into ~/Library/LaunchAgents (same pattern as
+     ai.lmstudio.server). Listens on :8990 next to GraphHopper on :8989. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>net.phfactor.serpentine-api</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/pfh/serpentine-api/serpentine-api</string>
+        <string>-addr</string>
+        <string>:8990</string>
+        <string>-gh</string>
+        <string>http://localhost:8989</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/pfh/serpentine-api/logs/serpentine-api.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/pfh/serpentine-api/logs/serpentine-api.log</string>
+</dict>
+</plist>

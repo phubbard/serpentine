@@ -1,0 +1,370 @@
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"io"
+	"log/slog"
+	"math"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strconv"
+	"strings"
+	"sync/atomic"
+	"testing"
+	"time"
+)
+
+// Fixtures are real GraphHopper 11 responses from axiom (2026-09-18, base profile v0.2):
+//   gh_demo.json        UTC → Ramona → Julian → Mount Laguna → UTC (demo ride, 225 km)
+//   gh_loop_track.json  150 km round_trip from downtown SD, seed 1 heading 45 (runs Marron Valley Rd)
+//   gh_error.json       round_trip that fails ("Could not find a valid point")
+
+func loadFixture(t *testing.T, name string) []byte {
+	t.Helper()
+	b, err := os.ReadFile("testdata/" + name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+func fixturePath(t *testing.T, name string) *ghPath {
+	t.Helper()
+	p, err := parseGHResponse(200, loadFixture(t, name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestParseGHResponse(t *testing.T) {
+	p := fixturePath(t, "gh_demo.json")
+	if p.Distance < 220_000 || p.Distance > 230_000 {
+		t.Errorf("demo distance %.0f m, want ~225 km", p.Distance)
+	}
+	for _, k := range ghDetails {
+		if len(p.Details[k]) == 0 {
+			t.Errorf("detail %q missing", k)
+		}
+	}
+	if d := p.Details["road_class"][0]; d.Str == "" || d.IsNum {
+		t.Errorf("road_class detail should be a string, got %+v", d)
+	}
+	if d := p.Details["curvature"][0]; !d.IsNum {
+		t.Errorf("curvature detail should be numeric, got %+v", d)
+	}
+
+	_, err := parseGHResponse(400, loadFixture(t, "gh_error.json"))
+	var ge *ghError
+	if !errors.As(err, &ge) || !strings.Contains(ge.Message, "valid point") {
+		t.Errorf("want ghError with GraphHopper's message, got %v", err)
+	}
+	if _, err := parseGHResponse(502, []byte("<html>bad gateway</html>")); err == nil || errors.As(err, &ge) {
+		t.Errorf("a 502 must be an engine error, not a routing (4xx) error: %v", err)
+	}
+}
+
+func TestStats(t *testing.T) {
+	p := fixturePath(t, "gh_demo.json")
+	s := computeStats(p, cumulativeKM(p.Points.Coordinates))
+	if math.Abs(s.KM-p.Distance/1000)/(p.Distance/1000) > 0.01 {
+		t.Errorf("haversine length %.1f km vs GraphHopper %.1f km", s.KM, p.Distance/1000)
+	}
+	var sum float64
+	for _, km := range s.RoadClass {
+		sum += km
+	}
+	if math.Abs(sum-s.KM) > 0.5 {
+		t.Errorf("road classes sum to %.1f km, route is %.1f km", sum, s.KM)
+	}
+	if s.Urban["rural"] < 100 {
+		t.Errorf("demo ride should be mostly rural, got %.0f km", s.Urban["rural"])
+	}
+
+	track := fixturePath(t, "gh_loop_track.json")
+	ts := computeStats(track, cumulativeKM(track.Points.Coordinates))
+	if ts.RoadClass["track"] < 10 {
+		t.Errorf("Marron Valley loop should show >10 km of track, got %.1f", ts.RoadClass["track"])
+	}
+}
+
+func TestLoopScorePenalisesTrackAndDistanceError(t *testing.T) {
+	good := routeStats{KM: 150, RoadClass: map[string]float64{"secondary": 150}, Urban: map[string]float64{"rural": 150}, CurvyKM: 60}
+	withTrack := good
+	withTrack.RoadClass = map[string]float64{"secondary": 130, "track": 20}
+	long := good
+	long.KM = 230
+	if loopScore(withTrack, 150) <= loopScore(good, 150) {
+		t.Error("track should raise the score")
+	}
+	if loopScore(long, 150) <= loopScore(good, 150) {
+		t.Error("overshooting the target should raise the score")
+	}
+	if !math.IsInf(loopScore(routeStats{}, 150), 1) {
+		t.Error("empty route should score +Inf")
+	}
+}
+
+func TestHandoffDemo(t *testing.T) {
+	p := fixturePath(t, "gh_demo.json")
+	cum := cumulativeKM(p.Points.Coordinates)
+	h := buildHandoff(p, cum, roadsOf(p, cum))
+
+	if n := len(h.Waypoints); n == 0 || n > maxHandoffWaypoints {
+		t.Fatalf("%d waypoints, want 1..%d", n, maxHandoffWaypoints)
+	}
+	if !strings.Contains(strings.Join(h.WaypointRoads, "|"), "Sunrise Highway") {
+		t.Errorf("Sunrise Highway must get a waypoint; roads: %v", h.WaypointRoads)
+	}
+	if strings.Count(h.AppleMapsURL, "&waypoint=") != len(h.Waypoints) {
+		t.Errorf("waypoint count mismatch in %s", h.AppleMapsURL)
+	}
+	if !strings.HasPrefix(h.AppleMapsURL, "https://maps.apple.com/directions?source=32.") ||
+		!strings.HasSuffix(h.AppleMapsURL, "&mode=driving&avoid=tolls,highways") {
+		t.Errorf("unexpected Apple URL shape (lat,lon order?): %s", h.AppleMapsURL)
+	}
+	// Every waypoint lies on our polyline and away from the endpoints.
+	for i, w := range h.Waypoints {
+		if haversineKM(w[:], h.Source[:]) < endpointClearKM {
+			t.Errorf("waypoint %d too close to source", i)
+		}
+		found := false
+		for _, c := range p.Points.Coordinates {
+			if c[0] == w[0] && c[1] == w[1] {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("waypoint %d %v is not a polyline vertex", i, w)
+		}
+	}
+}
+
+func TestHandoffOneWaypointPerRoad(t *testing.T) {
+	// 0-50 km on A, a 0.2 km bridge named B, then A again: A gets one waypoint, not two.
+	var coords [][]float64
+	for i := 0; i <= 200; i++ {
+		coords = append(coords, []float64{-117 + float64(i)*0.005, 33}) // ~0.47 km steps
+	}
+	p := &ghPath{Instructions: []ghInstruction{
+		{StreetName: "Start Rd", Interval: [2]int{0, 20}},
+		{StreetName: "A", Interval: [2]int{20, 100}},
+		{StreetName: "B", Interval: [2]int{100, 101}},
+		{StreetName: "A", Interval: [2]int{101, 180}},
+		{StreetName: "End Rd", Interval: [2]int{180, 200}},
+	}}
+	p.Points.Coordinates = coords
+	cum := cumulativeKM(coords)
+	h := buildHandoff(p, cum, roadsOf(p, cum))
+	// Start Rd's waypoint would be 1 km from the source, inside endpointClearKM, so it is dropped.
+	if got := strings.Join(h.WaypointRoads, ","); got != "A,End Rd" {
+		t.Errorf("waypoint roads %q, want A,End Rd", got)
+	}
+}
+
+func TestPublicEndpointsSkipServiceRoads(t *testing.T) {
+	p := &ghPath{Details: map[string][]ghDetail{"road_class": {
+		{From: 0, To: 3, Str: "service"}, {From: 3, To: 8, Str: "secondary"}, {From: 8, To: 10, Str: "service"},
+	}}}
+	first, last := publicEndpoints(p, 11)
+	if first != 3 || last != 8 {
+		t.Errorf("got %d..%d, want 3..8", first, last)
+	}
+}
+
+func TestNormalize(t *testing.T) {
+	cases := []struct {
+		body string
+		ok   bool
+	}{
+		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000}`, true},
+		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":5000}`, false},
+		{`{"mode":"loop","distance_m":150000}`, false},
+		{`{"mode":"point_to_point","start":[-116.87,33.04]}`, false},
+		{`{"mode":"point_to_point","start":[-116.87,33.04],"end":[-116.60,33.08]}`, true},
+		{`{"mode":"point_to_point","start":[33.04,-116.87],"end":[-116.60,33.08]}`, false}, // lat,lon swapped
+		{`{"mode":"out_and_back","start":[-116.87,33.04],"distance_m":150000}`, false},
+		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"twistiness":1.5}`, false},
+		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"avoid":["tolls"]}`, false},
+		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"charging":{"enabled":true}}`, false},
+	}
+	for _, c := range cases {
+		var r planRequest
+		if err := json.Unmarshal([]byte(c.body), &r); err != nil {
+			t.Fatal(err)
+		}
+		if err := r.normalize(); (err == nil) != c.ok {
+			t.Errorf("%s: err=%v, want ok=%v", c.body, err, c.ok)
+		}
+	}
+}
+
+func TestCacheKeyStableAcrossDefaults(t *testing.T) {
+	key := func(body string) string {
+		var r planRequest
+		_ = json.Unmarshal([]byte(body), &r)
+		if err := r.normalize(); err != nil {
+			t.Fatal(err)
+		}
+		return r.cacheKey()
+	}
+	a := key(`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000}`)
+	b := key(`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"seed":1,"twistiness":0.5,"avoid":["unpaved","ferries"]}`)
+	c := key(`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"seed":2}`)
+	if a != b {
+		t.Error("explicit defaults should hash like omitted ones")
+	}
+	if a == c {
+		t.Error("different seed must hash differently")
+	}
+}
+
+func TestCustomModelOnlyTightens(t *testing.T) {
+	for _, tw := range []float64{0, 0.3, 0.5, 1} {
+		cm := customModelFor(tw, []string{"unpaved", "ferries"})
+		for _, r := range cm.Priority {
+			v, err := strconv.ParseFloat(r.MultiplyBy, 64)
+			if err != nil || v < 0 || v > 1 {
+				t.Errorf("twistiness %.1f: multiply_by %q breaks LM (must be 0..1)", tw, r.MultiplyBy)
+			}
+		}
+	}
+	if customModelFor(0, nil) != nil {
+		t.Error("no twistiness and no avoids should send no custom model")
+	}
+}
+
+// fakeGH serves fixtures: round trips with a heading in failHeadings get GraphHopper's 400.
+func fakeGH(t *testing.T, failHeadings map[float64]bool, calls *atomic.Int32) *httptest.Server {
+	demo, loop, fail := loadFixture(t, "gh_demo.json"), loadFixture(t, "gh_loop_track.json"), loadFixture(t, "gh_error.json")
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/info":
+			_, _ = w.Write([]byte(`{"version":"11.0","data_date":"2026-09-17T20:21:05Z","import_date":"2026-09-18T23:29:37Z"}`))
+		case "/route":
+			calls.Add(1)
+			var req ghRequest
+			body, _ := io.ReadAll(r.Body)
+			if err := json.Unmarshal(body, &req); err != nil {
+				t.Errorf("bad request to GraphHopper: %v", err)
+			}
+			if !strings.Contains(string(body), `"headings"`) && req.Algorithm == "round_trip" {
+				t.Error(`round trip sent without "headings"`)
+			}
+			switch {
+			case req.Algorithm != "round_trip":
+				_, _ = w.Write(demo)
+			case failHeadings[req.Headings[0]]:
+				w.WriteHeader(400)
+				_, _ = w.Write(fail)
+			default:
+				_, _ = w.Write(loop)
+			}
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+}
+
+func testServer(gh *httptest.Server) *httptest.Server {
+	s := &server{gh: newGHClient(gh.URL), cache: newPlanCache(10, time.Hour), log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	return httptest.NewServer(s.routes())
+}
+
+func post(t *testing.T, url, body string) (int, map[string]any) {
+	t.Helper()
+	resp, err := http.Post(url, "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	return resp.StatusCode, out
+}
+
+func TestPlanEndpoints(t *testing.T) {
+	var calls atomic.Int32
+	gh := fakeGH(t, map[float64]bool{0: true, 45: true}, &calls)
+	defer gh.Close()
+	api := testServer(gh)
+	defer api.Close()
+
+	code, res := post(t, api.URL+"/v1/plan", `{"mode":"point_to_point","start":[-117.2116,32.867],"end":[-116.4185,32.87]}`)
+	if code != 200 || res["handoff"] == nil || res["gpx_url"] == nil {
+		t.Fatalf("point_to_point: %d %v", code, res["error"])
+	}
+
+	code, res = post(t, api.URL+"/v1/plan", `{"mode":"loop","start":[-117.16,32.72],"distance_m":150000}`)
+	if code != 200 {
+		t.Fatalf("loop: %d %v", code, res["error"])
+	}
+	loop := res["loop"].(map[string]any)
+	if loop["failed"].(float64) != 4 { // headings 0 and 45 x 2 seeds
+		t.Errorf("want 4 failed candidates, got %v", loop["failed"])
+	}
+	if h := loop["heading_deg"].(float64); h == 0 || h == 45 {
+		t.Errorf("winner came from a failing heading: %v", h)
+	}
+
+	// Same request again: served from cache, no GraphHopper calls.
+	before := calls.Load()
+	if code, _ = post(t, api.URL+"/v1/plan", `{"mode":"loop","start":[-117.16,32.72],"distance_m":150000}`); code != 200 || calls.Load() != before {
+		t.Errorf("repeat request should be cached (code %d, %d new GH calls)", code, calls.Load()-before)
+	}
+
+	resp, err := http.Get(api.URL + res["gpx_url"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gpx, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 200 || !strings.Contains(string(gpx), "<trkpt") {
+		t.Errorf("gpx: %d", resp.StatusCode)
+	}
+
+	if code, _ = post(t, api.URL+"/v1/plan", `{"mode":"loop","start":[-117.16,32.72],"distance_m":150000,"heading_deg":0,"seed":9}`); code != 200 {
+		t.Errorf("heading 0 fans out to 330/30 too, so it should still find a loop; got %d", code)
+	}
+	if code, _ = post(t, api.URL+"/v1/plan", `{"mode":"loop","start":[-117.16,32.72],"distance_m":150000,"heading_deg":0,"seed":9,"twistiness":0.2}`); code != 200 {
+		t.Errorf("got %d", code)
+	}
+	if code, _ = post(t, api.URL+"/v1/plan", `{"mode":"nope","start":[0,0]}`); code != 400 {
+		t.Errorf("bad mode: got %d, want 400", code)
+	}
+}
+
+func TestLoopAllFail(t *testing.T) {
+	var calls atomic.Int32
+	all := map[float64]bool{}
+	for h := 0.0; h < 360; h += 45 {
+		all[h] = true
+	}
+	gh := fakeGH(t, all, &calls)
+	defer gh.Close()
+	api := testServer(gh)
+	defer api.Close()
+	code, res := post(t, api.URL+"/v1/plan", `{"mode":"loop","start":[-117.16,32.72],"distance_m":150000}`)
+	if code != 422 || !strings.Contains(res["error"].(string), "no loop") {
+		t.Errorf("got %d %v, want 422 no loop", code, res["error"])
+	}
+}
+
+func TestHealth(t *testing.T) {
+	var calls atomic.Int32
+	gh := fakeGH(t, nil, &calls)
+	api := testServer(gh)
+	defer api.Close()
+	resp, _ := http.Get(api.URL + "/v1/health")
+	if resp.StatusCode != 200 {
+		t.Errorf("health up: %d", resp.StatusCode)
+	}
+	gh.Close()
+	resp, _ = http.Get(api.URL + "/v1/health")
+	if resp.StatusCode != 503 {
+		t.Errorf("health with GraphHopper down: %d, want 503", resp.StatusCode)
+	}
+}

@@ -11,3 +11,4 @@ DerivedData/
 xcuserdata/
 .DS_Store
 demo/out/
+server/bin/
