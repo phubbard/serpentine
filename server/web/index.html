@@ -58,9 +58,15 @@
 <body>
 <main>
   <h1>serpentine</h1>
-  <div class="sub">Loop planner test page · <span id="health">checking…</span></div>
+  <div class="sub">Ride planner test page · <span id="health">checking…</span></div>
 
   <section>
+    <label for="mode">Ride</label>
+    <select id="mode">
+      <option value="loop">Loop</option>
+      <option value="out_and_back">Out and back (different road home)</option>
+    </select>
+
     <label for="start">Start</label>
     <div class="row">
       <select id="preset">
@@ -74,7 +80,7 @@
     </div>
     <input id="custom" class="hidden" type="text" placeholder="lat, lon  e.g. 33.042, -116.868" style="margin-top:8px">
 
-    <label for="dist">Distance</label>
+    <label for="dist">Total distance</label>
     <div class="row"><input id="dist" type="range" min="40" max="400" step="10" value="150"><span class="val" id="distv"></span></div>
 
     <label for="twist">Twistiness</label>
@@ -97,7 +103,7 @@
 
   <button id="go" class="primary">Plan loop</button>
   <div class="row" style="margin-top:8px">
-    <button id="again" disabled>Another loop (next seed)</button>
+    <button id="again" disabled>Another one (next seed)</button>
   </div>
   <p id="status" class="muted"></p>
 
@@ -141,6 +147,8 @@ bind($("dist"), $("distv"), v => v + " km");
 bind($("twist"), $("twistv"), v => Number(v).toFixed(1));
 bind($("soc"), $("socv"), v => v + " %");
 $("ev").onchange = () => $("evopts").classList.toggle("hidden", !$("ev").checked);
+const modeLabel = () => $("mode").value === "loop" ? "Plan loop" : "Plan out and back";
+$("mode").onchange = () => { $("go").textContent = modeLabel(); $("again").disabled = true; };
 $("preset").onchange = () => $("custom").classList.toggle("hidden", $("preset").value !== "custom");
 
 fetch("health").then(r => r.json()).then(h => {
@@ -173,7 +181,7 @@ async function plan() {
   $("status").className = "muted"; $("status").textContent = "Planning…";
   try {
     const body = {
-      mode: "loop", start: await start(), distance_m: Number($("dist").value) * 1000,
+      mode: $("mode").value, start: await start(), distance_m: Number($("dist").value) * 1000,
       twistiness: Number($("twist").value), seed,
     };
     if ($("heading").value !== "") body.heading_deg = Number($("heading").value);
@@ -201,8 +209,9 @@ function show(res) {
   $("apple").href = res.handoff.apple_maps_url;
   $("google").href = res.handoff.google_maps_url;
   $("gpx").href = res.gpx_url;
-  const l = res.loop;
-  $("loopinfo").textContent = l ? `Target ${l.target_m / 1000} km · heading ${l.heading_deg}° · seed ${l.seed} · score ${l.score} · ${l.candidates - l.failed}/${l.candidates} candidates routed · ${Math.round(res.stats.curvy_km)} km curvy` : "";
+  const l = res.loop, o = res.out_and_back;
+  $("loopinfo").textContent = l ? `Target ${l.target_m / 1000} km · heading ${l.heading_deg}° · seed ${l.seed} · score ${l.score} · ${l.candidates - l.failed}/${l.candidates} candidates routed · ${Math.round(res.stats.curvy_km)} km curvy`
+    : o ? `Out ${o.out_km} km, back ${o.back_km} km, ${o.shared_km} km shared · heading ${o.heading_deg}° · score ${o.score} · ${o.candidates - o.failed}/${o.candidates} candidates routed · ${Math.round(res.stats.curvy_km)} km curvy` : "";
 
   $("energybox").classList.toggle("hidden", !e);
   $("stops").innerHTML = ""; $("chargers").innerHTML = "";
@@ -220,7 +229,7 @@ function show(res) {
 
   $("waypoints").innerHTML = ""; $("roads").innerHTML = "";
   $("wpcount").textContent = res.handoff.waypoints.length;
-  res.handoff.waypoint_roads.forEach(n => li($("waypoints"), esc(n), n.startsWith("Charge: ") ? "stop" : ""));
+  res.handoff.waypoint_roads.forEach(n => li($("waypoints"), esc(n), n.startsWith("Charge: ") || n === "Turnaround" ? "stop" : ""));
   res.roads.filter(r => r.km >= 1).forEach(r => li($("roads"), `${esc(r.name || "(unnamed)")} <span class="muted">${r.km.toFixed(1)} km</span>`));
   const raw = { ...res, polyline: `[${res.polyline.length} points]`, instructions: `[${res.instructions.length} steps]` };
   $("raw").textContent = JSON.stringify(raw, null, 2);

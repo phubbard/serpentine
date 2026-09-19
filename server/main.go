@@ -159,22 +159,26 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	cm := customModelFor(*req.Twistiness, req.Avoid)
 	var (
-		path *ghPath
-		loop *loopInfo
-		err  error
+		path    *ghPath
+		loop    *loopInfo
+		ob      *outBackInfo
+		turnIdx = -1
+		err     error
 	)
 	switch req.Mode {
 	case "point_to_point":
 		path, err = s.gh.route(ctx, ghRequest{Points: [][2]float64{*req.Start, *req.End}, CustomModel: cm})
 	case "loop":
 		path, loop, err = s.planLoop(ctx, &req, cm)
+	case "out_and_back":
+		path, turnIdx, ob, err = s.planOutBack(ctx, &req, cm)
 	}
 	if err != nil {
 		var ge *ghError
 		switch {
 		case errors.As(err, &ge):
 			writeError(w, http.StatusUnprocessableEntity, ge.Message)
-		case errors.Is(err, errNoLoop):
+		case errors.Is(err, errNoLoop), errors.Is(err, errNoOutBack):
 			writeError(w, http.StatusUnprocessableEntity, err.Error())
 		default:
 			s.log.Error("plan: routing engine", "err", err)
@@ -192,11 +196,14 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	res := buildResult(id, req.Mode, path, loop, stations, req.Charging)
+	res := buildResult(id, req.Mode, path, loop, ob, turnIdx, stations, req.Charging)
 	s.cache.put(id, res)
 	attrs := []any{"mode", req.Mode, "km", res.DistanceM / 1000, "ms", time.Since(start).Milliseconds(), "waypoints", len(res.Handoff.Waypoints)}
 	if loop != nil {
 		attrs = append(attrs, "target_km", loop.TargetM/1000, "candidates", loop.Candidates, "failed", loop.Failed, "score", loop.Score)
+	}
+	if ob != nil {
+		attrs = append(attrs, "out_km", ob.OutKM, "back_km", ob.BackKM, "shared_km", ob.SharedKM, "candidates", ob.Candidates, "failed", ob.Failed)
 	}
 	if res.Energy != nil {
 		attrs = append(attrs, "kwh", res.Energy.KWhEst, "chargers", len(res.Chargers), "stops", res.Energy.Stops, "feasible", res.Energy.Feasible)

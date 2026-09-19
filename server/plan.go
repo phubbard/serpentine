@@ -20,6 +20,7 @@ type planRequest struct {
 	Mode       string        `json:"mode"`
 	Start      *[2]float64   `json:"start"`
 	End        *[2]float64   `json:"end,omitempty"`
+	Turnaround *[2]float64   `json:"turnaround,omitempty"`
 	DistanceM  float64       `json:"distance_m,omitempty"`
 	HeadingDeg *float64      `json:"heading_deg,omitempty"`
 	Seed       *int64        `json:"seed,omitempty"`
@@ -50,24 +51,28 @@ func (r *planRequest) normalize() error {
 		if err := checkLonLat("end", *r.End); err != nil {
 			return err
 		}
-		r.DistanceM, r.HeadingDeg, r.Seed = 0, nil, nil
+		r.DistanceM, r.HeadingDeg, r.Seed, r.Turnaround = 0, nil, nil, nil
+	case "out_and_back":
+		r.End = nil
+		if r.Turnaround != nil {
+			if err := checkLonLat("turnaround", *r.Turnaround); err != nil {
+				return err
+			}
+			r.DistanceM, r.HeadingDeg, r.Seed = 0, nil, nil
+			break
+		}
+		if r.DistanceM < 20_000 || r.DistanceM > 500_000 {
+			return badf("out_and_back needs a turnaround or distance_m between 20000 and 500000")
+		}
+		r.normalizeHeadingSeed()
 	case "loop":
 		if r.DistanceM < 20_000 || r.DistanceM > 500_000 {
 			return badf("distance_m must be between 20000 and 500000 for a loop")
 		}
-		r.End = nil
-		if r.HeadingDeg != nil {
-			h := math.Mod(math.Mod(*r.HeadingDeg, 360)+360, 360)
-			r.HeadingDeg = &h
-		}
-		if r.Seed == nil {
-			one := int64(1)
-			r.Seed = &one
-		}
-	case "out_and_back":
-		return badf("out_and_back is not implemented yet (ADR-005)")
+		r.End, r.Turnaround = nil, nil
+		r.normalizeHeadingSeed()
 	default:
-		return badf(`mode must be "loop" or "point_to_point"`)
+		return badf(`mode must be "loop", "out_and_back" or "point_to_point"`)
 	}
 	if err := r.normalizeCharging(); err != nil {
 		return err
@@ -88,6 +93,17 @@ func (r *planRequest) normalize() error {
 		}
 	}
 	return nil
+}
+
+func (r *planRequest) normalizeHeadingSeed() {
+	if r.HeadingDeg != nil {
+		h := math.Mod(math.Mod(*r.HeadingDeg, 360)+360, 360)
+		r.HeadingDeg = &h
+	}
+	if r.Seed == nil {
+		one := int64(1)
+		r.Seed = &one
+	}
 }
 
 func (r *planRequest) normalizeCharging() error {
@@ -186,22 +202,27 @@ type planResult struct {
 	Instructions []instructionOut `json:"instructions"`
 	Stats        routeStats       `json:"stats"`
 	Loop         *loopInfo        `json:"loop,omitempty"`
+	OutAndBack   *outBackInfo     `json:"out_and_back,omitempty"`
 	Energy       *energySummary   `json:"energy,omitempty"`   // charging requests only
 	Chargers     []charger        `json:"chargers,omitempty"` // charging requests only
 	Handoff      handoff          `json:"handoff"`
 	GPXURL       string           `json:"gpx_url"`
 }
 
-// buildResult assembles the response. stations is nil unless charging was requested.
-func buildResult(id, mode string, p *ghPath, loop *loopInfo, stations []nrelStation, co *chargingOpts) *planResult {
+// buildResult assembles the response. stations is nil unless charging was requested; turnIdx is
+// the out-and-back turnaround's polyline index, or -1.
+func buildResult(id, mode string, p *ghPath, loop *loopInfo, ob *outBackInfo, turnIdx int, stations []nrelStation, co *chargingOpts) *planResult {
 	coords := p.Points.Coordinates
 	cum := cumulativeKM(coords)
 	roads := roadsOf(p, cum)
 	var (
 		energy *energySummary
 		sites  []charger
-		stops  []charger
+		forced []forcedWaypoint
 	)
+	if turnIdx >= 0 {
+		forced = append(forced, forcedWaypoint{idx: turnIdx, pt: lonLat(coords[turnIdx]), label: "Turnaround"})
+	}
 	if co != nil {
 		sites = sitesFromStations(stations)
 		placeOnRoute(sites, coords, cum)
@@ -209,7 +230,7 @@ func buildResult(id, mode string, p *ghPath, loop *loopInfo, stations []nrelStat
 		energy = &sum
 		for _, c := range sites {
 			if c.Stop {
-				stops = append(stops, c)
+				forced = append(forced, forcedWaypoint{idx: c.idx, pt: c.LonLat, label: "Charge: " + c.Name})
 			}
 		}
 		if sites == nil {
@@ -231,9 +252,10 @@ func buildResult(id, mode string, p *ghPath, loop *loopInfo, stations []nrelStat
 		Instructions: ins,
 		Stats:        computeStats(p, cum),
 		Loop:         loop,
+		OutAndBack:   ob,
 		Energy:       energy,
 		Chargers:     sites,
-		Handoff:      buildHandoff(p, cum, roads, stops),
+		Handoff:      buildHandoff(p, cum, roads, forced),
 		GPXURL:       "/v1/plan/" + id + ".gpx",
 	}
 }

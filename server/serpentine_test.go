@@ -159,9 +159,9 @@ func TestHandoffOneWaypointPerRoad(t *testing.T) {
 	p.Points.Coordinates = coords
 	cum := cumulativeKM(coords)
 	h := buildHandoff(p, cum, roadsOf(p, cum), nil)
-	// Start Rd's waypoint would be 1 km from the source, inside endpointClearKM, so it is dropped.
-	if got := strings.Join(h.WaypointRoads, ","); got != "A,End Rd" {
-		t.Errorf("waypoint roads %q, want A,End Rd", got)
+	// Start Rd's 1 km point is inside endpointClearKM of the source, so it moves to mid-road.
+	if got := strings.Join(h.WaypointRoads, ","); got != "Start Rd,A,End Rd" {
+		t.Errorf("waypoint roads %q, want Start Rd,A,End Rd", got)
 	}
 }
 
@@ -186,7 +186,9 @@ func TestNormalize(t *testing.T) {
 		{`{"mode":"point_to_point","start":[-116.87,33.04]}`, false},
 		{`{"mode":"point_to_point","start":[-116.87,33.04],"end":[-116.60,33.08]}`, true},
 		{`{"mode":"point_to_point","start":[33.04,-116.87],"end":[-116.60,33.08]}`, false}, // lat,lon swapped
-		{`{"mode":"out_and_back","start":[-116.87,33.04],"distance_m":150000}`, false},
+		{`{"mode":"out_and_back","start":[-116.87,33.04],"distance_m":150000}`, true},
+		{`{"mode":"out_and_back","start":[-116.87,33.04],"turnaround":[-116.60,33.08]}`, true},
+		{`{"mode":"out_and_back","start":[-116.87,33.04]}`, false},
 		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"twistiness":1.5}`, false},
 		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"avoid":["tolls"]}`, false},
 		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"charging":{"enabled":true}}`, true},

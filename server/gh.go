@@ -39,7 +39,8 @@ type ghRequest struct {
 }
 
 type customModel struct {
-	Priority []cmRule `json:"priority,omitempty"`
+	Priority []cmRule           `json:"priority,omitempty"`
+	Areas    *featureCollection `json:"areas,omitempty"`
 }
 
 type cmRule struct {

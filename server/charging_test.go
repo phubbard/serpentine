@@ -128,12 +128,14 @@ func TestChargeStopBecomesHandoffWaypoint(t *testing.T) {
 	p, cum, sites := palomarSites(t)
 	planCharging(sites, energyProfile(p, cum), 0, opts(0.5, 0.15, 0.9))
 	var stops []charger
+	var forced []forcedWaypoint
 	for _, c := range sites {
 		if c.Stop {
 			stops = append(stops, c)
+			forced = append(forced, forcedWaypoint{idx: c.idx, pt: c.LonLat, label: "Charge: " + c.Name})
 		}
 	}
-	h := buildHandoff(p, cum, roadsOf(p, cum), stops)
+	h := buildHandoff(p, cum, roadsOf(p, cum), forced)
 	if len(h.Waypoints) > maxHandoffWaypoints {
 		t.Errorf("%d waypoints exceeds the cap", len(h.Waypoints))
 	}

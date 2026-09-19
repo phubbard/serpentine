@@ -97,8 +97,15 @@ func publicEndpoints(p *ghPath, n int) (int, int) {
 	return first, last
 }
 
-// stops are charge stops: always kept, in route order, labelled "Charge: <name>".
-func buildHandoff(p *ghPath, cum []float64, roads []road, stops []charger) handoff {
+// forcedWaypoint must be in the handoff whatever the road heuristic picks: a charge stop (at the
+// charger itself, off the polyline) or an out-and-back turnaround.
+type forcedWaypoint struct {
+	idx   int // polyline position, for ordering
+	pt    [2]float64
+	label string
+}
+
+func buildHandoff(p *ghPath, cum []float64, roads []road, forced []forcedWaypoint) handoff {
 	coords := p.Points.Coordinates
 	srcIdx, dstIdx := publicEndpoints(p, len(coords))
 	src, dst := coords[srcIdx], coords[dstIdx]
@@ -114,10 +121,16 @@ func buildHandoff(p *ghPath, cum []float64, roads []road, stops []charger) hando
 		if r.Name == "" || r.KM < minRoadKM {
 			continue
 		}
+		// 1 km in; if that's too close to an endpoint (a road that starts at the source), mid-road.
+		clear := func(i int) bool {
+			return haversineKM(coords[i], src) >= endpointClearKM && haversineKM(coords[i], dst) >= endpointClearKM
+		}
 		idx := indexAtKM(cum, cum[r.FromIdx]+waypointIntoRoadKM)
-		c := coords[idx]
-		if haversineKM(c, src) < endpointClearKM || haversineKM(c, dst) < endpointClearKM {
-			continue
+		if !clear(idx) {
+			idx = indexAtKM(cum, cum[r.FromIdx]+r.KM/2)
+			if !clear(idx) {
+				continue
+			}
 		}
 		// A short differently-named stretch can split one road in two; one waypoint per road is enough.
 		if n := len(cands); n > 0 && cands[n-1].road == r.Name {
@@ -126,13 +139,13 @@ func buildHandoff(p *ghPath, cum []float64, roads []road, stops []charger) hando
 		}
 		cands = append(cands, cand{idx: idx, road: r.Name, km: r.KM})
 	}
-	if room := maxHandoffWaypoints - len(stops); len(cands) > room {
+	if room := maxHandoffWaypoints - len(forced); len(cands) > room {
 		// Keep the longest roads, then restore route order.
 		sort.SliceStable(cands, func(i, j int) bool { return cands[i].km > cands[j].km })
 		cands = cands[:max(room, 0)]
 	}
-	for i := range stops {
-		cands = append(cands, cand{idx: stops[i].idx, road: "Charge: " + stops[i].Name, charge: &stops[i].LonLat})
+	for i := range forced {
+		cands = append(cands, cand{idx: forced[i].idx, road: forced[i].label, charge: &forced[i].pt})
 	}
 	sort.SliceStable(cands, func(i, j int) bool { return cands[i].idx < cands[j].idx })
 
