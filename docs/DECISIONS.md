@@ -118,3 +118,14 @@ web page on another domain) it opens the Maps app; pasted into Safari's address 
 tab already on maps.apple.com, it stays in Safari as the web map with no "Open in Maps" button, and
 the web map's routing differs (3 h 15 min vs the app's 3 h 25 min for the same URL). Only the app
 result counts. The iOS app uses `UIApplication.shared.open(url)`, which goes straight to Maps.
+
+## ADR-013 · 2026-09-18 · Handoff waypoints go into each significant road, not at divergences
+
+API.md's first plan was a divergence search: route the *fastest car* path between waypoints as a
+stand-in for Apple, insert waypoints where it leaves ours. There is no car profile in the graph and
+adding one costs a re-import (ADR-009), and the demo ride showed a simpler rule is enough: a waypoint
+a short way *into* each road Apple must use forces it onto that road. serpentine-api puts one 1 km
+into each named road ≥ 3 km (one per road even when a short differently-named bridge splits it),
+skips anything within 2 km of the endpoints, and keeps the 10 longest. Source/destination move to
+the first/last non-service road. If the on-road test shows Apple straying on connectors, add a car
+profile at the next re-import and revisit the divergence search.

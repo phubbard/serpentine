@@ -12,7 +12,8 @@ the reference for competitor and API facts; don't re-research what it already an
 ## Status (2026-09-18)
 
 - Feasibility done. GraphHopper serving on axiom:8989 (first good import 2026-09-18); loops 35–200 ms.
-- No app code yet. No server API code yet. `infra/` is the only executable content.
+- serpentine-api (Go, `server/`) running on axiom:8990 via launchd: `point_to_point` and `loop` plans,
+  loop scoring, Apple Maps handoff, GPX. `make -C server test|run|deploy|logs`. No app code yet.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.
 - Shared agent memory: Memento page `/projects/serpentine.md` at `http://webserver:8321/mcp` (see
   Memento section). Keep it in sync with major status changes.
@@ -36,7 +37,8 @@ demo/
   utc-ramona-sunrise.json  hardwired demo ride (UTC → Ramona → Julian → Sunrise Hwy S1 → Alpine → UTC)
 tools/
   demo_route.py      routes a demo through GraphHopper; prints roads, GPX/GeoJSON, Apple/Google Maps URLs
-server/              (phase 1) Go API in front of GraphHopper + NREL — not yet created
+server/              Go API in front of GraphHopper (+ NREL later): main.go, plan.go (loops),
+                     score.go, handoff.go (Apple Maps), gh.go; Makefile deploys to axiom via launchd
 ios/                 (phase 2) SwiftUI app — not yet created
 ```
 

@@ -36,13 +36,16 @@ Endpoints (contract in `docs/API.md`):
 - `GET /v1/health`
 
 Acceptance:
-- [ ] `go build` produces one static binary, stdlib only (`net/http`, `encoding/json`, `log/slog`)
-- [ ] `launchd` plist on axiom, same pattern as LM Studio's `ai.lmstudio.server.plist`
+- [x] `go build` produces one static binary, stdlib only (`net/http`, `encoding/json`, `log/slog`) — `server/`, 2026-09-18
+- [x] `launchd` plist on axiom, same pattern as LM Studio's `ai.lmstudio.server.plist` — `make deploy`, KeepAlive verified
 - [ ] Out-and-back returns a different road home: second leg computed with a per-request
       `custom_model` that penalises edges within ~300 m of the outbound polyline (see DECISIONS ADR-005)
-- [ ] Loops via candidate fan-out + scoring (ADR-010): no track/unpaved vertices, distance within
-      ~10 % of target, falls back gracefully when a heading points off the map
-- [ ] Route cache keyed on request hash; repeat requests served in < 50 ms
+- [x] Loops via candidate fan-out + scoring (ADR-010): no track/unpaved vertices, distance within
+      ~10 % of target, falls back gracefully when a heading points off the map (3–7 %, 100–330 ms)
+- [x] Handoff waypoints on significant roads, endpoints on public roads (ADR-013)
+- [ ] Caddy points `/v1/*` at serpentine-api (`infra/caddy/serpentine.caddyfile`)
+- [ ] `out_and_back` mode (ADR-005)
+- [x] Route cache keyed on request hash; repeat requests served in < 50 ms (in-memory, ~1 ms)
 - [ ] NREL key read from env, never logged, never returned
 - [ ] Energy model unit-tested against the SR/S spec numbers and one real ride log
 

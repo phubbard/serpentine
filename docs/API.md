@@ -1,60 +1,99 @@
-# serpentine-api contract (phase 1, draft)
+# serpentine-api contract (phase 1)
 
-Base: `https://serpentine.phfactor.net/v1`. JSON. Basic auth until the app has its own key scheme.
-Coordinates are `[lon, lat]` in requests and responses (GraphHopper convention), **except** the
-`apple_maps_url`, which Apple wants as `lat,lon`.
+Base: `https://serpentine.phfactor.net/v1` (LAN: `http://axiom:8990/v1`). JSON. **No auth**
+(ADR-011). Coordinates are `[lon, lat]` everywhere (GraphHopper convention) **except** inside the
+Maps URLs, which Apple and Google want as `lat,lon`. Implemented in `server/`; this file is the
+contract the iOS app codes against — change both together.
+
+Status: `point_to_point` and `loop` implemented; `out_and_back` and `charging` return 400 until
+built; `POST /chargers` not built.
 
 ## POST /plan
 
 ```json
 {
-  "mode": "loop" | "out_and_back" | "point_to_point",
-  "start": [-117.16, 32.72],
+  "mode": "loop" | "point_to_point" | "out_and_back",
+  "start": [-116.868, 33.042],
   "end": [-116.60, 33.08],          // point_to_point only
-  "turnaround": [-116.60, 33.08],   // out_and_back only; or omit and give distance_m
-  "distance_m": 150000,             // loop / out_and_back target
-  "heading_deg": 90,                // loop initial direction, optional
-  "seed": 7,                        // loop variety, optional
-  "twistiness": 0.7,                // 0..1 → per-request custom_model tightening
-  "avoid": ["unpaved", "ferries"],  // default both
-  "charging": { "enabled": true, "soc_start": 0.95, "soc_min_arrival": 0.20 }
+  "distance_m": 150000,             // loop: 20 000 – 500 000
+  "heading_deg": 90,                // loop: optional; omitted = try 8 compass directions
+  "seed": 7,                        // loop: optional, default 1; change it for a different loop
+  "twistiness": 0.5,                // 0..1, default 0.5 → per-request custom_model (ADR-009)
+  "avoid": ["unpaved", "ferries"],  // default both; [] to allow them
+  "charging": { "enabled": false }  // not implemented; enabled=true → 400
 }
 ```
 
-Response:
+Defaults are filled before hashing, so a request with explicit defaults is the same plan (same `id`)
+as one that omits them.
+
+Response (200):
 
 ```json
 {
-  "distance_m": 151230, "time_s": 9800,
-  "polyline": [[lon,lat,ele], ...],
-  "legs": [ { "from": 0, "to": 812, "instructions": [ {"text": "...", "distance_m": 1200, "sign": 2} ] } ],
-  "segments": [ { "i0": 0, "i1": 40, "curvature": 0.91, "max_speed_kmh": 72, "road_class": "secondary", "urban_density": "rural", "surface": "asphalt" } ],
-  "energy": { "kwh_est": 9.4, "soc_end_est": 0.38 },
-  "chargers": [ { "id": "nrel:12345", "name": "...", "lonlat": [..], "km_from_start": 71.2, "connector": "J1772", "level": 2, "ports": 2, "network": "ChargePoint", "soc_arrival_est": 0.41, "dwell_min_to_80": 55 } ],
-  "handoff": {
-    "apple_maps_url": "https://maps.apple.com/directions?source=32.72,-117.16&waypoint=...&destination=32.72,-117.16&mode=driving&avoid=tolls,highways&start=3",
-    "waypoints": [[lon,lat], ...],   // ≤ 12, at divergence points
-    "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=...&waypoints=...|...&destination=...&travelmode=driving"
+  "id": "1f0c…",                    // stable hash of the normalised request + profile version
+  "mode": "loop",
+  "distance_m": 141800, "time_s": 8700, "ascend_m": 2400,
+  "polyline": [[lon, lat, ele], ...],
+  "roads": [ { "name": "South Grade Road (CR S6)", "km": 11.2 }, ... ],      // in order, merged
+  "instructions": [ { "text": "Turn left onto …", "distance_m": 1200, "time_s": 90, "sign": -2, "i": 812 } ],
+  "stats": {
+    "km": 141.8, "curvy_km": 28.0,
+    "road_class_km": { "secondary": 80.1, "primary": 50.2, ... },
+    "urban_density_km": { "rural": 120.0, "residential": 21.8 },
+    "surface_km": { "asphalt": 130.0, "missing": 11.8 }
   },
-  "gpx_url": "/v1/plan/<hash>.gpx"
+  "loop": {                          // loop mode only
+    "target_m": 150000, "heading_deg": 315, "seed": 6, "score": -0.103,
+    "candidates": 16, "failed": 6, "requested_m": 112500
+  },
+  "handoff": {
+    "apple_maps_url": "https://maps.apple.com/directions?source=lat,lon&waypoint=…&destination=lat,lon&mode=driving&avoid=tolls,highways",
+    "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=…&waypoints=…|…&destination=…&travelmode=driving",
+    "source": [lon, lat], "destination": [lon, lat],
+    "waypoints": [[lon, lat], ...],  // ≤ 10
+    "waypoint_roads": ["Pala Road", ...]
+  },
+  "gpx_url": "/v1/plan/1f0c….gpx"
 }
 ```
 
-Errors: 400 with `{"error": "..."}`; 422 if no route within `routing.max_visited_nodes`.
+`sign` is GraphHopper's turn code (-3 sharp left … 0 straight … 3 sharp right, 4 finish, 5 via, 6
+roundabout). `i` indexes `polyline`.
 
-## POST /chargers
+Errors: `{"error": "..."}` with 400 (bad request / not implemented), 422 (the engine couldn't route
+it — point off the map, or no loop from this start), 502 (routing engine down).
 
-Same `chargers` array for an arbitrary `polyline` + `soc_start`. Used when the user drags the route.
+The iOS app opens `apple_maps_url` with `UIApplication.shared.open` (it goes straight to Maps; see
+ADR-012 for why pasting it into Safari behaves differently).
+
+## GET /plan/{id}.gpx
+
+The plan's track as GPX 1.1 with elevation, for Kurviger/Garmin users. Served from an in-memory
+cache (24 h, 500 plans); 404 after that — request the plan again.
 
 ## GET /health
 
-`{"ok": true, "graphhopper": "11.0", "graph_date": "2026-09-16", "nrel": "ok"}`
+`{"ok": true, "version": "10-bfa274f", "graphhopper": "11.0", "graph_data_date": "…", "graph_import_date": "…"}`;
+503 with `"ok": false` if GraphHopper is unreachable.
 
-## Waypoint selection for handoff (the interesting bit)
+## Loop generation (ADR-010)
 
-Given our polyline P and Apple's own A→B route between successive chosen waypoints, pick the
-minimum set of via-points such that Apple's route stays within ~200 m of P. Greedy: start with
-[start, end]; ask GraphHopper for the *fastest* car route between each pair as a stand-in for what
-Apple will do; where it diverges from P by > 200 m for > 1 km, insert a waypoint at the midpoint of
-the divergent stretch on P; repeat until no divergence or 12 waypoints. Apple's actual behaviour is
-measured in Phase 0 and this heuristic tuned to it.
+GraphHopper's `round_trip` makes a triangle of snapped vertices, overshoots distance by 10–130 % and
+can snap onto tracks or fail near the coast/border. The API requests 75 % of the target from 16
+candidates (8 headings × 2 seeds, or the requested heading ±30° × 2 seeds), scores each (lower is
+better) —
+
+```
+5·track+service+unpaved + 2·city + 0.5·residential + 2·motorway+trunk − 1·curvy + 2·|km−target|/target
+```
+
+(each term a fraction of route length) — then rescales the winner's `round_trip.distance` once if
+it is still more than 10 % off. Measured on axiom: 100–330 ms, within 3–7 % of target.
+
+## Handoff waypoints (ADR-013)
+
+One waypoint 1 km into each named road of ≥ 3 km on our route, one per road, none within 2 km of
+the endpoints, at most 10 (longest roads kept). Apple has to drive that road to reach the stop.
+Source and destination move to the first/last non-service road so Apple never says "walking
+required". Verified by hand on the demo ride (ADR-012); the ≥ 12-waypoint cap is still unmeasured.

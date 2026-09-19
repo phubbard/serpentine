@@ -4,7 +4,7 @@
 # No auth, by decision (2026-09-18): the app will talk to this host directly and there are no
 # accounts. What keeps it cheap is the path allowlist: only what the phone needs reaches axiom.
 # /maps (GraphHopper UI), /spt (~500 KB responses), /isochrone (~1.3 s CPU), /mvt and everything
-# else stay LAN-only at http://axiom:8989. Phase 1: point this at serpentine-api (:8990) instead.
+# else stay LAN-only at http://axiom:8989.
 
 serpentine.phfactor.net {
 	encode zstd gzip
@@ -12,6 +12,16 @@ serpentine.phfactor.net {
 		output file /var/log/caddy/serpentine.log
 	}
 
+	# serpentine-api: what the app uses.
+	handle /v1/* {
+		reverse_proxy axiom.phfactor.net:8990 {
+			transport http {
+				read_timeout 90s
+			}
+		}
+	}
+
+	# Raw GraphHopper, for tools/demo_route.py until it moves to /v1. Drop once the app ships.
 	@api path /route /info /health /nearest
 	handle @api {
 		reverse_proxy axiom.phfactor.net:8989 {
