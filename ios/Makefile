@@ -35,11 +35,19 @@ APP_STORE_KEY_ID    ?= $(shell awk -F'=' '/^APP_STORE_KEY_ID/ {gsub(/[ ;]/,"",$$
 APP_STORE_ISSUER_ID ?= $(shell awk -F'=' '/^APP_STORE_ISSUER_ID/ {gsub(/[ ;]/,"",$$2); print $$2; exit}' $(LOCAL) 2>/dev/null)
 TESTFLIGHT_GROUPS   ?= $(shell awk -F'=' '/^TESTFLIGHT_GROUPS/ {sub(/^[^=]*=/,""); gsub(/^[ \t]+|[ \t;]+$$/,""); print; exit}' $(LOCAL) 2>/dev/null)
 
-# Provision with the ASC API key rather than Xcode's Apple ID session, which expires silently
-# ("Your session has expired", then "No profiles for 'net.phfactor.serpentine' were found").
+# Signing/provisioning for archive + export. Default: Xcode's signed-in Apple ID (Settings →
+# Accounts), which as Account Holder can mint the distribution cert. That session expires silently;
+# the symptom is "Unable to log in with account ... session has expired" then "No profiles for
+# 'net.phfactor.serpentine' were found" — sign in again in Xcode.
+# SIGN_WITH_KEY=1 provisions with the ASC API key instead (headless), but only an Admin-role key
+# may use cloud-managed distribution certs; the App Manager key gets "Cloud signing permission error".
 ASC_KEY_PATH = $(HOME)/.appstoreconnect/private_keys/AuthKey_$(APP_STORE_KEY_ID).p8
+ifeq ($(SIGN_WITH_KEY),1)
 ASC_AUTH = -allowProvisioningUpdates -authenticationKeyPath $(ASC_KEY_PATH) \
            -authenticationKeyID $(APP_STORE_KEY_ID) -authenticationKeyIssuerID $(APP_STORE_ISSUER_ID)
+else
+ASC_AUTH = -allowProvisioningUpdates
+endif
 
 SIM = -destination 'platform=iOS Simulator,name=$(SIM_DEVICE),OS=$(SIM_OS)'
 SIM_UDID = $(shell xcrun simctl list devices available -j | ruby -rjson -e 'd=JSON.parse(STDIN.read)["devices"]; k=d.keys.find{|r| r.end_with?("iOS-"+ARGV[1].tr(".","-"))}; puts((d[k]||[]).find{|x| x["name"]==ARGV[0]}&.fetch("udid"))' "$(SIM_DEVICE)" "$(SIM_OS)")
