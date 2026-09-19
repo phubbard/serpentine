@@ -13,7 +13,8 @@ the reference for competitor and API facts; don't re-research what it already an
 
 - Feasibility done. GraphHopper serving on axiom:8989 (first good import 2026-09-18); loops 35–200 ms.
 - serpentine-api (Go, `server/`) running on axiom:8990 via launchd, public at `/v1`: `point_to_point`
-  and `loop` plans, loop scoring, charge stops (NREL), Apple Maps handoff, GPX. `make -C server test|run|deploy|logs`. No app code yet.
+  and `loop` plans, loop scoring, charge stops (NREL), Apple Maps handoff, GPX. Browser test page at
+  `https://serpentine.phfactor.net/v1/` (`server/web/index.html`, embedded). `make -C server test|run|deploy|logs`. No app code yet.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.
 - Shared agent memory: Memento page `/projects/serpentine.md` at `http://webserver:8321/mcp` (see
   Memento section). Keep it in sync with major status changes.

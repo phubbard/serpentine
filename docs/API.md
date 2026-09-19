@@ -87,6 +87,13 @@ it — point off the map, or no loop from this start), 502 (routing engine or ch
 The iOS app opens `apple_maps_url` with `UIApplication.shared.open` (it goes straight to Maps; see
 ADR-012 for why pasting it into Safari behaves differently).
 
+## GET / (test page)
+
+`https://serpentine.phfactor.net/v1/` (trailing slash) is a self-contained browser test UI for loop
+planning — start presets / my location / lat,lon, distance, twistiness, direction, EV toggle with
+starting charge — showing the result and tappable Apple Maps / Google Maps / GPX links. Embedded in
+the binary from `server/web/index.html`; a CSP forbids loading anything from another host.
+
 ## GET /plan/{id}.gpx
 
 The plan's track as GPX 1.1 with elevation, for Kurviger/Garmin users. Served from an in-memory
