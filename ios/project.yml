@@ -33,7 +33,7 @@ targets:
         PRODUCT_NAME: Serpentine
         MARKETING_VERSION: "0.1.0"
         # CURRENT_PROJECT_VERSION comes from Build.gen.xcconfig (scheme pre-action, git commit count).
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: NO
         ENABLE_PREVIEWS: YES
         # Maintained Info.plist: INFOPLIST_KEY_* auto-injection drops custom keys (playbook §5).

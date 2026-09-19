@@ -65,7 +65,7 @@ Acceptance:
       (`ios/`, xcodegen, Swift 6 strict concurrency; builds and tests on iOS 27 and the 18.4 floor)
 - [x] Plan screen: start (current location or search via `MKLocalSearch`), mode (loop / out-and-back),
       distance, "twistiness" slider (maps to per-request `custom_model`), direction, charging toggle +
-      starting charge. *Still to do: A→B mode, time budget.*
+      starting charge. *Still to do: A→B mode, time budget (phase 3), commute (phase 3).*
 - [x] Result screen: MapKit polyline, distance / time / climb, energy + charge stops with dwell,
       charge-stop and turnaround pins, "Navigate in Apple Maps" (verified opening Maps with 10 stops
       in the simulator), "Share GPX", "Another" ride. *Still to do: colour segments by curvature.*
@@ -79,11 +79,56 @@ Acceptance:
 - [ ] Internal TestFlight build installed on Paul's phone; one real ride completed via handoff
       (bike arrives early-to-mid October 2026)
 
+## Phase 2b — iPad and Mac
+
+- [x] iPad: `TARGETED_DEVICE_FAMILY 1,2`, all four orientations, `NavigationSplitView` root (plan form
+      in the sidebar, ride in the detail column; collapses to the old push on iPhone), 600 pt map on
+      regular width. 13" App Store screenshots in `ios/AppStore/screenshots/13/` (2026-09-19).
+      Ships with the next TestFlight build; iPad screenshots become mandatory from then on.
+- [ ] **Mac via Catalyst** (one ASC listing, a `.pkg` beside the `.ipa`; mapbook is the template):
+  - `project.yml`: `SUPPORTS_MACCATALYST: YES`, `DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO`
+    (keep `net.phfactor.serpentine`), `MACCATALYST_DEPLOYMENT_TARGET` = the macOS twin of iOS 18.4
+    (15.4). Native Catalyst, not "Designed for iPad": mapbook hit TCC requests silently no-opping in
+    the compat layer.
+  - New `Serpentine.entitlements`: `app-sandbox`, `network.client` (serpentine.phfactor.net +
+    MapKit), `personal-information.location`. Without the location entitlement Catalyst TCC returns
+    denied and the app never appears in Privacy & Security.
+  - Makefile: `archive-testflight-mac` / `upload-testflight-mac` (`generic/platform=macOS,variant=Mac
+    Catalyst`, `ExportOptions-TestFlight-Mac.plist`, `altool --type osx`), `MIN_BUILDS=2` for
+    `testflight-notes`. Never run the iOS and Mac uploads in parallel (shared DerivedData).
+  - ASC: add the macOS platform under App Information before the first `.pkg`, or it's rejected.
+    Mac App Store only; no Developer-ID DMG channel, because the app is sold once through the Store.
+  - Mac-specific checks: "Navigate in Apple Maps" opens Maps.app (the rider sends it to the phone
+    from there), whether macOS honours `waypoint=` in the unified URL, ShareLink GPX → Finder,
+    Wi-Fi location accuracy for "Use my location".
+  - Polish: ⌘R plan / ⌘⇧R another via `.commands`, a sensible minimum window size, the sidebar
+    toggle in the toolbar. Mac screenshots (2880×1800) for the listing.
+
 ## Phase 3 — Ride quality
 
 - [ ] Traffic proxy v2: HPMS AADT for CA state highways conflated onto GraphHopper edges as a
       custom encoded value (`aadt_bucket`), or rejected with reasons in DECISIONS
-- [ ] Time-boxed loops: "3 hours with lunch" → loop + one stop with amenities near the midpoint
+- [ ] **Plan by time, not distance** ("I have 2 hours on Saturday"): `duration_s` in `POST /v1/plan`
+      as an alternative to `distance_m`. The server seeds candidates from `duration_s` × a twisty-road
+      speed (start ~55 km/h, then learn it from GraphHopper's own `time_s` on scored loops). It scores
+      against the *total* time, including charging dwell and detours when `charging` is on, and
+      rescales the winner by the time ratio. It aims under the budget, never over: overrunning by 20 min
+      breaks a promise, finishing early doesn't. App: a Distance / Time switch on the plan form, a time
+      slider (30 min – 8 h), and the result shows "1 h 52 of 2 h". GraphHopper's motorcycle times are
+      optimistic on twisty roads, so calibrate against the first real ride logs (ADR-014).
+- [ ] Time-boxed loops with a stop: "3 hours with lunch" → the above plus one amenity stop near the
+      midpoint
+- [ ] **Commute mode** (tester feedback 2026-09-19): saved Home and Work, "take me to work" / "take me
+      home", and a *different* good route each day within a time budget over the fastest (e.g. +10 /
+      +20 / +30 min). Server: `mode: commute` = A→B through a seeded via-point offset from the direct
+      line (perpendicular offset scaled to the budget), scored on curvature within the time cap. Seed =
+      day number so each day differs and the same day is repeatable. Check first whether GraphHopper's
+      `alternative_route` works in LM/hybrid mode; if so, alternatives are cheaper than via-points.
+      Variety: the app keeps the last ~5 commute polylines *on the device* and sends them as a penalty
+      corridor (the out-and-back mechanism, ADR-015), so "not yesterday's roads" never needs server
+      state. Home and Work stay on the phone (UserDefaults); the server sees only two points per request,
+      the same as any A→B plan, so the privacy policy doesn't change. Morning and evening are just A↔B
+      swapped. Charging is rarely relevant to a commute; leave it off by default.
 - [ ] Route variety: seed rotation and "not this road again" exclusions
 - [ ] Charger reliability: Open Charge Map as a second source; flag single-port sites
 

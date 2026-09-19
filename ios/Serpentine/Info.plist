@@ -38,6 +38,14 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
+	<!-- iPad: every orientation, so the map gets the whole screen in landscape and multitasking works. -->
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
 	<!-- Only system HTTPS (URLSession): exempt under EAR 740.17(b)(2). Pre-answers ASC's prompt. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>

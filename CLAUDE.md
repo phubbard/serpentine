@@ -14,9 +14,10 @@ the reference for competitor and API facts; don't re-research what it already an
 - Feasibility done. GraphHopper serving on axiom:8989 (first good import 2026-09-18); loops 35–200 ms.
 - serpentine-api (Go, `server/`) running on axiom:8990 via launchd, public at `/v1`: `point_to_point`,
   `loop` and `out_and_back` plans, loop scoring, charge stops (NREL), Apple Maps handoff, GPX. Browser test page with a
-  map at `https://serpentine.phfactor.net/v1/` (`server/web/`, embedded; tiles via a caching proxy in
+  map at `https://serpentine.phfactor.net/v1/`, product page `/v1/about` (also `/` via Caddy), support
+  `/v1/support`, privacy `/v1/privacy` (`server/web/`, embedded; tiles via a caching proxy in
   `~/serpentine-api/tiles` on axiom — self-hosted vector tiles are the planned replacement).
-- iOS app v0.1.0 in `ios/` (SwiftUI + MapKit, xcodegen): plan loop / out-and-back from location or
+- iOS app v0.1.0 in `ios/` (SwiftUI + MapKit, xcodegen; iPhone + iPad split view, Mac Catalyst planned): plan loop / out-and-back from location or
   search, charging, map + stats, Apple Maps handoff, GPX share. `make -C ios build|test|run`.
   On TestFlight since 2026-09-18 (0.1.0 build 29) as **"Serpentine EV"** (ASC app id 6813768490;
   home-screen name stays "Serpentine"), internal group "Internal" with automatic distribution. `make -C server test|run|deploy|logs`. No app code yet.
@@ -113,6 +114,11 @@ Principles that constrain every design choice here:
   "No profiles for 'net.phfactor.serpentine' were found" — sign in again under Xcode → Settings →
   Accounts. `SIGN_WITH_KEY=1` signs with the ASC API key instead, but the App Manager key gets
   "Cloud signing permission error" (cloud-managed distribution certs need an Admin-role key).
+- App Store screenshots without tapping: Debug builds accept `-screenshotPlan` (add `-outAndBack`)
+  as launch arguments and plan the Ramona charging ride on launch: `xcrun simctl launch <udid>
+  net.phfactor.serpentine -screenshotPlan`. Clean status bar: `xcrun simctl status_bar <udid> override
+  --time 9:41 --batteryState charged --batteryLevel 100`. Charging plans take ~30 s; wait for map tiles.
+  ASC rejects alpha: `sips -s format jpeg` into `upload/`.
 - Commit before `make upload-testflight`: a dirty tree makes the scheme stamp build N+1 while the
   Makefile (and `testflight-notes`) expect N.
 

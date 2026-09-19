@@ -37,6 +37,11 @@ serpentine.phfactor.net {
 		}
 	}
 
+	# The product page (served by serpentine-api, also at /v1/about).
+	handle / {
+		reverse_proxy axiom.phfactor.net:8990
+	}
+
 	# Raw GraphHopper, for tools/demo_route.py until it moves to /v1. Drop once the app ships.
 	@api path /route /info /health /nearest
 	handle @api {

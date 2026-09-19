@@ -6,6 +6,7 @@ struct ResultView: View {
     let plan: PlanResult
     @Environment(Planner.self) private var planner
     @Environment(\.openURL) private var openURL
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var gpxFile: URL?
 
     private var coordinates: [CLLocationCoordinate2D] { plan.polyline.map(\.coordinate) }
@@ -15,7 +16,7 @@ struct ResultView: View {
         List {
             Section {
                 RouteMap(plan: plan)
-                    .frame(height: 340)
+                    .frame(height: sizeClass == .regular ? 600 : 340)
                     .listRowInsets(EdgeInsets())
             }
 

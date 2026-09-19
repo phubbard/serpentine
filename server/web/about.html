@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Serpentine — curvy rides, planned</title>
+<meta name="description" content="Serpentine plans motorcycle loops and out-and-backs on curvy, quiet roads, hands them to Apple Maps for voice guidance, and plans charging stops for the Zero SR/S.">
+<!-- Served by serpentine-api at /v1/about (and at / once Caddy forwards it). Absolute /v1/ links so
+     both locations work. No fonts, scripts or images from anywhere else. -->
+<style>
+  :root {
+    --bg: #f6f5f2; --panel: #ffffff; --ink: #1d1d1f; --muted: #5f5f66; --line: #e3e1db;
+    --accent: #0a6c5a; --accent-ink: #ffffff; --warm: #e8742c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121314; --panel: #1c1d1f; --ink: #ececef; --muted: #a0a0a8; --line: #2c2d30;
+            --accent: #3fb59c; --accent-ink: #0b1f1a; --warm: #f0924f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 18px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+
+  header { padding: 64px 0 32px; text-align: center; }
+  .mark { display: inline-block; font-weight: 700; letter-spacing: .02em; color: var(--accent); margin-bottom: 18px; }
+  h1 { font-size: clamp(34px, 6vw, 60px); line-height: 1.08; margin: 0 auto 18px; max-width: 16ch; letter-spacing: -.02em; }
+  .lede { font-size: clamp(18px, 2.2vw, 22px); color: var(--muted); max-width: 40ch; margin: 0 auto 28px; }
+  .cta { display: inline-block; background: var(--accent); color: var(--accent-ink); text-decoration: none;
+         font-weight: 600; padding: 13px 24px; border-radius: 999px; }
+  .cta-note { display: block; margin-top: 12px; font-size: 15px; color: var(--muted); }
+
+  .hero-shot { margin: 40px auto 0; max-width: 640px; }
+  .hero-shot img { width: 100%; height: auto; display: block; border-radius: 22px;
+                   border: 1px solid var(--line); box-shadow: 0 30px 60px -30px rgba(0,0,0,.35); }
+
+  section.feature { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; padding: 72px 0;
+                    border-top: 1px solid var(--line); }
+  section.feature:first-of-type { border-top: 0; }
+  section.feature.flip .text { order: 2; }
+  .feature h2 { font-size: clamp(26px, 3.4vw, 36px); line-height: 1.15; margin: 0 0 14px; letter-spacing: -.01em; }
+  .feature p { color: var(--muted); margin: 0 0 12px; max-width: 46ch; }
+  .phone { justify-self: center; width: min(320px, 78vw); }
+  .phone img { width: 100%; height: auto; display: block; border-radius: 38px; border: 1px solid var(--line);
+               box-shadow: 0 24px 48px -24px rgba(0,0,0,.35); }
+  .kicker { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--warm); margin-bottom: 8px; }
+
+  .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 24px 0 72px; }
+  .fact { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+  .fact h3 { margin: 0 0 6px; font-size: 18px; }
+  .fact p { margin: 0; color: var(--muted); font-size: 16px; }
+
+  footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--muted); font-size: 15px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
+
+  @media (max-width: 760px) {
+    header { padding-top: 40px; }
+    section.feature { grid-template-columns: 1fr; gap: 28px; padding: 48px 0; }
+    section.feature.flip .text { order: 0; }
+    .facts { grid-template-columns: 1fr; }
+    .hero-shot img { border-radius: 14px; }
+  }
+</style>
+</head>
+<body>
+<header class="wrap">
+  <div class="mark">Serpentine</div>
+  <h1>The twisty way there and back.</h1>
+  <p class="lede">Pick a start and how far you want to ride. Serpentine finds a loop on curvy, quiet
+  roads, then hands it to Apple Maps for turn-by-turn voice guidance.</p>
+  <a class="cta" href="mailto:pfh@phfactor.net?subject=Serpentine%20beta">Join the beta</a>
+  <span class="cta-note">In TestFlight now · coming to the App Store · iPhone and iPad</span>
+  <div class="hero-shot">
+    <img src="/v1/img/ipad-loop.jpg" width="1200" height="1600" alt="Serpentine on iPad: an 88-mile loop from Ramona through Julian, Descanso and Alpine, with a charging stop at El Capitan">
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="feature">
+    <div class="text">
+      <div class="kicker">Loops</div>
+      <h2>Curves first, minutes second.</h2>
+      <p>Navigation apps take the fastest road. Serpentine prefers the ones worth riding: plenty of
+      bends, moderate speed limits, little traffic, no freeway if it can help it.</p>
+      <p>Set the distance and how twisty you want it. Don't like the result? Tap for another.</p>
+    </div>
+    <div class="phone"><img src="/v1/img/phone-02-ride.jpg" width="552" height="1200" alt="A planned loop on iPhone with distance, time and climb"></div>
+  </section>
+
+  <section class="feature flip">
+    <div class="text">
+      <div class="kicker">Out and back</div>
+      <h2>Different roads on the way home.</h2>
+      <p>Pick a direction and Serpentine rides you out to a turnaround, then brings you back on other
+      roads wherever the map allows. It won't just retrace your steps.</p>
+    </div>
+    <div class="phone"><img src="/v1/img/phone-04-out-and-back.jpg" width="552" height="1200" alt="An out-and-back ride with a turnaround marker"></div>
+  </section>
+
+  <section class="feature">
+    <div class="text">
+      <div class="kicker">Electric</div>
+      <h2>Charging stops for the Zero SR/S.</h2>
+      <p>Turn on charging and Serpentine plans stops at public J1772 and Tesla destination chargers
+      along the route. It estimates your charge on arrival and how long you'll wait.</p>
+      <p>The estimates err on the cautious side. A stop you didn't need beats a long walk.</p>
+    </div>
+    <div class="phone"><img src="/v1/img/phone-03-charging.jpg" width="552" height="1200" alt="Charging details: energy used, state of charge and a planned stop"></div>
+  </section>
+
+  <section class="feature flip">
+    <div class="text">
+      <div class="kicker">Ride</div>
+      <h2>Voice guidance you already trust.</h2>
+      <p>One tap opens the ride in Apple Maps with stops along the planned roads, so Siri follows
+      Serpentine's route rather than inventing its own. Need it in another app? Export a GPX file.</p>
+    </div>
+    <div class="phone"><img src="/v1/img/phone-01-plan.jpg" width="552" height="1200" alt="The plan screen: start, ride type, distance, twistiness and charging"></div>
+  </section>
+
+  <div class="facts">
+    <div class="fact"><h3>No account, no tracking</h3><p>No sign-up, ads or analytics. Your start point is used
+      to plan the ride and isn't kept. <a href="/v1/privacy">Privacy policy</a></p></div>
+    <div class="fact"><h3>Pay once</h3><p>No subscription. The routing runs on a server we own, so there's no
+      per-ride bill to pass on to you.</p></div>
+    <div class="fact"><h3>Western US</h3><p>Currently plans rides in the western United States. Requires
+      iOS 18.4 or later on iPhone or iPad.</p></div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Paul Hubbard</span>
+    <span><a href="/v1/support">Support</a> · <a href="/v1/privacy">Privacy</a> ·
+      <a href="mailto:pfh@phfactor.net">pfh@phfactor.net</a></span>
+  </div>
+</footer>
+</body>
+</html>

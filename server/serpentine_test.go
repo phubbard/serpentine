@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -426,6 +427,36 @@ func TestRepeatedKMFindsSpur(t *testing.T) {
 	}
 }
 
+func TestAboutPage(t *testing.T) {
+	var calls atomic.Int32
+	gh := fakeGH(t, nil, &calls)
+	defer gh.Close()
+	api := testServer(gh)
+	defer api.Close()
+	for _, path := range []string{"/", "/v1/about"} {
+		resp, err := http.Get(api.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != 200 || !strings.Contains(string(body), "/v1/img/ipad-loop.jpg") {
+			t.Fatalf("%s: %d", path, resp.StatusCode)
+		}
+		// Every image the page references must be embedded.
+		for _, m := range regexp.MustCompile(`/v1/img/[a-z0-9-]+\.jpg`).FindAllString(string(body), -1) {
+			r, err := http.Get(api.URL + m)
+			if err != nil {
+				t.Fatal(err)
+			}
+			r.Body.Close()
+			if r.StatusCode != 200 || r.Header.Get("Content-Type") != "image/jpeg" {
+				t.Errorf("%s: %d %s", m, r.StatusCode, r.Header.Get("Content-Type"))
+			}
+		}
+	}
+}
+
 func TestPrivacyPage(t *testing.T) {
 	var calls atomic.Int32
 	gh := fakeGH(t, nil, &calls)
@@ -446,6 +477,15 @@ func TestPrivacyPage(t *testing.T) {
 		if !strings.Contains(string(body), claim) {
 			t.Errorf("privacy page lost %q", claim)
 		}
+	}
+	resp, err = http.Get(api.URL + "/v1/support")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ = io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 200 || !strings.Contains(string(body), "pfh@phfactor.net") {
+		t.Errorf("support page must be served and carry a contact: %d", resp.StatusCode)
 	}
 	if planCacheTTL != 24*time.Hour {
 		t.Errorf("page says plans are kept 24 h; planCacheTTL is %v", planCacheTTL)

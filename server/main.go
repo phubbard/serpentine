@@ -34,6 +34,21 @@ var testPage []byte
 //go:embed web/privacy.html
 var privacyPage []byte
 
+// supportPage is the App Store "Support URL" at /v1/support.
+//
+//go:embed web/support.html
+var supportPage []byte
+
+// aboutPage is the public product page at /v1/about, and at / once Caddy forwards the root.
+//
+//go:embed web/about.html
+var aboutPage []byte
+
+// Screenshots for the about page, served at /v1/img/.
+//
+//go:embed web/img
+var imgFS embed.FS
+
 // Vendored Leaflet for the test page's map, served at /v1/static/.
 //
 //go:embed web/vendor
@@ -122,6 +137,11 @@ func (s *server) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /v1/{$}", handleTestPage)
 	mux.HandleFunc("GET /v1/privacy", servePage(privacyPage))
+	mux.HandleFunc("GET /v1/support", servePage(supportPage))
+	mux.HandleFunc("GET /v1/about", servePage(aboutPage))
+	mux.HandleFunc("GET /{$}", servePage(aboutPage))
+	imgs, _ := fs.Sub(imgFS, "web/img")
+	mux.Handle("GET /v1/img/", http.StripPrefix("/v1/img/", staticHandler(http.FileServerFS(imgs))))
 	mux.HandleFunc("GET /v1/tiles/{z}/{x}/{y}", s.tiles.handle)
 	static, _ := fs.Sub(vendorFS, "web/vendor")
 	mux.Handle("GET /v1/static/", http.StripPrefix("/v1/static/", staticHandler(http.FileServerFS(static))))
