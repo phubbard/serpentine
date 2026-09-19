@@ -185,3 +185,55 @@ func TestPlanWithCharging(t *testing.T) {
 		t.Error("NREL key must go in the X-Api-Key header, not the URL")
 	}
 }
+
+func TestSelectChargersTrims(t *testing.T) {
+	p, cum, sites := palomarSites(t)
+	sum := planCharging(sites, energyProfile(p, cum), 0, opts(0.5, 0.15, 0.9))
+	sel := selectChargers(sites)
+	if len(sel) >= len(sites) {
+		t.Errorf("selection %d should be smaller than %d sites", len(sel), len(sites))
+	}
+	stops, backups := 0, 0
+	perBin := map[int]int{}
+	for i, c := range sel {
+		switch c.Role {
+		case "stop":
+			stops++
+		case "backup":
+			backups++
+		case "alternate":
+			perBin[int(c.KMFromStart/alternateBinKM)]++
+		default:
+			t.Errorf("%s has no role", c.Name)
+		}
+		if i > 0 && c.KMFromStart < sel[i-1].KMFromStart {
+			t.Error("selection must stay in route order")
+		}
+	}
+	if stops != sum.Stops {
+		t.Errorf("every stop must be kept: %d of %d", stops, sum.Stops)
+	}
+	if backups == 0 || backups > backupsPerStop*sum.Stops {
+		t.Errorf("backups %d, want 1..%d", backups, backupsPerStop*sum.Stops)
+	}
+	for b, n := range perBin {
+		if n > alternatesPerBin {
+			t.Errorf("bin %d has %d alternates", b, n)
+		}
+	}
+}
+
+func TestSiteQuality(t *testing.T) {
+	good := charger{Ports: 8, PowerKW: 7.2, Hours: "24 hours daily", Connectors: []string{"J1772"}, OffRouteKM: 0.2}
+	far := good
+	far.OffRouteKM = 3
+	tesla := good
+	tesla.Connectors = []string{"TESLA"}
+	hours := good
+	hours.Hours = "7am-7pm M-F"
+	for name, worse := range map[string]charger{"far": far, "tesla-only": tesla, "limited hours": hours} {
+		if siteQuality(&worse) >= siteQuality(&good) {
+			t.Errorf("%s should rank below a close, 24 h J1772 site", name)
+		}
+	}
+}

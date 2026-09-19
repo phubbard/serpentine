@@ -132,7 +132,8 @@
       <h2>Energy</h2>
       <div id="energy"></div>
       <ul id="stops"></ul>
-      <details style="margin-top:8px"><summary>All chargers along the route</summary><ul id="chargers"></ul></details>
+      <div class="toggle" style="margin-top:8px"><span class="muted">Show alternate chargers on the map</span><input id="showalt" type="checkbox"></div>
+      <details style="margin-top:8px"><summary>Chargers: stops, backups, alternates</summary><ul id="chargers"></ul></details>
     </section>
 
     <section>
@@ -220,7 +221,9 @@ function drawMap(res) {
   const ll = p => [p[1], p[0]];
   const line = L.polyline(res.polyline.map(ll), { color: accent, weight: 4, opacity: 0.9 }).addTo(overlay);
   const dot = (p, r, fill, tip) => L.circleMarker(ll(p), { radius: r, color: "#fff", weight: 2, fillColor: fill, fillOpacity: 1 }).bindTooltip(tip).addTo(overlay);
-  (res.chargers || []).filter(c => !c.stop).forEach(c => dot(c.lonlat, 4, "#888", `${esc(c.name)} · ${c.ports} ports`));
+  const showAlt = $("showalt").checked;
+  (res.chargers || []).filter(c => c.role === "backup" || (showAlt && c.role === "alternate")).forEach(c =>
+    dot(c.lonlat, c.role === "backup" ? 6 : 4, "#888", `${c.role}: ${esc(c.name)} · ${c.ports} ports`));
   res.handoff.waypoints.forEach((w, i) => {
     const n = res.handoff.waypoint_roads[i], forced = n.startsWith("Charge: ") || n === "Turnaround";
     dot(w, forced ? 8 : 5, forced ? stop : accent, `${i + 1}. ${esc(n)}`);
@@ -229,7 +232,11 @@ function drawMap(res) {
   map.fitBounds(line.getBounds(), { padding: [20, 20] });
 }
 
+let lastRes;
+$("showalt").onchange = () => lastRes && drawMap(lastRes);
+
 function show(res) {
+  lastRes = res;
   $("result").classList.remove("hidden");
   drawMap(res);
   $("km").textContent = Math.round(res.distance_m / 1000);
@@ -249,11 +256,12 @@ function show(res) {
   if (e) {
     $("energy").innerHTML = `Needs ${e.kwh_est} kWh (pack ${e.usable_kwh}) · start ${pct(e.soc_start)} → end ${pct(e.soc_end_est)} · ` +
       (e.stops ? `${e.stops} stop${e.stops > 1 ? "s" : ""}, ${e.charge_min} min charging` : "no stop needed") +
+      ` · ${e.chargers_nearby} sites within 2 mi` +
       (e.feasible ? "" : `<div class="error">${esc(e.warning)}</div>`);
     for (const c of res.chargers) {
       const line = `${c.km_from_start} km · ${esc(c.name)} · ${c.ports} ports${c.power_kw ? ", " + c.power_kw + " kW" : ""} · ${c.off_route_km} km off · arrive ${pct(c.soc_arrival_est)}`;
       if (c.stop) li($("stops"), `Charge ${c.dwell_min} min: ${line}`, "stop");
-      li($("chargers"), line, c.stop ? "stop" : "");
+      li($("chargers"), `<b>${c.role}</b> · ${line}`, c.stop ? "stop" : "");
     }
     if (!res.chargers.length) li($("chargers"), "none within 2 mi of the route");
   }

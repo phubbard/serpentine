@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 )
 
 // Charge-stop planning (ADR-014): place NREL sites along the route, walk the energy profile, and
@@ -15,6 +16,12 @@ const (
 	chargerCorridorMiles = 2.0
 	siteMergeKM          = 0.15 // NREL lists each pedestal as a station; merge the ones at one site
 	maxChargeStops       = 3
+
+	// What goes back to the client (ADR-014 amendment): urban corridors have hundreds of sites.
+	alternateBinKM   = 20.0 // best alternates per this much route
+	alternatesPerBin = 2
+	backupWindowKM   = 10.0 // backups are this close (along the route) to a stop
+	backupsPerStop   = 2
 )
 
 type chargingOpts struct {
@@ -39,23 +46,25 @@ type charger struct {
 	OffRouteKM  float64    `json:"off_route_km"`
 	SocArrival  float64    `json:"soc_arrival_est"`
 	Stop        bool       `json:"stop"`
+	Role        string     `json:"role"`                // "stop", "backup" (near a stop) or "alternate"
 	DwellMin    float64    `json:"dwell_min,omitempty"` // stops only
 
 	idx int
 }
 
 type energySummary struct {
-	UsableKWh     float64 `json:"usable_kwh"`
-	KWhEst        float64 `json:"kwh_est"`
-	SocStart      float64 `json:"soc_start"`
-	SocMinArrival float64 `json:"soc_min_arrival"`
-	ChargeTo      float64 `json:"charge_to"`
-	SocEndEst     float64 `json:"soc_end_est"`
-	Feasible      bool    `json:"feasible"`
-	Stops         int     `json:"stops"`
-	ChargeMin     float64 `json:"charge_min"`
-	TotalTimeS    float64 `json:"total_time_s"` // riding + charging + detours
-	Warning       string  `json:"warning,omitempty"`
+	UsableKWh      float64 `json:"usable_kwh"`
+	KWhEst         float64 `json:"kwh_est"`
+	SocStart       float64 `json:"soc_start"`
+	SocMinArrival  float64 `json:"soc_min_arrival"`
+	ChargeTo       float64 `json:"charge_to"`
+	SocEndEst      float64 `json:"soc_end_est"`
+	Feasible       bool    `json:"feasible"`
+	Stops          int     `json:"stops"`
+	ChargeMin      float64 `json:"charge_min"`
+	ChargersNearby int     `json:"chargers_nearby"` // all usable sites in the corridor; `chargers` is a selection
+	TotalTimeS     float64 `json:"total_time_s"`    // riding + charging + detours
+	Warning        string  `json:"warning,omitempty"`
 }
 
 // sitesFromStations merges co-located pedestals and drops restricted or non-usable ones.
@@ -118,6 +127,75 @@ func placeOnRoute(sites []charger, coords [][]float64, cum []float64) {
 		sites[i].OffRouteKM = round1(bestKM)
 	}
 	sort.SliceStable(sites, func(a, b int) bool { return sites[a].idx < sites[b].idx })
+}
+
+// siteQuality ranks sites for backups and alternates: more ports, full power, open 24 h, close to
+// the route; Tesla-only sites need the adapter so rank lower.
+func siteQuality(c *charger) float64 {
+	q := math.Min(float64(c.Ports), 8) * 0.5
+	if c.PowerKW == 0 || c.PowerKW >= bikeChargeKW {
+		q++ // unpublished power is usually a standard 6-7 kW pedestal
+	}
+	if strings.Contains(strings.ToLower(c.Hours), "24 hours") {
+		q += 1.5
+	}
+	if !contains(c.Connectors, "J1772") {
+		q--
+	}
+	return q - c.OffRouteKM
+}
+
+// selectChargers keeps every stop, the best backups around each stop, and the best alternates per
+// stretch of route, in route order. sites must already be placed and planned.
+func selectChargers(sites []charger) []charger {
+	keep := map[int]string{}
+	for i := range sites {
+		if sites[i].Stop {
+			keep[i] = "stop"
+		}
+	}
+	best := func(cands []int, n int) []int {
+		sort.SliceStable(cands, func(a, b int) bool { return siteQuality(&sites[cands[a]]) > siteQuality(&sites[cands[b]]) })
+		if len(cands) > n {
+			cands = cands[:n]
+		}
+		return cands
+	}
+	for i := range sites {
+		if !sites[i].Stop {
+			continue
+		}
+		var near []int
+		for j := range sites {
+			if _, taken := keep[j]; !taken && math.Abs(sites[j].KMFromStart-sites[i].KMFromStart) <= backupWindowKM {
+				near = append(near, j)
+			}
+		}
+		for _, j := range best(near, backupsPerStop) {
+			keep[j] = "backup"
+		}
+	}
+	bins := map[int][]int{}
+	for j := range sites {
+		if _, taken := keep[j]; !taken {
+			b := int(sites[j].KMFromStart / alternateBinKM)
+			bins[b] = append(bins[b], j)
+		}
+	}
+	for _, cands := range bins {
+		for _, j := range best(cands, alternatesPerBin) {
+			keep[j] = "alternate"
+		}
+	}
+	out := []charger{}
+	for i := range sites {
+		if role, ok := keep[i]; ok {
+			c := sites[i]
+			c.Role = role
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 func round1(x float64) float64 { return math.Round(x*10) / 10 }

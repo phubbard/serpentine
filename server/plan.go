@@ -227,15 +227,14 @@ func buildResult(id, mode string, p *ghPath, loop *loopInfo, ob *outBackInfo, tu
 		sites = sitesFromStations(stations)
 		placeOnRoute(sites, coords, cum)
 		sum := planCharging(sites, energyProfile(p, cum), float64(p.Time)/1000, *co)
+		sum.ChargersNearby = len(sites)
 		energy = &sum
 		for _, c := range sites {
 			if c.Stop {
 				forced = append(forced, forcedWaypoint{idx: c.idx, pt: c.LonLat, label: "Charge: " + c.Name})
 			}
 		}
-		if sites == nil {
-			sites = []charger{}
-		}
+		sites = selectChargers(sites)
 	}
 	ins := make([]instructionOut, 0, len(p.Instructions))
 	for _, i := range p.Instructions {
