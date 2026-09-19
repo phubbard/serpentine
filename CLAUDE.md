@@ -127,8 +127,8 @@ Principles that constrain every design choice here:
   LAN. Fine, but the LAN is a public /24 (`204.128.136.0/24`) — anything that does "is this a
   private network?" checks will be confused (SABnzbd was). `https://serpentine.phfactor.net` is live
   (2026-09-18), **no auth by decision**. The repo's `infra/caddy/serpentine.caddyfile` allowlists
-  `/route /info /health /nearest`; the first deployed block was a bare `reverse_proxy` exposing
-  `/maps`, `/spt`, `/isochrone` too — check the Pi's `/etc/caddy/Caddyfile` matches the repo.
+  `/route /info /health /nearest` (everything else → 404); deployed on the Pi and verified
+  2026-09-18. Keep the Pi's `/etc/caddy/Caddyfile` block identical to the repo file.
 - GraphHopper request shape (POST `/route`): `points` are `[lon, lat]`, `profile: "motorcycle"`,
   `algorithm: "round_trip"` + `round_trip.distance` (m) + `round_trip.seed` + `headings` for loops,
   `custom_model` for per-request tightening, `details: ["curvature","max_speed","urban_density",
