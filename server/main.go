@@ -24,6 +24,7 @@ var version = "dev" // -ldflags "-X main.version=..."
 
 type server struct {
 	gh    *ghClient
+	nrel  *nrelClient // nil when no key is configured: charging requests get 503
 	cache *planCache
 	log   *slog.Logger
 }
@@ -31,10 +32,20 @@ type server struct {
 func main() {
 	addr := flag.String("addr", envOr("SERPENTINE_ADDR", ":8990"), "listen address")
 	ghURL := flag.String("gh", envOr("SERPENTINE_GH", "http://localhost:8989"), "GraphHopper base URL")
+	nrelURL := flag.String("nrel", envOr("SERPENTINE_NREL", nrelDefaultBase), "NREL alt-fuel-stations base URL")
+	nrelKeyFile := flag.String("nrel-key-file", "", "file holding the NREL API key (or set NREL_API_KEY)")
 	flag.Parse()
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	s := &server{gh: newGHClient(strings.TrimRight(*ghURL, "/")), cache: newPlanCache(500, 24*time.Hour), log: log}
+	if key, err := nrelKey(*nrelKeyFile); err != nil {
+		log.Error("nrel key", "err", err)
+		os.Exit(1)
+	} else if key != "" {
+		s.nrel = newNRELClient(*nrelURL, key)
+	} else {
+		log.Warn("no NREL key: charging disabled")
+	}
 
 	srv := &http.Server{
 		Addr:              *addr,
@@ -56,6 +67,21 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(ctx)
+}
+
+// nrelKey reads NREL_API_KEY, else the key file. The key is never logged.
+func nrelKey(file string) (string, error) {
+	if k := os.Getenv("NREL_API_KEY"); k != "" {
+		return k, nil
+	}
+	if file == "" {
+		return "", nil
+	}
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(b)), nil
 }
 
 func envOr(k, def string) string {
@@ -85,6 +111,7 @@ func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok": true, "version": version, "graphhopper": info.Version,
 		"graph_data_date": info.DataDate, "graph_import_date": info.ImportDate,
+		"chargers": s.nrel != nil,
 	})
 }
 
@@ -97,6 +124,10 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := req.normalize(); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if req.Charging != nil && s.nrel == nil {
+		writeError(w, http.StatusServiceUnavailable, "charging unavailable: server has no NREL key")
 		return
 	}
 	id := req.cacheKey()
@@ -135,11 +166,23 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request) {
 		s.log.Info("plan", "mode", req.Mode, "failed", true, "ms", time.Since(start).Milliseconds())
 		return
 	}
-	res := buildResult(id, req.Mode, path, loop)
+	var stations []nrelStation
+	if req.Charging != nil {
+		stations, err = s.nrel.nearbyRoute(ctx, path.Points.Coordinates, chargerCorridorMiles)
+		if err != nil {
+			s.log.Error("plan: charger data", "err", err)
+			writeError(w, http.StatusBadGateway, "charger data unavailable")
+			return
+		}
+	}
+	res := buildResult(id, req.Mode, path, loop, stations, req.Charging)
 	s.cache.put(id, res)
 	attrs := []any{"mode", req.Mode, "km", res.DistanceM / 1000, "ms", time.Since(start).Milliseconds(), "waypoints", len(res.Handoff.Waypoints)}
 	if loop != nil {
 		attrs = append(attrs, "target_km", loop.TargetM/1000, "candidates", loop.Candidates, "failed", loop.Failed, "score", loop.Score)
+	}
+	if res.Energy != nil {
+		attrs = append(attrs, "kwh", res.Energy.KWhEst, "chargers", len(res.Chargers), "stops", res.Energy.Stops, "feasible", res.Energy.Feasible)
 	}
 	s.log.Info("plan", attrs...)
 	writeJSON(w, http.StatusOK, res)

@@ -13,6 +13,9 @@
         <string>:8990</string>
         <string>-gh</string>
         <string>http://localhost:8989</string>
+        <!-- NREL key lives only on axiom (mode 600); never in the repo. -->
+        <string>-nrel-key-file</string>
+        <string>/Users/pfh/serpentine-api/nrel.key</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

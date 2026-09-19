@@ -110,7 +110,7 @@ func TestLoopScorePenalisesTrackAndDistanceError(t *testing.T) {
 func TestHandoffDemo(t *testing.T) {
 	p := fixturePath(t, "gh_demo.json")
 	cum := cumulativeKM(p.Points.Coordinates)
-	h := buildHandoff(p, cum, roadsOf(p, cum))
+	h := buildHandoff(p, cum, roadsOf(p, cum), nil)
 
 	if n := len(h.Waypoints); n == 0 || n > maxHandoffWaypoints {
 		t.Fatalf("%d waypoints, want 1..%d", n, maxHandoffWaypoints)
@@ -158,7 +158,7 @@ func TestHandoffOneWaypointPerRoad(t *testing.T) {
 	}}
 	p.Points.Coordinates = coords
 	cum := cumulativeKM(coords)
-	h := buildHandoff(p, cum, roadsOf(p, cum))
+	h := buildHandoff(p, cum, roadsOf(p, cum), nil)
 	// Start Rd's waypoint would be 1 km from the source, inside endpointClearKM, so it is dropped.
 	if got := strings.Join(h.WaypointRoads, ","); got != "A,End Rd" {
 		t.Errorf("waypoint roads %q, want A,End Rd", got)
@@ -189,7 +189,10 @@ func TestNormalize(t *testing.T) {
 		{`{"mode":"out_and_back","start":[-116.87,33.04],"distance_m":150000}`, false},
 		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"twistiness":1.5}`, false},
 		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"avoid":["tolls"]}`, false},
-		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"charging":{"enabled":true}}`, false},
+		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"charging":{"enabled":true}}`, true},
+		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"charging":{"enabled":true,"soc_start":1.2}}`, false},
+		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"charging":{"enabled":true,"soc_start":0.3,"soc_min_arrival":0.4}}`, false},
+		{`{"mode":"loop","start":[-116.87,33.04],"distance_m":150000,"charging":{"enabled":false,"soc_start":7}}`, true}, // ignored when off
 	}
 	for _, c := range cases {
 		var r planRequest
@@ -269,8 +272,10 @@ func fakeGH(t *testing.T, failHeadings map[float64]bool, calls *atomic.Int32) *h
 	}))
 }
 
-func testServer(gh *httptest.Server) *httptest.Server {
-	s := &server{gh: newGHClient(gh.URL), cache: newPlanCache(10, time.Hour), log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+func testServer(gh *httptest.Server) *httptest.Server { return testServerWithNREL(gh, nil) }
+
+func testServerWithNREL(gh *httptest.Server, nrel *nrelClient) *httptest.Server {
+	s := &server{gh: newGHClient(gh.URL), nrel: nrel, cache: newPlanCache(10, time.Hour), log: slog.New(slog.NewTextHandler(io.Discard, nil))}
 	return httptest.NewServer(s.routes())
 }
 

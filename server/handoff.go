@@ -97,15 +97,17 @@ func publicEndpoints(p *ghPath, n int) (int, int) {
 	return first, last
 }
 
-func buildHandoff(p *ghPath, cum []float64, roads []road) handoff {
+// stops are charge stops: always kept, in route order, labelled "Charge: <name>".
+func buildHandoff(p *ghPath, cum []float64, roads []road, stops []charger) handoff {
 	coords := p.Points.Coordinates
 	srcIdx, dstIdx := publicEndpoints(p, len(coords))
 	src, dst := coords[srcIdx], coords[dstIdx]
 
 	type cand struct {
-		idx  int
-		road string
-		km   float64
+		idx    int
+		road   string
+		km     float64
+		charge *[2]float64
 	}
 	var cands []cand
 	for _, r := range roads {
@@ -122,18 +124,25 @@ func buildHandoff(p *ghPath, cum []float64, roads []road) handoff {
 			cands[n-1].km += r.KM
 			continue
 		}
-		cands = append(cands, cand{idx, r.Name, r.KM})
+		cands = append(cands, cand{idx: idx, road: r.Name, km: r.KM})
 	}
-	if len(cands) > maxHandoffWaypoints {
+	if room := maxHandoffWaypoints - len(stops); len(cands) > room {
 		// Keep the longest roads, then restore route order.
 		sort.SliceStable(cands, func(i, j int) bool { return cands[i].km > cands[j].km })
-		cands = cands[:maxHandoffWaypoints]
-		sort.Slice(cands, func(i, j int) bool { return cands[i].idx < cands[j].idx })
+		cands = cands[:max(room, 0)]
 	}
+	for i := range stops {
+		cands = append(cands, cand{idx: stops[i].idx, road: "Charge: " + stops[i].Name, charge: &stops[i].LonLat})
+	}
+	sort.SliceStable(cands, func(i, j int) bool { return cands[i].idx < cands[j].idx })
 
 	h := handoff{Source: lonLat(src), Destination: lonLat(dst), Waypoints: [][2]float64{}, WaypointRoads: []string{}}
 	for _, c := range cands {
-		h.Waypoints = append(h.Waypoints, lonLat(coords[c.idx]))
+		if c.charge != nil {
+			h.Waypoints = append(h.Waypoints, *c.charge)
+		} else {
+			h.Waypoints = append(h.Waypoints, lonLat(coords[c.idx]))
+		}
 		h.WaypointRoads = append(h.WaypointRoads, c.road)
 	}
 	h.AppleMapsURL = appleMapsURL(h.Source, h.Waypoints, h.Destination)

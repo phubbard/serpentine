@@ -17,17 +17,15 @@ import (
 const profileVersion = "base-v0.2/req-v1"
 
 type planRequest struct {
-	Mode       string      `json:"mode"`
-	Start      *[2]float64 `json:"start"`
-	End        *[2]float64 `json:"end,omitempty"`
-	DistanceM  float64     `json:"distance_m,omitempty"`
-	HeadingDeg *float64    `json:"heading_deg,omitempty"`
-	Seed       *int64      `json:"seed,omitempty"`
-	Twistiness *float64    `json:"twistiness,omitempty"`
-	Avoid      []string    `json:"avoid,omitempty"`
-	Charging   *struct {
-		Enabled bool `json:"enabled"`
-	} `json:"charging,omitempty"`
+	Mode       string        `json:"mode"`
+	Start      *[2]float64   `json:"start"`
+	End        *[2]float64   `json:"end,omitempty"`
+	DistanceM  float64       `json:"distance_m,omitempty"`
+	HeadingDeg *float64      `json:"heading_deg,omitempty"`
+	Seed       *int64        `json:"seed,omitempty"`
+	Twistiness *float64      `json:"twistiness,omitempty"`
+	Avoid      []string      `json:"avoid,omitempty"`
+	Charging   *chargingOpts `json:"charging,omitempty"`
 }
 
 type badRequest struct{ msg string }
@@ -71,10 +69,9 @@ func (r *planRequest) normalize() error {
 	default:
 		return badf(`mode must be "loop" or "point_to_point"`)
 	}
-	if r.Charging != nil && r.Charging.Enabled {
-		return badf("charging is not implemented yet")
+	if err := r.normalizeCharging(); err != nil {
+		return err
 	}
-	r.Charging = nil
 	if r.Twistiness == nil {
 		t := 0.5
 		r.Twistiness = &t
@@ -89,6 +86,31 @@ func (r *planRequest) normalize() error {
 		if a != "unpaved" && a != "ferries" {
 			return badf("avoid may contain only \"unpaved\" and \"ferries\"")
 		}
+	}
+	return nil
+}
+
+func (r *planRequest) normalizeCharging() error {
+	c := r.Charging
+	if c == nil || !c.Enabled {
+		r.Charging = nil
+		return nil
+	}
+	def := func(p **float64, v float64) {
+		if *p == nil {
+			*p = &v
+		}
+	}
+	def(&c.SocStart, 1.0)
+	def(&c.SocMinArrival, 0.15)
+	def(&c.ChargeTo, 0.9)
+	for _, v := range []float64{*c.SocStart, *c.SocMinArrival, *c.ChargeTo} {
+		if v < 0 || v > 1 {
+			return badf("charging soc values must be between 0 and 1")
+		}
+	}
+	if *c.SocMinArrival >= *c.SocStart || *c.SocMinArrival >= *c.ChargeTo {
+		return badf("soc_min_arrival must be below soc_start and charge_to")
 	}
 	return nil
 }
@@ -164,14 +186,36 @@ type planResult struct {
 	Instructions []instructionOut `json:"instructions"`
 	Stats        routeStats       `json:"stats"`
 	Loop         *loopInfo        `json:"loop,omitempty"`
+	Energy       *energySummary   `json:"energy,omitempty"`   // charging requests only
+	Chargers     []charger        `json:"chargers,omitempty"` // charging requests only
 	Handoff      handoff          `json:"handoff"`
 	GPXURL       string           `json:"gpx_url"`
 }
 
-func buildResult(id, mode string, p *ghPath, loop *loopInfo) *planResult {
+// buildResult assembles the response. stations is nil unless charging was requested.
+func buildResult(id, mode string, p *ghPath, loop *loopInfo, stations []nrelStation, co *chargingOpts) *planResult {
 	coords := p.Points.Coordinates
 	cum := cumulativeKM(coords)
 	roads := roadsOf(p, cum)
+	var (
+		energy *energySummary
+		sites  []charger
+		stops  []charger
+	)
+	if co != nil {
+		sites = sitesFromStations(stations)
+		placeOnRoute(sites, coords, cum)
+		sum := planCharging(sites, energyProfile(p, cum), float64(p.Time)/1000, *co)
+		energy = &sum
+		for _, c := range sites {
+			if c.Stop {
+				stops = append(stops, c)
+			}
+		}
+		if sites == nil {
+			sites = []charger{}
+		}
+	}
 	ins := make([]instructionOut, 0, len(p.Instructions))
 	for _, i := range p.Instructions {
 		ins = append(ins, instructionOut{Text: i.Text, DistanceM: math.Round(i.Distance), TimeS: math.Round(float64(i.Time) / 1000), Sign: i.Sign, Index: i.Interval[0]})
@@ -187,7 +231,9 @@ func buildResult(id, mode string, p *ghPath, loop *loopInfo) *planResult {
 		Instructions: ins,
 		Stats:        computeStats(p, cum),
 		Loop:         loop,
-		Handoff:      buildHandoff(p, cum, roads),
+		Energy:       energy,
+		Chargers:     sites,
+		Handoff:      buildHandoff(p, cum, roads, stops),
 		GPXURL:       "/v1/plan/" + id + ".gpx",
 	}
 }
