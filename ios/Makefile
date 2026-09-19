@@ -35,6 +35,12 @@ APP_STORE_KEY_ID    ?= $(shell awk -F'=' '/^APP_STORE_KEY_ID/ {gsub(/[ ;]/,"",$$
 APP_STORE_ISSUER_ID ?= $(shell awk -F'=' '/^APP_STORE_ISSUER_ID/ {gsub(/[ ;]/,"",$$2); print $$2; exit}' $(LOCAL) 2>/dev/null)
 TESTFLIGHT_GROUPS   ?= $(shell awk -F'=' '/^TESTFLIGHT_GROUPS/ {sub(/^[^=]*=/,""); gsub(/^[ \t]+|[ \t;]+$$/,""); print; exit}' $(LOCAL) 2>/dev/null)
 
+# Provision with the ASC API key rather than Xcode's Apple ID session, which expires silently
+# ("Your session has expired", then "No profiles for 'net.phfactor.serpentine' were found").
+ASC_KEY_PATH = $(HOME)/.appstoreconnect/private_keys/AuthKey_$(APP_STORE_KEY_ID).p8
+ASC_AUTH = -allowProvisioningUpdates -authenticationKeyPath $(ASC_KEY_PATH) \
+           -authenticationKeyID $(APP_STORE_KEY_ID) -authenticationKeyIssuerID $(APP_STORE_ISSUER_ID)
+
 SIM = -destination 'platform=iOS Simulator,name=$(SIM_DEVICE),OS=$(SIM_OS)'
 SIM_UDID = $(shell xcrun simctl list devices available -j | ruby -rjson -e 'd=JSON.parse(STDIN.read)["devices"]; k=d.keys.find{|r| r.end_with?("iOS-"+ARGV[1].tr(".","-"))}; puts((d[k]||[]).find{|x| x["name"]==ARGV[0]}&.fetch("udid"))' "$(SIM_DEVICE)" "$(SIM_OS)")
 XCB = xcodebuild -project $(APP_NAME).xcodeproj -scheme $(SCHEME) -derivedDataPath $(DERIVED)
@@ -83,13 +89,13 @@ archive-testflight: verify-testflight project
 	@rm -rf $(IOS_ARCHIVE) $(IOS_EXPORT_DIR)
 	@xcodebuild -project $(APP_NAME).xcodeproj -scheme $(SCHEME) -configuration Release \
 	    -destination 'generic/platform=iOS' -archivePath $(IOS_ARCHIVE) \
-	    -allowProvisioningUpdates archive | grep -E "^(error|warning):|\*\* ARCHIVE" || true
+	    $(ASC_AUTH) archive | grep -E "^(error|warning):|\*\* ARCHIVE" || true
 	@test -d $(IOS_ARCHIVE) || { echo "error: archive failed"; exit 1; }
 	@echo "✓ archived $(VERSION)+$(BUILD_NUMBER)"
 
 upload-testflight: archive-testflight
 	@xcodebuild -exportArchive -archivePath $(IOS_ARCHIVE) -exportPath $(IOS_EXPORT_DIR) \
-	    -exportOptionsPlist $(TF_EXPORT_OPTS) -allowProvisioningUpdates | grep -E "^(error|warning):|EXPORT" || true
+	    -exportOptionsPlist $(TF_EXPORT_OPTS) $(ASC_AUTH) | grep -E "^(error|warning):|EXPORT" || true
 	@test -f $(IOS_EXPORT_DIR)/$(APP_NAME).ipa || { echo "error: no .ipa exported"; exit 1; }
 	@xcrun altool --upload-app --type ios --file $(IOS_EXPORT_DIR)/$(APP_NAME).ipa \
 	    --apiKey $(APP_STORE_KEY_ID) --apiIssuer $(APP_STORE_ISSUER_ID)
