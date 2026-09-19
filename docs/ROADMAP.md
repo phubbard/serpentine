@@ -74,8 +74,10 @@ Acceptance:
       (iOS-only: `make build|test|run|upload-testflight|testflight-notes`, MIN_BUILDS=1)
 - [x] Info.plist: location usage strings, `ITSAppUsesNonExemptEncryption=false`, category
       `public.app-category.navigation`, `PrivacyInfo.xcprivacy` (no tracking, no collected data)
-- [ ] App Store Connect app record for `net.phfactor.serpentine` (manual, web) — blocks TestFlight
+- [x] App Store Connect app record for `net.phfactor.serpentine` ("Serpentine EV"), internal group
+- [x] First TestFlight build uploaded: 0.1.0 (29), 2026-09-18
 - [ ] Internal TestFlight build installed on Paul's phone; one real ride completed via handoff
+      (bike arrives early-to-mid October 2026)
 
 ## Phase 3 — Ride quality
 

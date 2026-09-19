@@ -18,7 +18,8 @@ the reference for competitor and API facts; don't re-research what it already an
   `~/serpentine-api/tiles` on axiom — self-hosted vector tiles are the planned replacement).
 - iOS app v0.1.0 in `ios/` (SwiftUI + MapKit, xcodegen): plan loop / out-and-back from location or
   search, charging, map + stats, Apple Maps handoff, GPX share. `make -C ios build|test|run`.
-  Not yet on TestFlight: needs the App Store Connect app record. `make -C server test|run|deploy|logs`. No app code yet.
+  On TestFlight since 2026-09-18 (0.1.0 build 29) as **"Serpentine EV"** (ASC app id 6813768490;
+  home-screen name stays "Serpentine"), internal group "Internal" with automatic distribution. `make -C server test|run|deploy|logs`. No app code yet.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.
 - Shared agent memory: Memento page `/projects/serpentine.md` at `http://webserver:8321/mcp` (see
   Memento section). Keep it in sync with major status changes.
@@ -107,6 +108,13 @@ Principles that constrain every design choice here:
 - Simulator names repeat across runtimes (two "iPhone 16"s); the Makefile pins `SIM_OS` too.
   `make -C ios test SIM_DEVICE="iPhone 16" SIM_OS=18.4` checks the deployment floor.
 - Driving the simulator: short taps don't flip a `Toggle`; use a ~0.2 s tap.
+- TestFlight signing uses **Xcode's signed-in Apple ID** (Account Holder mints the distribution
+  cert). That session expires silently: export fails with "Unable to log in with account" then
+  "No profiles for 'net.phfactor.serpentine' were found" — sign in again under Xcode → Settings →
+  Accounts. `SIGN_WITH_KEY=1` signs with the ASC API key instead, but the App Manager key gets
+  "Cloud signing permission error" (cloud-managed distribution certs need an Admin-role key).
+- Commit before `make upload-testflight`: a dirty tree makes the scheme stamp build N+1 while the
+  Makefile (and `testflight-notes`) expect N.
 
 - Team ID `NSR65JVW9F` (paid individual). Bundle ID: **`net.phfactor.serpentine`** — chosen once,
   never changed ("pick it like a tattoo"). Display name can change; bundle ID cannot.

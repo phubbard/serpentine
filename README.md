@@ -4,8 +4,8 @@ Curvy-road motorcycle ride planner for iPhone. Favours roads with plentiful turn
 minimal traffic over minimum time; plans charge stops for a Zero SR/S; generates loops and out-and-back
 rides; hands off to Apple Maps for voice navigation. No subscription.
 
-Status: routing engine and API running in-house; iOS app v0.1 runs in the simulator (not yet on
-TestFlight). `serpentine-api` plans
+Status: routing engine and API running in-house; iOS app v0.1 on internal TestFlight as
+"Serpentine EV". `serpentine-api` plans
 point-to-point rides, scored loops and out-and-backs with charge stops (plus backup chargers) and an
 Apple Maps handoff; try it at
 <https://serpentine.phfactor.net/v1/>.
