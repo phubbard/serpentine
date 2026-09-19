@@ -38,13 +38,13 @@ Endpoints (contract in `docs/API.md`):
 Acceptance:
 - [x] `go build` produces one static binary, stdlib only (`net/http`, `encoding/json`, `log/slog`) — `server/`, 2026-09-18
 - [x] `launchd` plist on axiom, same pattern as LM Studio's `ai.lmstudio.server.plist` — `make deploy`, KeepAlive verified
-- [ ] Out-and-back returns a different road home: second leg computed with a per-request
-      `custom_model` that penalises edges within ~300 m of the outbound polyline (see DECISIONS ADR-005)
+- [x] Out-and-back returns a different road home: second leg computed with a per-request
+      `custom_model` that penalises edges within ~300 m of the outbound polyline (ADR-005, ADR-015)
 - [x] Loops via candidate fan-out + scoring (ADR-010): no track/unpaved vertices, distance within
       ~10 % of target, falls back gracefully when a heading points off the map (3–7 %, 100–330 ms)
 - [x] Handoff waypoints on significant roads, endpoints on public roads (ADR-013)
 - [x] Caddy points `/v1/*` at serpentine-api (`infra/caddy/serpentine.caddyfile`) — live and verified 2026-09-18
-- [ ] `out_and_back` mode (ADR-005)
+- [x] `out_and_back` mode (ADR-015)
 - [x] Route cache keyed on request hash; repeat requests served in < 50 ms (in-memory, ~1 ms)
 - [x] NREL key read from env or a mode-600 key file, never logged, never returned (ADR-014)
 - [x] Charge-stop planning in `POST /v1/plan` (`charging`), stops become handoff waypoints

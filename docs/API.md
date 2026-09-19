@@ -5,8 +5,8 @@ Base: `https://serpentine.phfactor.net/v1` (LAN: `http://axiom:8990/v1`). JSON. 
 Maps URLs, which Apple and Google want as `lat,lon`. Implemented in `server/`; this file is the
 contract the iOS app codes against — change both together.
 
-Status: `point_to_point`, `loop` and `charging` implemented; `out_and_back` returns 400 until
-built; `POST /chargers` not built.
+Status: `point_to_point`, `loop`, `out_and_back` and `charging` implemented; `POST /chargers` not
+built.
 
 ## POST /plan
 
@@ -15,9 +15,10 @@ built; `POST /chargers` not built.
   "mode": "loop" | "point_to_point" | "out_and_back",
   "start": [-116.868, 33.042],
   "end": [-116.60, 33.08],          // point_to_point only
-  "distance_m": 150000,             // loop: 20 000 – 500 000
-  "heading_deg": 90,                // loop: optional; omitted = try 8 compass directions
-  "seed": 7,                        // loop: optional, default 1; change it for a different loop
+  "turnaround": [-116.60, 33.08],   // out_and_back: optional; else chosen from distance_m
+  "distance_m": 150000,             // loop, out_and_back (total, both legs): 20 000 – 500 000
+  "heading_deg": 90,                // loop, out_and_back: optional; omitted = try 8 directions
+  "seed": 7,                        // loop, out_and_back: optional, default 1; change it for another
   "twistiness": 0.5,                // 0..1, default 0.5 → per-request custom_model (ADR-009)
   "avoid": ["unpaved", "ferries"],  // default both; [] to allow them
   "charging": {                     // optional; omitted or enabled=false → no energy/chargers
@@ -52,6 +53,11 @@ Response (200):
     "target_m": 150000, "heading_deg": 315, "seed": 6, "score": -0.103,
     "candidates": 16, "failed": 6, "requested_m": 112500
   },
+  "out_and_back": {                  // out_and_back mode only
+    "target_m": 150000, "turnaround": [lon, lat], "heading_deg": 315,
+    "out_km": 62.2, "back_km": 96.9, "shared_km": 2.7,   // shared: return within 300 m of the outbound
+    "score": 0.214, "candidates": 9, "failed": 5
+  },
   "energy": {                       // charging requests only
     "usable_kwh": 15.1, "kwh_est": 14.42, "soc_start": 0.6, "soc_min_arrival": 0.15, "charge_to": 0.9,
     "soc_end_est": 0.29, "feasible": true, "stops": 1, "charge_min": 98,
@@ -70,7 +76,7 @@ Response (200):
     "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=…&waypoints=…|…&destination=…&travelmode=driving",
     "source": [lon, lat], "destination": [lon, lat],
     "waypoints": [[lon, lat], ...],  // ≤ 10
-    "waypoint_roads": ["Pala Road", "Charge: <site name>", ...]   // charge stops always included
+    "waypoint_roads": ["Pala Road", "Turnaround", "Charge: <site name>", ...]   // forced stops always included
   },
   "gpx_url": "/v1/plan/1f0c….gpx"
 }
@@ -89,8 +95,8 @@ ADR-012 for why pasting it into Safari behaves differently).
 
 ## GET / (test page)
 
-`https://serpentine.phfactor.net/v1/` (trailing slash) is a self-contained browser test UI for loop
-planning — start presets / my location / lat,lon, distance, twistiness, direction, EV toggle with
+`https://serpentine.phfactor.net/v1/` (trailing slash) is a self-contained browser test UI for loops
+and out-and-backs — start presets / my location / lat,lon, distance, twistiness, direction, EV toggle with
 starting charge — showing the result and tappable Apple Maps / Google Maps / GPX links. Embedded in
 the binary from `server/web/index.html`; a CSP forbids loading anything from another host.
 
@@ -118,9 +124,20 @@ better) —
 (each term a fraction of route length) — then rescales the winner's `round_trip.distance` once if
 it is still more than 10 % off. Measured on axiom: 100–330 ms, within 3–7 % of target.
 
+## Out and back (ADR-015)
+
+Candidate turnarounds sit `distance_m / 2 / 1.3` from the start on 8 bearings (the seed rotates the
+fan by 22.5°), or the requested heading ±30°, or the given `turnaround`. Each is routed out, then
+back with a per-request GraphHopper `areas` penalty: ±300 m rectangles along the outbound polyline
+(first and last 2 km excluded) at `multiply_by 0.3`. Scored like loops plus 3 × the fraction of the
+return that repeats the outbound; the winner is rescaled once. The turnaround is a forced handoff
+waypoint. Measured: 70–650 ms, 2.7–16 km shared, totals 6–13 % over target (the return is usually
+the longer leg).
+
 ## Handoff waypoints (ADR-013)
 
-One waypoint 1 km into each named road of ≥ 3 km on our route, one per road, none within 2 km of
+One waypoint 1 km into each named road of ≥ 3 km on our route (mid-road if 1 km in is too close to
+an endpoint), one per road, none within 2 km of
 the endpoints, at most 10 (longest roads kept). Apple has to drive that road to reach the stop.
 Source and destination move to the first/last non-service road so Apple never says "walking
 required". Verified by hand on the demo ride (ADR-012); the ≥ 12-waypoint cap is still unmeasured.

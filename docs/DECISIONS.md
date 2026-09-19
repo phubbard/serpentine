@@ -155,3 +155,16 @@ the Zero app calibrates it; being wrong the other way strands the rider.
 Stop choice: furthest reachable site (fewest stops, longest legs), ties to more ports. Alternatives
 considered for later: prefer sites with food/amenities (Phase 3), prefer higher-power sites when the
 bike has the Rapid Charger module (12.6 kW).
+
+## ADR-015 · 2026-09-18 · Out-and-back via a corridor penalty on the return (resolves ADR-005)
+
+ADR-005's plan works: GraphHopper accepts a per-request `areas` MultiPolygon (±300 m rectangles
+every 0.5 km along the outbound polyline) and a `multiply_by` rule on it under LM, in ~130 ms. The
+multiplier matters: at 0.1 Julian → Ramona came home via Alpine (105 km against 36 out); at 0.3,
+0.5 and 0.7 it took Old Julian Hwy at the same 35 km. 0.3 is the default — strong enough to prefer a
+parallel road, weak enough not to force absurd detours; shared road is reported (`shared_km`)
+rather than forbidden. The first and last 2 km are left out of the corridor because they are
+shared by necessity. Turnarounds for distance-only requests are fanned out like loops (ADR-010)
+and scored with an extra shared-road term. Known bias: the return is usually longer than the out
+leg, so totals land 6–13 % over target after one rescale; a second rescale or an asymmetric radius
+could tighten that if it matters on the road.
