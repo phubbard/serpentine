@@ -97,3 +97,18 @@ exposing only the endpoints the phone needs (`/route /info /health /nearest`); t
 3 M, `non_ch.max_waypoint_distance` 1000 km) bound any single request. Revisit if logs show abuse:
 Caddy has no built-in rate limiter, so the next step would be limits inside serpentine-api (Phase 1),
 which replaces GraphHopper as the upstream here.
+
+## ADR-012 · 2026-09-18 · First Apple Maps handoff measurement: handoff is viable
+
+Opened the demo ride's unified `/directions` URL (7 hand-picked junction waypoints, `avoid=tolls,highways`)
+on iOS from Safari. Apple accepted all 7 as stops (reverse-geocoded to street addresses), honoured
+`avoid=highways` as the default option (a 2 h 52 min highway option offered second), and its route was
+**139 mi / 3 h 25 min against GraphHopper's 139.8 mi / 3.4 h** — distance agreement under 1 % means it
+followed our roads, Sunrise Hwy included. With waypoints at junctions where Apple's fastest route would
+diverge, the handoff reproduces our route. Phase 4 (Ferrostar) stays deferred.
+
+Gotcha: an endpoint inside the mall's private lot made Apple warn "Walking required to reach
+destination". Handoff source/destination/waypoints must sit on public, named roads; serpentine-api
+should snap them to an edge whose `road_class` isn't SERVICE (or use the first named street on the
+polyline). Still unmeasured: behaviour at 12–15 waypoints, and how the stops feel under voice
+guidance on an actual ride.

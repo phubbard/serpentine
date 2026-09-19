@@ -5,16 +5,17 @@
   "notes": [
     "route_points are what GraphHopper routes through (lon, lat, GraphHopper order).",
     "handoff_waypoints are the Apple Maps via-points, hand-picked at junctions where Apple's fastest route would otherwise leave ours. Phase 1 replaces them with the divergence heuristic in docs/API.md.",
-    "The return reuses ~15 km of Pomerado Road; accepted for a demo."
+    "The return reuses ~15 km of Pomerado Road; accepted for a demo.",
+    "Start/end is on Nobel Dr, not inside the mall: a point on the private lot made Apple Maps say 'Walking required to reach destination'."
   ],
   "request": {
     "profile": "motorcycle",
     "route_points": [
-      {"name": "Westfield UTC",            "lon": -117.2108, "lat": 32.8704},
+      {"name": "UTC (Nobel Dr & Lombard Pl)", "lon": -117.2116, "lat": 32.8670},
       {"name": "Ramona (Main St)",         "lon": -116.8681, "lat": 33.0417},
       {"name": "Julian",                   "lon": -116.6019, "lat": 33.0786},
       {"name": "Mount Laguna (S1)",        "lon": -116.4185, "lat": 32.8700},
-      {"name": "Westfield UTC",            "lon": -117.2108, "lat": 32.8704}
+      {"name": "UTC (Nobel Dr & Lombard Pl)", "lon": -117.2116, "lat": 32.8670}
     ]
   },
   "handoff_waypoints": [

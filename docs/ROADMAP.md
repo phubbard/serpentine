@@ -17,6 +17,9 @@ Update the checkboxes as things land and note the commit.
       cap and how many legs Apple re-routes onto the wrong road. **This measurement decides how much
       of phase 3 is needed.**
       Use the demo ride: `tools/demo_route.py` prints the URL for `demo/utc-ramona-sunrise.json` (7 waypoints).
+      *2026-09-18, preview only (ADR-012):* 7 waypoints accepted; Apple's avoid-highways route is 139 mi /
+      3 h 25 min vs ours 139.8 mi / 3.4 h — same roads. Still to do: 12–15 waypoint cap, and a real ride
+      to check that the stops-and-voice experience holds up on the road.
 
 ## Phase 1 — `server/`: serpentine-api (Go)
 
