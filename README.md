@@ -15,5 +15,6 @@ Apple Maps handoff; try it at
   with a map (vendored Leaflet, cached OSM tiles)
 - `infra/` — GraphHopper 11 motorcycle profile, docker-compose, Caddy site block, setup + smoke tests
 - `demo/`, `tools/` — a hardwired demo ride and the script that routes it
+- `ios/AppStore/screenshots/` — App Store screenshots (6.9", 1320×2868; `upload/` holds the opaque JPEGs ASC takes)
 - `docs/` — roadmap, decisions, API contract
 - `CLAUDE.md` — orientation for agents and future me: architecture, conventions, gotchas
