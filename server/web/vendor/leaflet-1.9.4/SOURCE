@@ -1,0 +1,3 @@
+Leaflet 1.9.4 (BSD-2-Clause), vendored from https://registry.npmjs.org/leaflet/-/leaflet-1.9.4.tgz
+npm integrity sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA== (verified 2026-09-18)
+Only dist/leaflet.js and dist/leaflet.css; the page uses circle markers, so images/ is not needed.

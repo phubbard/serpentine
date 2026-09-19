@@ -5,12 +5,13 @@ package main
 
 import (
 	"context"
-	_ "embed"
+	"embed"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -28,10 +29,17 @@ var version = "dev" // -ldflags "-X main.version=..."
 //go:embed web/index.html
 var testPage []byte
 
-// testPageCSP forbids loading anything from anywhere else: the one-host rule holds for the page too.
-const testPageCSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'"
+// Vendored Leaflet for the test page's map, served at /v1/static/.
+//
+//go:embed web/vendor
+var vendorFS embed.FS
+
+// testPageCSP forbids loading anything from anywhere else: the one-host rule holds for the page
+// too. Tiles come from our own /v1/tiles proxy.
+const testPageCSP = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'"
 
 type server struct {
+	tiles *tileProxy // nil when -tile-cache is unset: /v1/tiles 404s
 	gh    *ghClient
 	nrel  *nrelClient // nil when no key is configured: charging requests get 503
 	cache *planCache
@@ -43,10 +51,15 @@ func main() {
 	ghURL := flag.String("gh", envOr("SERPENTINE_GH", "http://localhost:8989"), "GraphHopper base URL")
 	nrelURL := flag.String("nrel", envOr("SERPENTINE_NREL", nrelDefaultBase), "NREL alt-fuel-stations base URL")
 	nrelKeyFile := flag.String("nrel-key-file", "", "file holding the NREL API key (or set NREL_API_KEY)")
+	tileCache := flag.String("tile-cache", "", "directory for cached map tiles (enables /v1/tiles)")
+	tileURL := flag.String("tile-upstream", tileDefaultURL, "raster tile URL template")
 	flag.Parse()
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	s := &server{gh: newGHClient(strings.TrimRight(*ghURL, "/")), cache: newPlanCache(500, 24*time.Hour), log: log}
+	if *tileCache != "" {
+		s.tiles = newTileProxy(*tileCache, *tileURL)
+	}
 	if key, err := nrelKey(*nrelKeyFile); err != nil {
 		log.Error("nrel key", "err", err)
 		os.Exit(1)
@@ -103,10 +116,20 @@ func envOr(k, def string) string {
 func (s *server) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /v1/{$}", handleTestPage)
+	mux.HandleFunc("GET /v1/tiles/{z}/{x}/{y}", s.tiles.handle)
+	static, _ := fs.Sub(vendorFS, "web/vendor")
+	mux.Handle("GET /v1/static/", http.StripPrefix("/v1/static/", staticHandler(http.FileServerFS(static))))
 	mux.HandleFunc("GET /v1/health", s.handleHealth)
 	mux.HandleFunc("POST /v1/plan", s.handlePlan)
 	mux.HandleFunc("GET /v1/plan/{file}", s.handleGPX)
 	return s.logRequests(mux)
+}
+
+func staticHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		h.ServeHTTP(w, r)
+	})
 }
 
 func handleTestPage(w http.ResponseWriter, r *http.Request) {
@@ -238,14 +261,18 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
 
-// logRequests logs method, path, status and duration. No client IPs or coordinates: location
-// data never goes in logs.
+// logRequests logs method, path, status and duration. No client IPs or coordinates (tile paths
+// included): location data never goes in logs.
 func (s *server) logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(sw, r)
-		s.log.Info("http", "method", r.Method, "path", r.URL.Path, "status", sw.status, "ms", time.Since(start).Milliseconds())
+		path := r.URL.Path
+		if strings.HasPrefix(path, "/v1/tiles/") {
+			path = "/v1/tiles" // z/x/y is where someone is looking: keep it out of the log
+		}
+		s.log.Info("http", "method", r.Method, "path", path, "status", sw.status, "ms", time.Since(start).Milliseconds())
 	})
 }
 

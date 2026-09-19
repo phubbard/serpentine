@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>serpentine test</title>
 <!-- Test page for serpentine-api, served by the API itself at /v1/. No external resources (CSP
-     enforces it): the one-host rule applies here too. -->
+     enforces it): the one-host rule applies here too. Leaflet is vendored (static/), map tiles come
+     through the API's own caching proxy (tiles/). -->
+<link rel="stylesheet" href="static/leaflet-1.9.4/leaflet.css">
+<script src="static/leaflet-1.9.4/leaflet.js"></script>
 <style>
   :root {
     --bg: #f6f5f2; --panel: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #e2e0dc;
@@ -53,6 +56,8 @@
   h2 { font-size: 15px; margin: 0 0 6px; }
   details summary { cursor: pointer; color: var(--muted); font-size: 14px; }
   pre { overflow-x: auto; font-size: 12px; }
+  #map { height: 380px; border-radius: 12px; border: 1px solid var(--line); margin-bottom: 14px; }
+  .leaflet-container { background: var(--panel); font: inherit; }
 </style>
 </head>
 <body>
@@ -108,6 +113,7 @@
   <p id="status" class="muted"></p>
 
   <div id="result" class="hidden">
+    <div id="map"></div>
     <section>
       <div class="stats">
         <div><b id="km"></b><span>km</span></div>
@@ -199,8 +205,33 @@ async function plan() {
   }
 }
 
+let map, overlay;
+function drawMap(res) {
+  if (!window.L) return;
+  if (!map) {
+    map = L.map("map");
+    L.tileLayer("tiles/{z}/{x}/{y}.png", { maxZoom: 17, attribution: "&copy; OpenStreetMap contributors" }).addTo(map);
+    overlay = L.layerGroup().addTo(map);
+  }
+  map.invalidateSize();
+  overlay.clearLayers();
+  const css = getComputedStyle(document.documentElement);
+  const accent = css.getPropertyValue("--accent").trim(), stop = css.getPropertyValue("--stop").trim();
+  const ll = p => [p[1], p[0]];
+  const line = L.polyline(res.polyline.map(ll), { color: accent, weight: 4, opacity: 0.9 }).addTo(overlay);
+  const dot = (p, r, fill, tip) => L.circleMarker(ll(p), { radius: r, color: "#fff", weight: 2, fillColor: fill, fillOpacity: 1 }).bindTooltip(tip).addTo(overlay);
+  (res.chargers || []).filter(c => !c.stop).forEach(c => dot(c.lonlat, 4, "#888", `${esc(c.name)} · ${c.ports} ports`));
+  res.handoff.waypoints.forEach((w, i) => {
+    const n = res.handoff.waypoint_roads[i], forced = n.startsWith("Charge: ") || n === "Turnaround";
+    dot(w, forced ? 8 : 5, forced ? stop : accent, `${i + 1}. ${esc(n)}`);
+  });
+  dot(res.handoff.source, 8, "#1d1d1f", "Start");
+  map.fitBounds(line.getBounds(), { padding: [20, 20] });
+}
+
 function show(res) {
   $("result").classList.remove("hidden");
+  drawMap(res);
   $("km").textContent = Math.round(res.distance_m / 1000);
   const e = res.energy;
   $("time").textContent = hm(e ? e.total_time_s : res.time_s);

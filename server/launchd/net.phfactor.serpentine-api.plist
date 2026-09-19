@@ -16,6 +16,9 @@
         <!-- NREL key lives only on axiom (mode 600); never in the repo. -->
         <string>-nrel-key-file</string>
         <string>/Users/pfh/serpentine-api/nrel.key</string>
+        <!-- Map tiles for the /v1/ test page, fetched once from OSM and cached here. -->
+        <string>-tile-cache</string>
+        <string>/Users/pfh/serpentine-api/tiles</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
