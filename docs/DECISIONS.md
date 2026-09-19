@@ -277,3 +277,50 @@ hills between home and work.** Route alternatives and day-rotation can't invent 
 doesn't have. Before building it, ask the tester what their commute actually crosses; if it's valley
 grid, the honest answer is that Serpentine has nothing to offer on that trip, and the feature should
 target the weekend-ride-home case (a long way round, not a commute) instead.
+
+## ADR-020 · 2026-09-19 · One bike becomes a garage: vehicles travel in the request
+
+Serpentine was built around one bike. Both current TestFlight testers ride petrol bikes, and the app
+is meant to cover LiveWire, the Zero lineup and Can-Am, so the SR/S constants in `energy.go` and the
+hardcoded `J1772,TESLA` filter in `nrel.go` have to become data. Decisions, from an interview with
+Paul on 2026-09-19:
+
+**The app owns the garage; the server stays stateless.** Each plan request carries the resolved
+vehicle — usable kWh, city/highway consumption, AC and DC power, connectors, or for a petrol bike its
+tank and economy. A catalog is served at `/v1/vehicles` and cached by the app, but it is a
+*convenience*, not an identity: a rider who edits the consumption of their catalog bike sends a
+vehicle that differs, and the server treats it identically. This keeps the no-accounts rule intact
+(nothing about the rider is stored), keeps the cache key honest (two bikes are two different plans),
+and means a catalog fix ships without an app release. Omitting `vehicle` keeps today's SR/S
+behaviour, so builds already in TestFlight keep working.
+
+**Both catalog and custom**, because spec sheets are a decent start and always wrong for someone —
+aftermarket packs, a Power Tank, a rider who has measured their own consumption.
+
+**Flat charging rate for v1, and the assumption is stated in the UI.** A real DC curve tapers hard
+above 80 %, so a flat rate flatters fast charging exactly where over-promising strands someone. The
+honest fix is a per-bike curve; the honest v1 is a flat rate with the assumption printed next to the
+estimate. Taper curves when a rider brings a log that contradicts us.
+
+**Connector codes are not what you'd guess.** Verified against NREL 2026-09-19: the API accepts
+`J1772`, `J1772COMBO` (CCS1), `CHADEMO`, `TESLA` and `NEMA*` — and **rejects `NACS` outright**. Tesla
+hardware appears as `TESLA`, separated only by `ev_charging_level`, so "NACS" in our catalog has to
+mean TESLA plus DC, not a connector filter of its own. DC records do carry `ev_dc_fast_num`,
+`ev_network` and per-site connector lists, which is enough for stop selection. Zero adding DC fast
+charging therefore lands as a catalog change, not an API change.
+
+**Adapters are a fact about the rider, not the bike**, so they live on the phone: the garage entry
+holds native connectors plus adapters owned, and the app sends the union. Setup asks once — bikes,
+which chargers to show, adapters, consumption tweak.
+
+**Petrol bikes are in.** Fuel stations come from `amenity=fuel` in the OSM extract we already import,
+not from a third-party API: no key, no new host, principle 1 intact. It needs a small extraction pass
+into a static index on axiom. The feature is also much smaller than charging — 150–250 miles of tank
+and a five-minute fill means "warn when the ride outruns the tank", not a stop plan.
+
+**Still open: charger reliability.** Dead units, ICEd or occupied bays, and LiveWire's documented
+fussiness about which DC hardware it will actually charge from are the real failure mode, and NREL
+publishes none of it. Options under discussion: requiring enough arrival charge to reach the backup
+site (cheapest and needs no new data), a per-bike known-bad-network list in the catalog, Open Charge
+Map as a second source, and anonymous "worked / didn't" reports — the last being the only way to get
+real data at our scale, and the only one that adds server state. Not decided; see the roadmap.

@@ -148,6 +148,42 @@ like any A→B plan, so the privacy policy is unaffected.
 - [ ] Route variety: seed rotation and "not this road again" exclusions
 - [ ] Charger reliability: Open Charge Map as a second source; flag single-port sites
 
+## Phase 3b — The garage: other bikes (and gas)
+
+Decisions from the 2026-09-19 interview are in ADR-020. Shape: the **app owns the garage**, the
+**server stays stateless** — every plan request carries the resolved vehicle, so a hand-edited bike
+behaves exactly like a catalog one.
+
+- [ ] **Vehicle on the wire**: `vehicle` in `POST /v1/plan` (electric: usable kWh, city/highway Wh/km,
+      AC kW, DC kW, connectors; combustion: tank, L/100 km, reserve). No vehicle = today's SR/S, so
+      shipped builds keep working. Replaces the package constants in `energy.go` and the hardcoded
+      `J1772,TESLA` in `nrel.go`.
+- [ ] **Catalog** at `GET /v1/vehicles` (static, versioned, cacheable; app caches it and can plan
+      offline-ish): Zero lineup, LiveWire (One, S2 Del Mar, S2 Mulholland), Can-Am (Origin, Pulse),
+      plus generic gas bikes. Spec-sheet numbers with sources in the file, each field user-editable in
+      the app — an edited bike is just a custom vehicle.
+- [ ] **Connectors**: NREL takes `J1772`, `J1772COMBO` (CCS1), `CHADEMO`, `TESLA`, `NEMA*` — **there is
+      no `NACS` filter value** (verified 2026-09-19). Tesla hardware arrives as `TESLA` and is split by
+      `ev_charging_level`, so "NACS" in the catalog means TESLA + DC. DC stations carry
+      `ev_dc_fast_num`, `ev_network` and connector lists, which is what stop selection needs.
+- [ ] **Adapters stay on the phone**: the garage entry records what the bike takes natively and what
+      the rider has adapters for; the app sends the union. Setup asks once (bikes, which chargers to
+      show, adapters, consumption tweak).
+- [ ] **Flat charging rate, stated plainly in the UI** ("assumes a steady 6.6 kW"). Real DC tapers, so
+      a flat rate flatters fast charging — say so where the estimate appears. Taper curves only when a
+      rider complains with a real log.
+- [ ] **Gas bikes** (both current testers ride one): fuel stops from **`amenity=fuel` in our own OSM
+      extract** — no third party, no key, principle 1 intact; needs an osmium/Go pass into a small
+      static index on axiom. Most rides need nothing: with 150–250 mi of tank and 5-minute fills this
+      is "warn when the ride outruns your tank, and show fuel near the route", not a charge plan.
+- [ ] **Charger reliability** — the open question (ADR-020 "still open"). Cheap wins that need no new
+      data: require enough charge on arrival to reach the backup site, surface the backup in the app,
+      prefer many-port sites, and carry a per-bike "known bad" network list (LiveWire's DC fussiness).
+      Open Charge Map as a second source, and possibly anonymous "worked / didn't" reports, are the only
+      routes to real data — both need a decision.
+- [ ] App Store listing stays **"Serpentine EV"** for now; revisit if gas bikes become a headline
+      feature (name, screenshots and the public pages move together — see CLAUDE.md).
+
 ## Phase 4 — In-app turn-by-turn  *(only if phase 0's handoff measurement is bad)*
 
 - [ ] Ferrostar (BSD) with `CustomRouteProvider` fed by serpentine-api (OSRM-format adapter)
