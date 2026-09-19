@@ -247,6 +247,7 @@ func TestSiteName(t *testing.T) {
 		"Felicita Plaza (Escondido, CA)": "Felicita Plaza (Escondido, CA)",
 		"Solana at Grand":                "Solana at Grand",
 		"EFCC EV #3":                     "Efcc Ev",
+		"LOS COCHES MS A1, A2":           "Los Coches Ms",
 		"A1":                             "A1", // never strip the whole name
 	} {
 		if got := siteName(in); got != want {

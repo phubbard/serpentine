@@ -112,8 +112,11 @@ var bayCode = regexp.MustCompile(`^(#?\d+|[A-Z]\d{1,3}(-[A-Z]?\d{1,3})?)$`)
 // A07-A08" → "El Capitan") and title-cases names shouted in capitals. Mixed-case names are kept.
 func siteName(name string) string {
 	words := strings.Fields(name)
-	for len(words) > 1 && bayCode.MatchString(words[len(words)-1]) {
+	for len(words) > 1 && bayCode.MatchString(strings.TrimRight(words[len(words)-1], ",;")) {
 		words = words[:len(words)-1]
+	}
+	if n := len(words); n > 0 {
+		words[n-1] = strings.TrimRight(words[n-1], ",;")
 	}
 	out := strings.Join(words, " ")
 	if out != strings.ToUpper(out) {
