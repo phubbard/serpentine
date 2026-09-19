@@ -47,7 +47,8 @@ Response (200):
     "km": 141.8, "curvy_km": 28.0,
     "road_class_km": { "secondary": 80.1, "primary": 50.2, ... },
     "urban_density_km": { "rural": 120.0, "residential": 21.8 },
-    "surface_km": { "asphalt": 130.0, "missing": 11.8 }
+    "surface_km": { "asphalt": 130.0, "missing": 11.8 },
+    "repeated_km": 2.2               // road ridden more than once, every pass counted (spurs)
   },
   "loop": {                          // loop mode only
     "target_m": 150000, "heading_deg": 315, "seed": 6, "score": -0.103,
@@ -97,8 +98,14 @@ ADR-012 for why pasting it into Safari behaves differently).
 
 `https://serpentine.phfactor.net/v1/` (trailing slash) is a self-contained browser test UI for loops
 and out-and-backs — start presets / my location / lat,lon, distance, twistiness, direction, EV toggle with
-starting charge — showing the result and tappable Apple Maps / Google Maps / GPX links. Embedded in
+starting charge — showing the route on a map and tappable Apple Maps / Google Maps / GPX links. Embedded in
 the binary from `server/web/index.html`; a CSP forbids loading anything from another host.
+
+## GET /tiles/{z}/{x}/{y}.png and /static/…
+
+Map support for the test page (ADR-016): OSM raster tiles through a caching proxy on axiom (z ≤ 17;
+404 when the server runs without `-tile-cache`), and vendored Leaflet under `/static/`. Not for the
+iOS app, which displays with MapKit.
 
 ## GET /plan/{id}.gpx
 

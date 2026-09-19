@@ -10,6 +10,7 @@ point-to-point rides, scored loops and out-and-backs with charge stops and an Ap
 
 - `FEASIBILITY.md` — market survey, technical feasibility, costs, risks, sources (Sept 2026)
 - `server/` — serpentine-api (Go, stdlib only): loops, charging, Apple Maps handoff, browser test page
+  with a map (vendored Leaflet, cached OSM tiles)
 - `infra/` — GraphHopper 11 motorcycle profile, docker-compose, Caddy site block, setup + smoke tests
 - `demo/`, `tools/` — a hardwired demo ride and the script that routes it
 - `docs/` — roadmap, decisions, API contract

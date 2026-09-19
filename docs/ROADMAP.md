@@ -45,6 +45,14 @@ Acceptance:
 - [x] Handoff waypoints on significant roads, endpoints on public roads (ADR-013)
 - [x] Caddy points `/v1/*` at serpentine-api (`infra/caddy/serpentine.caddyfile`) — live and verified 2026-09-18
 - [x] `out_and_back` mode (ADR-015)
+- [x] Browser test page at `/v1/` with a map: vendored Leaflet + caching OSM tile proxy (ADR-016)
+- [x] Loops penalise repeated road (round_trip spurs; ADR-010 amendment, ADR-012 resolution)
+- [ ] **Self-hosted vector tiles** replace the tile proxy: Protomaps PMTiles extract (California or
+      us-west) on axiom, vendored MapLibre GL + style/glyphs/sprites, served under `/v1/` (ADR-016)
+- [ ] Verify forest roads: a 150 km Ramona loop (seed 1) used Eagle Peak / Boulder Creek / Engineers
+      Rd (FR 13S06/08/03), tagged asphalt in OSM but partly dirt in reality further along; and with
+      `avoid: unpaved` it still carried 0.8 km dirt + 0.7 km gravel. Check against imagery; consider
+      penalising `unclassified` roads with a forest-road ref or missing surface
 - [x] Route cache keyed on request hash; repeat requests served in < 50 ms (in-memory, ~1 ms)
 - [x] NREL key read from env or a mode-600 key file, never logged, never returned (ADR-014)
 - [x] Charge-stop planning in `POST /v1/plan` (`charging`), stops become handoff waypoints

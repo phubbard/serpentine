@@ -124,6 +124,13 @@ measured 81 mi vs our 88 mi (−8 %), against < 1 % on the demo. Suspected: the 
 waypoints sit 1 km into roads that start near CA-76, so Apple reaches them and turns back instead of
 climbing Palomar. To confirm from Apple's step list; if so, place waypoints mid-road for long roads.
 
+*Resolved 2026-09-18:* wrong suspect. Routing a near-shortest path (distance_influence 2000) through
+the same 10 waypoints gives 80.5 mi — Apple's 81. Apple followed every stop, the Palomar climb
+included; the gap was **our** route riding a 4.2 km out-and-back spur around a round_trip turning
+point on E Valley Pkwy / Valley Center Rd, which Apple rightly skipped. Fixed in scoring (ADR-010
+amendment). Useful method: "shortest path through our waypoints" predicts Apple's distance, so
+any leg where it's much shorter than ours is a place Apple will leave our route.
+
 ## ADR-013 · 2026-09-18 · Handoff waypoints go into each significant road, not at divergences
 
 API.md's first plan was a divergence search: route the *fastest car* path between waypoints as a
@@ -168,3 +175,20 @@ shared by necessity. Turnarounds for distance-only requests are fanned out like 
 and scored with an extra shared-road term. Known bias: the return is usually longer than the out
 leg, so totals land 6–13 % over target after one rescale; a second rescale or an asymmetric radius
 could tighten that if it matters on the road.
+
+## ADR-016 · 2026-09-18 · Test-page map: caching raster proxy now, self-hosted vector tiles later
+
+GraphHopper's `/maps` UI loads tiles straight from tile.openstreetmap.org (`defaultTiles:
+'OpenStreetMap'` in its config.js), which would hand every viewer's IP and viewport to a third party
+and re-expose raw GraphHopper publicly — both against the one-host rule. Instead the test page draws
+our own plan with Leaflet 1.9.4 (BSD-2, vendored from the npm tarball with integrity checked,
+embedded at `/v1/static/`) over tiles from `/v1/tiles/{z}/{x}/{y}.png`: a disk cache on axiom that
+fetches each tile once from OSM with an identifying User-Agent, ≤ 2 upstream connections,
+single-flight per tile, serves stale on upstream failure, z ≤ 17. OSM sees axiom, never the viewer.
+Tile paths are locations, so the request log records `/v1/tiles` without z/x/y. The page carries
+OSM attribution.
+
+It's a stopgap: the goal is self-hosted **vector** tiles (Protomaps PMTiles for California or
+us-west, a few GB to low tens of GB; planet ~120 GB) rendered with vendored MapLibre GL, a
+self-hosted style, glyphs and sprites — zero third-party requests ever, and the same stack Phase 4
+(Ferrostar) would need. Roadmap item.
