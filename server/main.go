@@ -237,6 +237,9 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request) {
 	if ob := res.OutAndBack; ob != nil {
 		attrs = append(attrs, "out_km", ob.OutKM, "back_km", ob.BackKM, "shared_km", ob.SharedKM, "candidates", ob.Candidates, "failed", ob.Failed)
 	}
+	if d := res.Detour; d != nil {
+		attrs = append(attrs, "fastest_s", d.FastestS, "extra_s", d.ExtraS, "twistiness", d.Twistiness)
+	}
 	if b := res.Budget; b != nil {
 		attrs = append(attrs, "budget_s", b.TargetS, "budget_used_s", b.TotalS, "budget_fits", b.Fits, "attempts", attempts)
 	}
@@ -432,12 +435,13 @@ func (s *server) planOnce(ctx context.Context, req *planRequest, cm *customModel
 		path    *ghPath
 		loop    *loopInfo
 		ob      *outBackInfo
+		detour  *detourInfo
 		turnIdx = -1
 		err     error
 	)
 	switch req.Mode {
 	case "point_to_point":
-		path, err = s.gh.route(ctx, ghRequest{Points: [][2]float64{*req.Start, *req.End}, CustomModel: cm})
+		path, detour, err = s.planAtoB(ctx, req, cm)
 	case "loop":
 		path, loop, err = s.planLoop(ctx, req, cm)
 	case "out_and_back":
@@ -454,7 +458,9 @@ func (s *server) planOnce(ctx context.Context, req *planRequest, cm *customModel
 			return nil, errChargerData
 		}
 	}
-	return buildResult(id, req.Mode, path, loop, ob, turnIdx, stations, req.Charging), nil
+	res := buildResult(id, req.Mode, path, loop, ob, turnIdx, stations, req.Charging)
+	res.Detour = detour
+	return res, nil
 }
 
 var errChargerData = errors.New("charger data unavailable")

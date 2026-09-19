@@ -119,17 +119,32 @@ Acceptance:
       optimistic on twisty roads, so calibrate against the first real ride logs (ADR-014).
 - [ ] Time-boxed loops with a stop: "3 hours with lunch" → the above plus one amenity stop near the
       midpoint
-- [ ] **Commute mode** (tester feedback 2026-09-19): saved Home and Work, "take me to work" / "take me
-      home", and a *different* good route each day within a time budget over the fastest (e.g. +10 /
-      +20 / +30 min). Server: `mode: commute` = A→B through a seeded via-point offset from the direct
-      line (perpendicular offset scaled to the budget), scored on curvature within the time cap. Seed =
-      day number so each day differs and the same day is repeatable. Check first whether GraphHopper's
-      `alternative_route` works in LM/hybrid mode; if so, alternatives are cheaper than via-points.
-      Variety: the app keeps the last ~5 commute polylines *on the device* and sends them as a penalty
-      corridor (the out-and-back mechanism, ADR-015), so "not yesterday's roads" never needs server
-      state. Home and Work stay on the phone (UserDefaults); the server sees only two points per request,
-      the same as any A→B plan, so the privacy policy doesn't change. Morning and evening are just A↔B
-      swapped. Charging is rarely relevant to a commute; leave it off by default.
+**Commute** (tester feedback 2026-09-19): "given work and home, vary the route". Split into slices so
+the useful part ships first. Measured 2026-09-19: GraphHopper's `alternative_route` *does* work under
+LM (3 paths plain, 2 once the twistiness model is applied, ~0.1 s), so alternatives come before
+via-points. Home and Work live on the phone; the server keeps seeing two points per request, exactly
+like any A→B plan, so the privacy policy is unaffected.
+
+- [x] **Commute slice 1 — A→B with a detour budget** (2026-09-19, ADR-019): the app gets a destination and an "extra
+      time you'll spend" control; `point_to_point` gains `max_extra_s`, routing the fastest line as a
+      baseline and stepping twistiness down until the curvy route fits the cap. Useful on its own (the
+      long-standing A→B item). **Finding: valley commutes have nothing to offer.** San Jose → NVIDIA HQ
+      returns the same 12-minute route whatever the budget (0.1 km curvy); Los Gatos → NVIDIA likewise.
+      Santa Cruz → NVIDIA over CA 9 has 19 km of curves and they're already on the fastest line. Slice 2
+      is only worth building for riders with hills between home and work — confirm with the tester first.
+- [ ] **Commute slice 2 — a different route each day** (~4–5 h): score `alternative_route` candidates
+      with `score.go`, reject any over the cap, rotate by day number (repeatable, differs Mon/Tue).
+      Needs an alternatives fixture and an ADR. Fallback if 2 alternatives prove too few: seeded
+      via-points offset from the direct line (+2–3 h).
+- [ ] **Commute slice 3 — commute polish** (~3–4 h): saved Home and Work (UserDefaults), to-work /
+      to-home swap, and the phone sending its last ~5 simplified polylines so the server penalises them
+      (reuse `corridorModel`, ADR-015, weaker multiplier; watch the 64 KB body cap). Then screenshots
+      and the public pages.
+- [ ] **Commute tuning** (after real commutes, bike arrives October): our profile is tuned for empty
+      mountain roads, and a "curvy" detour through town means lights and residential streets. Likely
+      needs an urban_density penalty — per-request if possible, since a base-profile change costs a
+      25-minute reimport per iteration (ADR-009). Whether a variant is *pleasant* is a judgment only
+      riding it can settle.
 - [ ] Route variety: seed rotation and "not this road again" exclusions
 - [ ] Charger reliability: Open Charge Map as a second source; flag single-port sites
 

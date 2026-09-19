@@ -6,6 +6,7 @@ struct PlanView: View {
     @Environment(Planner.self) private var planner
     @Environment(LocationProvider.self) private var location
     @State private var searching = false
+    @State private var searchingDestination = false
 
     var body: some View {
         @Bindable var planner = planner
@@ -23,29 +24,45 @@ struct PlanView: View {
                 Button("Search for a place", systemImage: "magnifyingglass") { searching = true }
             }
 
-            Section("Ride") {
+            Section {
                 Picker("Ride", selection: $planner.mode) {
                     Text("Loop").tag(RideMode.loop)
                     Text("Out and back").tag(RideMode.outAndBack)
+                    Text("Go somewhere").tag(RideMode.pointToPoint)
                 }
                 .pickerStyle(.segmented)
-                Picker("Plan by", selection: $planner.budget) {
-                    ForEach(RideBudget.allCases) { Text($0.label).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                switch planner.budget {
-                case .distance:
-                    LabeledContent("Distance", value: Format.distance(km: planner.distanceKm))
-                    Slider(value: $planner.distanceKm, in: 40...400, step: 10)
-                case .time:
-                    LabeledContent("Time", value: Format.duration(seconds: planner.durationMin * 60))
-                    Slider(value: $planner.durationMin, in: 30...480, step: 15)
+                if planner.mode == .pointToPoint {
+                    destinationRow
+                    Button("Choose destination", systemImage: "magnifyingglass") { searchingDestination = true }
+                    LabeledContent("Extra time", value: "+\(Int(planner.maxExtraMin)) min")
+                    Slider(value: $planner.maxExtraMin, in: 0...60, step: 5)
+                } else {
+                    Picker("Plan by", selection: $planner.budget) {
+                        ForEach(RideBudget.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    switch planner.budget {
+                    case .distance:
+                        LabeledContent("Distance", value: Format.distance(km: planner.distanceKm))
+                        Slider(value: $planner.distanceKm, in: 40...400, step: 10)
+                    case .time:
+                        LabeledContent("Time", value: Format.duration(seconds: planner.durationMin * 60))
+                        Slider(value: $planner.durationMin, in: 30...480, step: 15)
+                    }
                 }
                 LabeledContent("Twistiness", value: twistLabel)
                 Slider(value: $planner.twistiness, in: 0...1, step: 0.1)
-                Picker("Head", selection: $planner.heading) {
-                    Text("Any direction").tag(Heading?.none)
-                    ForEach(Heading.allCases) { Text($0.label).tag(Heading?.some($0)) }
+                if planner.mode != .pointToPoint {
+                    Picker("Head", selection: $planner.heading) {
+                        Text("Any direction").tag(Heading?.none)
+                        ForEach(Heading.allCases) { Text($0.label).tag(Heading?.some($0)) }
+                    }
+                }
+            } header: {
+                Text("Ride")
+            } footer: {
+                if planner.mode == .pointToPoint {
+                    Text("The quickest way, plus up to the extra time you allow spent on better roads.")
                 }
             }
 
@@ -71,7 +88,7 @@ struct PlanView: View {
                         Spacer()
                     }
                 }
-                .disabled(planner.start == nil || planner.isPlanning)
+                .disabled(!planner.canPlan || planner.isPlanning)
                 if let error = planner.errorMessage {
                     Text(error).foregroundStyle(.red)
                 }
@@ -79,7 +96,12 @@ struct PlanView: View {
         }
         .navigationTitle("Serpentine")
         .sheet(isPresented: $searching) {
-            PlaceSearchView(near: location.coordinate) { planner.start = $0 }
+            PlaceSearchView(title: "Start from", near: location.coordinate) { planner.start = $0 }
+        }
+        .sheet(isPresented: $searchingDestination) {
+            PlaceSearchView(title: "Go to", near: planner.start?.coordinate ?? location.coordinate) {
+                planner.destination = $0
+            }
         }
     }
 
@@ -97,8 +119,20 @@ struct PlanView: View {
         }
     }
 
+    @ViewBuilder private var destinationRow: some View {
+        if let destination = planner.destination {
+            Label(destination.name, systemImage: "flag.circle.fill")
+        } else {
+            Label("No destination chosen", systemImage: "flag.slash").foregroundStyle(.secondary)
+        }
+    }
+
     private var planButtonTitle: String {
-        planner.mode == .loop ? "Plan loop" : "Plan out and back"
+        switch planner.mode {
+        case .loop: "Plan loop"
+        case .outAndBack: "Plan out and back"
+        case .pointToPoint: "Plan the way there"
+        }
     }
 
     private var twistLabel: String {
@@ -110,8 +144,9 @@ struct PlanView: View {
     }
 }
 
-/// MapKit place search for the start point.
+/// MapKit place search for a start or destination.
 struct PlaceSearchView: View {
+    var title = "Start from"
     let near: CLLocationCoordinate2D?
     let choose: (StartPoint) -> Void
     @Environment(\.dismiss) private var dismiss
@@ -132,7 +167,7 @@ struct PlaceSearchView: View {
                 try? await Task.sleep(for: .milliseconds(300)) // debounce typing
                 results = await Planner.search(query, near: near)
             }
-            .navigationTitle("Start from")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { Button("Cancel") { dismiss() } }
         }

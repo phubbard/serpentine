@@ -22,7 +22,8 @@ type planRequest struct {
 	End        *[2]float64   `json:"end,omitempty"`
 	Turnaround *[2]float64   `json:"turnaround,omitempty"`
 	DistanceM  float64       `json:"distance_m,omitempty"`
-	DurationS  float64       `json:"duration_s,omitempty"` // loop, out_and_back: ride time instead of distance
+	DurationS  float64       `json:"duration_s,omitempty"`  // loop, out_and_back: ride time instead of distance
+	MaxExtraS  *float64      `json:"max_extra_s,omitempty"` // point_to_point: seconds of detour allowed over the quickest route
 	HeadingDeg *float64      `json:"heading_deg,omitempty"`
 	Seed       *int64        `json:"seed,omitempty"`
 	Twistiness *float64      `json:"twistiness,omitempty"`
@@ -56,6 +57,9 @@ func (r *planRequest) normalize() error {
 			return err
 		}
 		r.DistanceM, r.HeadingDeg, r.Seed, r.Turnaround = 0, nil, nil, nil
+		if r.MaxExtraS != nil && (*r.MaxExtraS < 0 || *r.MaxExtraS > 7200) {
+			return badf("max_extra_s must be between 0 and 7200")
+		}
 	case "out_and_back":
 		r.End = nil
 		if r.Turnaround != nil {
@@ -77,6 +81,9 @@ func (r *planRequest) normalize() error {
 		r.normalizeHeadingSeed()
 	default:
 		return badf(`mode must be "loop", "out_and_back" or "point_to_point"`)
+	}
+	if r.Mode != "point_to_point" {
+		r.MaxExtraS = nil
 	}
 	if err := r.normalizeCharging(); err != nil {
 		return err
@@ -240,6 +247,7 @@ type planResult struct {
 	Instructions []instructionOut `json:"instructions"`
 	Stats        routeStats       `json:"stats"`
 	Loop         *loopInfo        `json:"loop,omitempty"`
+	Detour       *detourInfo      `json:"detour,omitempty"` // point_to_point with max_extra_s
 	Budget       *budgetInfo      `json:"budget,omitempty"` // duration_s requests only
 	OutAndBack   *outBackInfo     `json:"out_and_back,omitempty"`
 	Energy       *energySummary   `json:"energy,omitempty"`   // charging requests only

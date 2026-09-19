@@ -558,3 +558,57 @@ func TestDistancePlanHasNoBudget(t *testing.T) {
 		t.Error("distance plans shouldn't carry a budget block")
 	}
 }
+
+func TestDetourBudget(t *testing.T) {
+	var calls atomic.Int32
+	gh := fakeGH(t, nil, &calls)
+	defer gh.Close()
+	api := testServer(gh)
+	defer api.Close()
+
+	// Without max_extra_s: one route, no detour block, as before.
+	code, res := post(t, api.URL+"/v1/plan", `{"mode":"point_to_point","start":[-117.2,32.9],"end":[-116.8,33.0]}`)
+	if code != 200 {
+		t.Fatalf("plain point_to_point: %d", code)
+	}
+	if _, ok := res["detour"]; ok {
+		t.Error("no budget asked for, so no detour block")
+	}
+	if n := calls.Load(); n != 1 {
+		t.Errorf("%d routing calls for a plain A→B, want 1", n)
+	}
+
+	// With a budget: a baseline route plus the twistiness attempt, and the cost reported.
+	calls.Store(0)
+	code, res = post(t, api.URL+"/v1/plan",
+		`{"mode":"point_to_point","start":[-117.2,32.9],"end":[-116.8,33.0],"twistiness":0.9,"max_extra_s":900}`)
+	if code != 200 {
+		t.Fatalf("budgeted point_to_point: %d", code)
+	}
+	d, ok := res["detour"].(map[string]any)
+	if !ok {
+		t.Fatal("no detour block")
+	}
+	if d["max_extra_s"].(float64) != 900 {
+		t.Errorf("max_extra_s = %v", d["max_extra_s"])
+	}
+	// The fake returns the same path every time, so the full twistiness fits and costs nothing.
+	if d["extra_s"].(float64) != 0 || d["twistiness"].(float64) != 0.9 || !d["fits"].(bool) {
+		t.Errorf("detour = %v", d)
+	}
+	if n := int(calls.Load()); n > len(detourSteps)+1 {
+		t.Errorf("%d routing calls: the step-down isn't bounded", n)
+	}
+
+	// A detour budget is meaningless without a destination, and out of range is a 400.
+	if code, res := post(t, api.URL+"/v1/plan",
+		`{"mode":"loop","start":[-116.868,33.042],"distance_m":100000,"max_extra_s":600}`); code != 200 {
+		t.Errorf("loop with max_extra_s: %d", code)
+	} else if _, ok := res["detour"]; ok {
+		t.Error("max_extra_s should be dropped for loops, not honoured")
+	}
+	if code, _ := post(t, api.URL+"/v1/plan",
+		`{"mode":"point_to_point","start":[-117.2,32.9],"end":[-116.8,33.0],"max_extra_s":9999}`); code != 400 {
+		t.Errorf("max_extra_s 9999: %d, want 400", code)
+	}
+}

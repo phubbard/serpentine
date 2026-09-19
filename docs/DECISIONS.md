@@ -252,3 +252,28 @@ Not done: the candidate *scoring* still uses the estimated distance, so a time-b
 against a target that may be 10 % off. It matters little because the rescale fixes the winner, but if
 time budgets become the common case, score against time directly. Calibrate `budgetSpeedKMH` from the
 first real ride logs (ADR-014).
+
+## ADR-019 · 2026-09-19 · A→B buys curves with a time budget; flat commutes have nothing to sell
+
+Commute feedback ("given work and home, vary the route") starts with the simplest useful piece:
+`point_to_point` plus `max_extra_s`, the detour the rider will accept over the quickest way.
+
+The server can't ask GraphHopper for "curvy but no more than 15 minutes longer" — `twistiness` is a
+priority multiplier, and how many minutes it costs depends entirely on the terrain between the two
+points. So it measures instead: route the quick way as a baseline, then try the requested twistiness
+and step it down (full, two thirds, one third) until one lands inside the cap, keeping the twistiest
+that fits. Four routes at worst, each ~100–300 ms. The `detour` block reports `fastest_s`, `extra_s`
+and the `twistiness` actually afforded, so the app can say what the curves cost.
+
+**The measurement that matters is negative.** On the tester's real commute, downtown San Jose to
+NVIDIA HQ in Santa Clara, every budget from 0 to 30 minutes returns the same 12-minute route with
+0.1 km of curvy road. Los Gatos → NVIDIA is the same story. The valley is a street grid: there is no
+better road to buy, so the budget is unspent. Where the terrain has something — Santa Cruz → NVIDIA
+over CA 9 — the good roads are already on the fastest line (19 km of curves at +0 min) and the budget
+adds a little more.
+
+The consequence for the roadmap: **commute variety (slice 2) is only worth building for riders with
+hills between home and work.** Route alternatives and day-rotation can't invent curves that the map
+doesn't have. Before building it, ask the tester what their commute actually crosses; if it's valley
+grid, the honest answer is that Serpentine has nothing to offer on that trip, and the feature should
+target the weekend-ride-home case (a long way round, not a commute) instead.

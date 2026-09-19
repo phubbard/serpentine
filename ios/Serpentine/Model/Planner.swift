@@ -49,6 +49,8 @@ final class Planner {
     var charging = false
     var socPercent: Double = 100
     var start: StartPoint?
+    var destination: StartPoint?
+    var maxExtraMin: Double = 15
 
     private(set) var isPlanning = false
     private(set) var errorMessage: String?
@@ -61,15 +63,21 @@ final class Planner {
         self.api = api
     }
 
+    /// Everything a plan needs is chosen: a start, and for "go somewhere" a destination too.
+    var canPlan: Bool { start != nil && (mode != .pointToPoint || destination != nil) }
+
     func request(seed: Int) -> PlanRequest? {
-        guard let start else { return nil }
+        guard let start, canPlan else { return nil }
+        let goingSomewhere = mode == .pointToPoint
         return PlanRequest(
             mode: mode,
             start: start.coordinate.lonLat,
-            distanceM: budget == .distance ? distanceKm * 1000 : nil,
-            durationS: budget == .time ? durationMin * 60 : nil,
-            headingDeg: heading?.rawValue,
-            seed: seed,
+            end: goingSomewhere ? destination?.coordinate.lonLat : nil,
+            distanceM: goingSomewhere || budget == .time ? nil : distanceKm * 1000,
+            durationS: goingSomewhere || budget == .distance ? nil : durationMin * 60,
+            maxExtraS: goingSomewhere ? maxExtraMin * 60 : nil,
+            headingDeg: goingSomewhere ? nil : heading?.rawValue,
+            seed: goingSomewhere ? nil : seed,
             twistiness: twistiness,
             charging: charging ? ChargingOptions(socStart: socPercent / 100) : nil
         )

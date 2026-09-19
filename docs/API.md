@@ -15,6 +15,8 @@ built.
   "mode": "loop" | "point_to_point" | "out_and_back",
   "start": [-116.868, 33.042],
   "end": [-116.60, 33.08],          // point_to_point only
+  "max_extra_s": 900,               // point_to_point: seconds of detour allowed over the quick way
+                                    //   (0 – 7200); see "detour" in the response
   "turnaround": [-116.60, 33.08],   // out_and_back: optional; else chosen from distance_m
   "distance_m": 150000,             // loop, out_and_back (total, both legs): 20 000 – 500 000
   "duration_s": 7200,               // loop, out_and_back: time budget instead of distance_m
@@ -187,3 +189,20 @@ The response carries a `budget` block on these requests:
 `fits` is false when even the shortest correction ran over (rare: a 30-minute budget in an area whose
 shortest loop is longer, or charging that can't be avoided). Show the ride anyway; it's the best
 available, and `total_s` says what it really costs.
+
+## Detour budgets (`max_extra_s`, `point_to_point`)
+
+"Get me there, but I'll spend fifteen minutes on better roads." The server routes the quick way first
+(same `avoid` rules, no curvature preference) as the baseline, then tries the requested `twistiness`
+and, if that overruns the baseline plus `max_extra_s`, steps it down (`detourSteps`: full, two thirds,
+one third) until one fits. At most four routes, each ~100–300 ms. Without `max_extra_s` the mode is
+unchanged: one route at the requested twistiness.
+
+```json
+"detour": { "fastest_s": 1440, "extra_s": 120, "max_extra_s": 900, "twistiness": 0.9, "fits": true }
+```
+
+`fits: false` means no curvy variant came in under the cap, so the plan is the quick way. `extra_s`
+near zero means the quick way already *is* the best road — common in a flat street grid, where a
+detour budget buys nothing at all (measured San Jose → Santa Clara: 0.1 km of curvy road whatever the
+budget).

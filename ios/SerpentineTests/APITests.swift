@@ -83,6 +83,20 @@ private func fixture(_ name: String) throws -> PlanResult {
     #expect(json.contains("\"duration_s\":7200") && !json.contains("distance_m"))
 }
 
+@MainActor @Test func goSomewhereNeedsADestination() throws {
+    let p = Planner()
+    p.start = StartPoint(name: "San Jose", coordinate: [-121.8863, 37.3382].coordinate)
+    p.mode = .pointToPoint
+    #expect(!p.canPlan, "a destination is the whole point of this mode")
+    #expect(p.request(seed: 1) == nil)
+    p.destination = StartPoint(name: "NVIDIA", coordinate: [-121.9633, 37.3702].coordinate)
+    p.maxExtraMin = 20
+    let r = try #require(p.request(seed: 1))
+    #expect(r.end == [-121.9633, 37.3702] && r.maxExtraS == 1200)
+    // Loop settings must not leak into an A→B request: the server rejects some and ignores the rest.
+    #expect(r.distanceM == nil && r.durationS == nil && r.seed == nil && r.headingDeg == nil)
+}
+
 @Test func climbUsesFeetOrMetres() {
     #expect(Format.climb(meters: 1000, locale: Locale(identifier: "en_US")) == "3,281 ft")
     #expect(Format.climb(meters: 1000, locale: Locale(identifier: "en_GB")).hasSuffix("m"))

@@ -70,7 +70,7 @@ struct ResultView: View {
                 Text(footnote).font(.footnote).foregroundStyle(.secondary)
             }
         }
-        .navigationTitle(plan.mode == "loop" ? "Loop" : "Out and back")
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             Button {
@@ -91,6 +91,14 @@ struct ResultView: View {
         .frame(maxWidth: .infinity)
     }
 
+    private var title: String {
+        switch plan.mode {
+        case "loop": "Loop"
+        case "out_and_back": "Out and back"
+        default: "The way there"
+        }
+    }
+
     /// Under a time budget the second number is what matters, so label it against the budget.
     private var timeLabel: String {
         if let b = plan.budget {
@@ -102,6 +110,11 @@ struct ResultView: View {
     private var footnote: String {
         let curvy = Format.distance(km: plan.stats.curvyKm)
         var s = "\(curvy) of properly twisty road. Apple Maps gets \(plan.handoff.waypoints.count) stops so it follows this route."
+        if let d = plan.detour {
+            s += d.extraS < 60
+                ? " No better roads were worth a detour here: this is the quick way."
+                : " \(Format.duration(seconds: d.extraS)) longer than the quick way, spent on better roads."
+        }
         if let b = plan.budget, !b.fits {
             s += " This is the shortest ride we could find here; it runs over your \(Format.duration(seconds: b.targetS))."
         }

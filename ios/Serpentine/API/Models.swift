@@ -19,6 +19,7 @@ struct PlanRequest: Encodable, Sendable {
     var end: [Double]?
     var distanceM: Double?
     var durationS: Double?
+    var maxExtraS: Double?
     var headingDeg: Double?
     var seed: Int?
     var twistiness: Double
@@ -42,6 +43,7 @@ struct PlanResult: Decodable, Sendable, Identifiable, Hashable {
     let stats: Stats
     let loop: LoopInfo?
     let budget: Budget?
+    let detour: Detour?
     let outAndBack: OutAndBackInfo?
     let energy: Energy?
     let chargers: [Charger]?
@@ -57,6 +59,15 @@ struct PlanResult: Decodable, Sendable, Identifiable, Hashable {
 struct Budget: Decodable, Sendable {
     let targetS: Double
     let totalS: Double
+    let fits: Bool
+}
+
+/// Present on "go somewhere" plans: what the better roads cost over the quickest way.
+struct Detour: Decodable, Sendable {
+    let fastestS: Double
+    let extraS: Double
+    let maxExtraS: Double
+    let twistiness: Double
     let fits: Bool
 }
 
