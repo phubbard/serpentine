@@ -8,6 +8,7 @@ DEVELOPMENT_TEAM = NSR65JVW9F
 // APP_STORE_KEY_ID = ABCD1234XY
 // APP_STORE_ISSUER_ID = 12345678-90ab-cdef-1234-567890abcdef
 
-// Comma-separated TestFlight beta groups auto-distributed by `make testflight-notes`.
-// `make testflight-groups` lists the exact names.
-// TESTFLIGHT_GROUPS = Internal
+// Comma-separated TestFlight beta groups auto-distributed by `make testflight-notes`
+// (`make testflight-groups` lists names). Only for groups WITHOUT automatic distribution: an internal
+// group with it on already gets every build and ASC rejects a manual attach.
+// TESTFLIGHT_GROUPS = Public beta
