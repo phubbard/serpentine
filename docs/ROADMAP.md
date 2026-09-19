@@ -43,7 +43,7 @@ Acceptance:
 - [x] Loops via candidate fan-out + scoring (ADR-010): no track/unpaved vertices, distance within
       ~10 % of target, falls back gracefully when a heading points off the map (3–7 %, 100–330 ms)
 - [x] Handoff waypoints on significant roads, endpoints on public roads (ADR-013)
-- [ ] Caddy points `/v1/*` at serpentine-api (`infra/caddy/serpentine.caddyfile`)
+- [x] Caddy points `/v1/*` at serpentine-api (`infra/caddy/serpentine.caddyfile`) — live and verified 2026-09-18
 - [ ] `out_and_back` mode (ADR-005)
 - [x] Route cache keyed on request hash; repeat requests served in < 50 ms (in-memory, ~1 ms)
 - [ ] NREL key read from env, never logged, never returned
