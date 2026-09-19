@@ -112,3 +112,9 @@ destination". Handoff source/destination/waypoints must sit on public, named roa
 should snap them to an edge whose `road_class` isn't SERVICE (or use the first named street on the
 polyline). Still unmeasured: behaviour at 12–15 waypoints, and how the stops feel under voice
 guidance on an actual ride.
+
+Testing gotcha: `maps.apple.com` is a universal link. Tapped from another app (Notes, Messages, a
+web page on another domain) it opens the Maps app; pasted into Safari's address bar, or loaded in a
+tab already on maps.apple.com, it stays in Safari as the web map with no "Open in Maps" button, and
+the web map's routing differs (3 h 15 min vs the app's 3 h 25 min for the same URL). Only the app
+result counts. The iOS app uses `UIApplication.shared.open(url)`, which goes straight to Maps.
