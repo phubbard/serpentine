@@ -168,6 +168,14 @@ Stop choice: furthest reachable site (fewest stops, longest legs), ties to more 
 considered for later: prefer sites with food/amenities (Phase 3), prefer higher-power sites when the
 bike has the Rapid Charger module (12.6 kW).
 
+*Amended 2026-09-18:* `chargers` is a selection, not the corridor. A 150 km loop from UTC has 173
+usable sites within 2 mi; the response now carries each stop, up to 2 backups within 10 km of it
+along the route (the stop's ports may be taken), and the 2 best alternates per 20 km, ranked on
+ports, power, 24 h access and off-route distance, Tesla-only sites lower (adapter). Each has a
+`role`; `energy.chargers_nearby` keeps the full count. UTC loop: 173 → 16. Calibration waits for
+the bike, which arrives in a few weeks (early-to-mid October 2026) — until then the model stays
+deliberately pessimistic.
+
 ## ADR-015 · 2026-09-18 · Out-and-back via a corridor penalty on the return (resolves ADR-005)
 
 ADR-005's plan works: GraphHopper accepts a per-request `areas` MultiPolygon (±300 m rectangles

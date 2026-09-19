@@ -56,7 +56,8 @@ Acceptance:
 - [x] Route cache keyed on request hash; repeat requests served in < 50 ms (in-memory, ~1 ms)
 - [x] NREL key read from env or a mode-600 key file, never logged, never returned (ADR-014)
 - [x] Charge-stop planning in `POST /v1/plan` (`charging`), stops become handoff waypoints
-- [~] Energy model unit-tested against the SR/S spec numbers — **still needs one real ride log** (ADR-014)
+- [~] Energy model unit-tested against the SR/S spec numbers — **still needs one real ride log** (ADR-014);
+      the bike arrives in a few weeks (early-to-mid October 2026)
 
 ## Phase 2 — `ios/`: SwiftUI app, TestFlight
 

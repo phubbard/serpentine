@@ -5,7 +5,8 @@ minimal traffic over minimum time; plans charge stops for a Zero SR/S; generates
 rides; hands off to Apple Maps for voice navigation. No subscription.
 
 Status: routing engine and API running in-house; iOS app not started. `serpentine-api` plans
-point-to-point rides, scored loops and out-and-backs with charge stops and an Apple Maps handoff; try it at
+point-to-point rides, scored loops and out-and-backs with charge stops (plus backup chargers) and an
+Apple Maps handoff; try it at
 <https://serpentine.phfactor.net/v1/>.
 
 - `FEASIBILITY.md` — market survey, technical feasibility, costs, risks, sources (Sept 2026)

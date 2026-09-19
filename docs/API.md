@@ -62,15 +62,17 @@ Response (200):
   "energy": {                       // charging requests only
     "usable_kwh": 15.1, "kwh_est": 14.42, "soc_start": 0.6, "soc_min_arrival": 0.15, "charge_to": 0.9,
     "soc_end_est": 0.29, "feasible": true, "stops": 1, "charge_min": 98,
+    "chargers_nearby": 173,          // every usable site in the 2 mi corridor
     "total_time_s": 13517,           // riding + charging + charger detours
     "warning": "..."                 // present when feasible is false
   },
-  "chargers": [                      // charging requests only; every usable site, in route order
+  "chargers": [                      // charging requests only; a selection, in route order (see below)
     { "id": "nrel:282931", "name": "…", "lonlat": [lon, lat], "address": "…", "network": "ChargePoint Network",
       "ports": 10, "power_kw": 6.5,  // advertised, 0 = unpublished; the bike charges at ≤ 6.6
       "connectors": ["J1772", "TESLA"], "hours": "24 hours daily", "pricing": "…",
       "km_from_start": 55.3, "off_route_km": 0.0, "soc_arrival_est": 0.26,
-      "stop": true, "dwell_min": 98 }
+      "stop": true, "role": "stop",  // "stop" | "backup" (≤ 2 within 10 km of a stop) | "alternate" (≤ 2 per 20 km)
+      "dwell_min": 98 }
   ],
   "handoff": {
     "apple_maps_url": "https://maps.apple.com/directions?source=lat,lon&waypoint=…&destination=lat,lon&mode=driving&avoid=tolls,highways",
@@ -156,4 +158,6 @@ Pedestals within 150 m merge into one site. Energy is summed along the polyline 
 model); when the pack would end below `soc_min_arrival`, the stop is the furthest site still
 reachable above it, charged to `charge_to` at `min(advertised kW, 6.6)`, up to 3 stops. The route
 itself is not re-routed through the charger; the charger becomes a handoff waypoint and Apple routes
-the detour. Detours are costed as 2 × off-route distance.
+the detour. Detours are costed as 2 × off-route distance. The response returns stops, backups and
+alternates rather than every site (urban corridors have hundreds); ranking favours more ports, full
+power, 24 h access, J1772 over Tesla-only, and closeness to the route.
