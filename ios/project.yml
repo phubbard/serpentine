@@ -1,0 +1,89 @@
+# serpentine iOS app. `make project` (xcodegen) generates Serpentine.xcodeproj (gitignored).
+# Layout and settings follow apple-deployment-playbook.md (copied from phubbard/mapbook).
+name: Serpentine
+options:
+  bundleIdPrefix: net.phfactor
+  deploymentTarget:
+    # 18.4 is the floor: the unified maps.apple.com/directions URL with repeated waypoint= needs it.
+    iOS: "18.4"
+  createIntermediateGroups: true
+  defaultConfig: Debug
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.4"
+    # Off so the scheme pre-action can read .git/ for the build number (playbook §5).
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    SWIFT_STRICT_CONCURRENCY: complete
+
+targets:
+  Serpentine:
+    type: application
+    platform: iOS
+    sources:
+      - path: Serpentine
+    configFiles:
+      Debug: Serpentine.xcconfig
+      Release: Serpentine.xcconfig
+    settings:
+      base:
+        # The bundle ID is forever (App Store identity + TCC anchor). Never change it.
+        PRODUCT_BUNDLE_IDENTIFIER: net.phfactor.serpentine
+        PRODUCT_NAME: Serpentine
+        MARKETING_VERSION: "0.1.0"
+        # CURRENT_PROJECT_VERSION comes from Build.gen.xcconfig (scheme pre-action, git commit count).
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        ENABLE_PREVIEWS: YES
+        # Maintained Info.plist: INFOPLIST_KEY_* auto-injection drops custom keys (playbook §5).
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Serpentine/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    dependencies:
+      - sdk: MapKit.framework
+      - sdk: CoreLocation.framework
+
+  SerpentineTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: SerpentineTests
+    configFiles:
+      Debug: Serpentine.xcconfig
+      Release: Serpentine.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.phfactor.serpentineTests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: Serpentine
+
+schemes:
+  Serpentine:
+    build:
+      preActions:
+        - name: Stamp build number from git
+          settingsTarget: Serpentine
+          script: |
+            cd "$SRCROOT" || exit 0
+            if BUILD=$(git rev-list --count HEAD 2>/dev/null); then
+              # Dirty tree: preview the next commit's number.
+              if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+                BUILD=$((BUILD + 1))
+              fi
+              echo "CURRENT_PROJECT_VERSION = $BUILD" > "$SRCROOT/Build.gen.xcconfig"
+            else
+              echo "CURRENT_PROJECT_VERSION = 1" > "$SRCROOT/Build.gen.xcconfig"
+            fi
+      targets:
+        Serpentine: all
+        SerpentineTests: [test]
+    test:
+      targets:
+        - SerpentineTests
+    run:
+      config: Debug
+    archive:
+      config: Release

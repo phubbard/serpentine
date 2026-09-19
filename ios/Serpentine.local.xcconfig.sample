@@ -1,0 +1,13 @@
+// Copy to Serpentine.local.xcconfig (gitignored). Comments are //, never #.
+
+DEVELOPMENT_TEAM = NSR65JVW9F
+
+// App Store Connect API key for `make upload-testflight` / `make testflight-notes`. Must have the
+// App Manager role or beta-group distribution 403s (playbook §2). The .p8 lives at
+// ~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8, never in the repo.
+// APP_STORE_KEY_ID = ABCD1234XY
+// APP_STORE_ISSUER_ID = 12345678-90ab-cdef-1234-567890abcdef
+
+// Comma-separated TestFlight beta groups auto-distributed by `make testflight-notes`.
+// `make testflight-groups` lists the exact names.
+// TESTFLIGHT_GROUPS = Internal

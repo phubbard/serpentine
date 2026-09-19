@@ -61,17 +61,20 @@ Acceptance:
 
 ## Phase 2 — `ios/`: SwiftUI app, TestFlight
 
-- [ ] Xcode project `net.phfactor.serpentine`, iOS 18.4+, SwiftUI + MapKit + CoreLocation, zero SPM
-- [ ] Plan screen: start (current location or search via `MKLocalSearch`), mode (loop / out-and-back /
-      A→B), distance or time budget, "twistiness" slider (maps to per-request `custom_model`),
-      "include charge stop" toggle
-- [ ] Result screen: MapKit polyline with segments coloured by curvature, distance / time / est. kWh,
-      charger pins with dwell estimate, "Navigate in Apple Maps" button (unified URL, `start=3`),
-      "Copy GPX" for Kurviger/Garmin users
+- [x] Xcode project `net.phfactor.serpentine`, iOS 18.4+, SwiftUI + MapKit + CoreLocation, zero SPM
+      (`ios/`, xcodegen, Swift 6 strict concurrency; builds and tests on iOS 27 and the 18.4 floor)
+- [x] Plan screen: start (current location or search via `MKLocalSearch`), mode (loop / out-and-back),
+      distance, "twistiness" slider (maps to per-request `custom_model`), direction, charging toggle +
+      starting charge. *Still to do: A→B mode, time budget.*
+- [x] Result screen: MapKit polyline, distance / time / climb, energy + charge stops with dwell,
+      charge-stop and turnaround pins, "Navigate in Apple Maps" (verified opening Maps with 10 stops
+      in the simulator), "Share GPX", "Another" ride. *Still to do: colour segments by curvature.*
 - [ ] Saved rides (local only, `Codable` to Application Support; no iCloud in v1)
-- [ ] Makefile + `apple-deployment-playbook.md` + `tools/set-testflight-notes.rb` copied from mapbook
-- [ ] Info.plist: location usage strings, `ITSAppUsesNonExemptEncryption=false`, category
-      `public.app-category.navigation`, `PrivacyInfo.xcprivacy`
+- [x] Makefile + `apple-deployment-playbook.md` + `tools/set-testflight-notes.rb` copied from mapbook
+      (iOS-only: `make build|test|run|upload-testflight|testflight-notes`, MIN_BUILDS=1)
+- [x] Info.plist: location usage strings, `ITSAppUsesNonExemptEncryption=false`, category
+      `public.app-category.navigation`, `PrivacyInfo.xcprivacy` (no tracking, no collected data)
+- [ ] App Store Connect app record for `net.phfactor.serpentine` (manual, web) — blocks TestFlight
 - [ ] Internal TestFlight build installed on Paul's phone; one real ride completed via handoff
 
 ## Phase 3 — Ride quality

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Tells `xcodebuild -exportArchive` how to package the iOS build for
+  App Store Connect / TestFlight distribution.
+
+  Different from tools/ExportOptions.plist (which is Developer ID for
+  Mac sideload). This one uses method: app-store-connect — Apple
+  re-signs the binary at the App Store side with its own certificate;
+  we just ship them an IPA signed with our distribution cert.
+
+  - method: app-store-connect  → TestFlight / App Store path
+  - signingStyle: automatic    → Xcode picks the matching iOS
+                                 Distribution certificate and
+                                 provisioning profile
+  - teamID: NSR65JVW9F         → must match Serpentine.local.xcconfig
+  - uploadSymbols: true        → dSYM upload so TestFlight crash
+                                 reports show symbolicated stacks
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store-connect</string>
+    <key>destination</key>
+    <string>export</string>
+    <key>signingStyle</key>
+    <string>automatic</string>
+    <key>teamID</key>
+    <string>NSR65JVW9F</string>
+    <key>uploadSymbols</key>
+    <true/>
+</dict>
+</plist>

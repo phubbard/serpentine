@@ -1,0 +1,102 @@
+import CoreLocation
+import MapKit
+import Observation
+
+/// Where a ride starts: the rider's location or a searched place.
+struct StartPoint: Equatable, Sendable {
+    var name: String
+    var coordinate: CLLocationCoordinate2D
+
+    static func == (a: StartPoint, b: StartPoint) -> Bool {
+        a.name == b.name && a.coordinate.latitude == b.coordinate.latitude && a.coordinate.longitude == b.coordinate.longitude
+    }
+}
+
+/// Compass directions offered for "head this way first"; nil = let the server try all eight.
+enum Heading: Double, CaseIterable, Identifiable {
+    case north = 0, northeast = 45, east = 90, southeast = 135, south = 180, southwest = 225, west = 270, northwest = 315
+    var id: Double { rawValue }
+    var label: String {
+        switch self {
+        case .north: "North"
+        case .northeast: "Northeast"
+        case .east: "East"
+        case .southeast: "Southeast"
+        case .south: "South"
+        case .southwest: "Southwest"
+        case .west: "West"
+        case .northwest: "Northwest"
+        }
+    }
+}
+
+/// Plan-screen state and the call to the API.
+@MainActor @Observable
+final class Planner {
+    var mode: RideMode = .loop
+    var distanceKm: Double = 150
+    var twistiness: Double = 0.5
+    var heading: Heading?
+    var charging = false
+    var socPercent: Double = 100
+    var start: StartPoint?
+
+    private(set) var isPlanning = false
+    private(set) var errorMessage: String?
+    var result: PlanResult?
+    private var seed = 1
+
+    private let api: SerpentineAPI
+
+    init(api: SerpentineAPI = .production) {
+        self.api = api
+    }
+
+    func request(seed: Int) -> PlanRequest? {
+        guard let start else { return nil }
+        return PlanRequest(
+            mode: mode,
+            start: start.coordinate.lonLat,
+            distanceM: distanceKm * 1000,
+            headingDeg: heading?.rawValue,
+            seed: seed,
+            twistiness: twistiness,
+            charging: charging ? ChargingOptions(socStart: socPercent / 100) : nil
+        )
+    }
+
+    /// Plans a new ride; `another` asks for a different one with the same settings. Each server
+    /// plan already tries seeds n and n+1, so "another" steps by two.
+    func plan(another: Bool = false) async {
+        seed = another ? seed + 2 : 1
+        guard let req = request(seed: seed) else {
+            errorMessage = "Choose a start point first."
+            return
+        }
+        isPlanning = true
+        errorMessage = nil
+        defer { isPlanning = false }
+        do {
+            result = try await api.plan(req)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func gpxFile(for plan: PlanResult) async -> URL? {
+        try? await api.downloadGPX(for: plan)
+    }
+
+    /// Place search through MapKit (Apple's service, like the map itself), biased to near `near`.
+    static func search(_ query: String, near: CLLocationCoordinate2D?) async -> [StartPoint] {
+        let req = MKLocalSearch.Request()
+        req.naturalLanguageQuery = query
+        req.resultTypes = [.address, .pointOfInterest]
+        let center = near ?? CLLocationCoordinate2D(latitude: 33.0, longitude: -116.9) // San Diego County
+        req.region = MKCoordinateRegion(center: center, latitudinalMeters: 300_000, longitudinalMeters: 300_000)
+        guard let resp = try? await MKLocalSearch(request: req).start() else { return [] }
+        return resp.mapItems.prefix(12).map { item in
+            StartPoint(name: item.name ?? "Unnamed place", coordinate: item.placemark.coordinate)
+        }
+    }
+}

@@ -1,0 +1,15 @@
+// Shared build settings. Per-developer values (signing team, App Store Connect key ids) live in
+// Serpentine.local.xcconfig, which is gitignored and included below.
+//
+// First-time setup:
+//   cp Serpentine.local.xcconfig.sample Serpentine.local.xcconfig
+//
+// Why this file exists: `xcodegen generate` rewrites Serpentine.xcodeproj from project.yml, wiping
+// anything set in Xcode's Signing & Capabilities UI. Settings from xcconfig survive.
+// Comments in xcconfig files are //, never # (a # line breaks every build).
+
+// Build.gen.xcconfig is written by the scheme's pre-build action from `git rev-list --count HEAD`.
+CURRENT_PROJECT_VERSION = 1
+#include? "Build.gen.xcconfig"
+
+#include? "Serpentine.local.xcconfig"

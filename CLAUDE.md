@@ -15,7 +15,10 @@ the reference for competitor and API facts; don't re-research what it already an
 - serpentine-api (Go, `server/`) running on axiom:8990 via launchd, public at `/v1`: `point_to_point`,
   `loop` and `out_and_back` plans, loop scoring, charge stops (NREL), Apple Maps handoff, GPX. Browser test page with a
   map at `https://serpentine.phfactor.net/v1/` (`server/web/`, embedded; tiles via a caching proxy in
-  `~/serpentine-api/tiles` on axiom — self-hosted vector tiles are the planned replacement). `make -C server test|run|deploy|logs`. No app code yet.
+  `~/serpentine-api/tiles` on axiom — self-hosted vector tiles are the planned replacement).
+- iOS app v0.1.0 in `ios/` (SwiftUI + MapKit, xcodegen): plan loop / out-and-back from location or
+  search, charging, map + stats, Apple Maps handoff, GPX share. `make -C ios build|test|run`.
+  Not yet on TestFlight: needs the App Store Connect app record. `make -C server test|run|deploy|logs`. No app code yet.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.
 - Shared agent memory: Memento page `/projects/serpentine.md` at `http://webserver:8321/mcp` (see
   Memento section). Keep it in sync with major status changes.
@@ -41,7 +44,8 @@ tools/
   demo_route.py      routes a demo through GraphHopper; prints roads, GPX/GeoJSON, Apple/Google Maps URLs
 server/              Go API in front of GraphHopper (+ NREL later): main.go, plan.go (loops),
                      score.go, handoff.go (Apple Maps), gh.go; Makefile deploys to axiom via launchd
-ios/                 (phase 2) SwiftUI app — not yet created
+ios/                 SwiftUI app: project.yml (xcodegen), Makefile, Serpentine/ (API/, Model/, Views/),
+                     SerpentineTests/ (decodes real API fixtures), tools/ (TestFlight notes, icon)
 ```
 
 ## Architecture
@@ -90,14 +94,19 @@ Principles that constrain every design choice here:
   SwiftUI, MapKit, CoreLocation — no SPM packages until a decision in `docs/DECISIONS.md` says so.
 - Python is acceptable for one-off tooling (analysis scripts, profile tuning), not for the server.
 - Commits: imperative subject, body explains *why*. Build number for iOS = `git rev-list --count HEAD`.
-- No secrets in the repo, ever. `*.env`, `*.local.xcconfig`, `.p8`, tokens → gitignored. The
-  `.gitignore` already covers `*.env`, `data/`, `*.osm.pbf`, `graph-cache/`, Xcode user state.
+- No secrets in the repo, ever. `*.env`, `*.local.xcconfig`, `.p8`, tokens → gitignored. The root
+  `.gitignore` covers `*.env`, `data/`, `*.osm.pbf`, `graph-cache/`; `ios/.gitignore` covers
+  `Serpentine.local.xcconfig`, `Build.gen.xcconfig`, the generated `.xcodeproj` and `build/`.
 - No cloud CI. Everything builds and ships from the dev Mac via Makefile. Copy
   `apple-deployment-playbook.md` from `~/code/mapbook/` into `ios/` when that phase starts and follow it.
 - Write scar tissue down: every gotcha that cost more than 10 minutes goes in `infra/README.md`
   (ops) or `docs/DECISIONS.md` (design). Future agents read those before touching anything.
 
 ### Apple specifics (from `/projects/apple-developer-account.md`, Memento)
+
+- Simulator names repeat across runtimes (two "iPhone 16"s); the Makefile pins `SIM_OS` too.
+  `make -C ios test SIM_DEVICE="iPhone 16" SIM_OS=18.4` checks the deployment floor.
+- Driving the simulator: short taps don't flip a `Toggle`; use a ~0.2 s tap.
 
 - Team ID `NSR65JVW9F` (paid individual). Bundle ID: **`net.phfactor.serpentine`** — chosen once,
   never changed ("pick it like a tattoo"). Display name can change; bundle ID cannot.
