@@ -30,6 +30,56 @@ type routeStats struct {
 	Surface   map[string]float64 `json:"surface_km"`
 	// CurvyKM is distance on edges with curvature < 0.94 (beeline/length; 1.0 = straight).
 	CurvyKM float64 `json:"curvy_km"`
+	// RepeatedKM is road ridden more than once, counting every pass (a 4 km spur ridden up and
+	// back counts 8). Round-trip turning points can leave such spurs (ADR-010 amendment).
+	RepeatedKM float64 `json:"repeated_km"`
+}
+
+const (
+	repeatSampleKM = 0.05
+	repeatSameKM   = 0.06 // same road: half the sample spacing + a divided carriageway
+	repeatMinGapKM = 0.5  // ...if they're at least this far apart along the route
+)
+
+// repeatedKM samples the route every 50 m and counts samples that another sample, well apart
+// along the route, lies on top of. A 50 m grid keeps it near-linear.
+func repeatedKM(coords [][]float64, cum []float64) float64 {
+	type sample struct {
+		pt []float64
+		km float64
+	}
+	var samples []sample
+	next := 0.0
+	for i, c := range coords {
+		if cum[i] >= next {
+			samples = append(samples, sample{c, cum[i]})
+			next = cum[i] + repeatSampleKM
+		}
+	}
+	const cell = 0.0005 // degrees, ~50 m
+	key := func(p []float64) [2]int { return [2]int{int(math.Floor(p[0] / cell)), int(math.Floor(p[1] / cell))} }
+	grid := map[[2]int][]int{}
+	for i, s := range samples {
+		k := key(s.pt)
+		grid[k] = append(grid[k], i)
+	}
+	total := 0.0
+	for _, s := range samples {
+		k := key(s.pt)
+	search:
+		for dx := -1; dx <= 1; dx++ {
+			for dy := -1; dy <= 1; dy++ {
+				for _, j := range grid[[2]int{k[0] + dx, k[1] + dy}] {
+					o := samples[j]
+					if math.Abs(o.km-s.km) >= repeatMinGapKM && haversineKM(o.pt, s.pt) < repeatSameKM {
+						total += repeatSampleKM
+						break search
+					}
+				}
+			}
+		}
+	}
+	return total
 }
 
 func computeStats(p *ghPath, cum []float64) routeStats {
@@ -55,6 +105,7 @@ func computeStats(p *ghPath, cum []float64) routeStats {
 			s.CurvyKM += cum[d.To] - cum[d.From]
 		}
 	}
+	s.RepeatedKM = math.Round(repeatedKM(p.Points.Coordinates, cum)*10) / 10
 	return s
 }
 

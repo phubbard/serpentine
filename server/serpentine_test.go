@@ -401,3 +401,27 @@ func TestTestPage(t *testing.T) {
 		}
 	}
 }
+
+func TestRepeatedKMFindsSpur(t *testing.T) {
+	// The Palomar fixture rides E Valley Pkwy / Valley Center Rd out and back for 4.2 km around a
+	// round_trip turning point (km 29.8-34.0 and 34.7-38.9): ~8.4 km counting both passes. The
+	// detector sees ~70 % of it (samples near the spur's tip don't match), plenty for a penalty.
+	p := fixturePath(t, "gh_palomar.json")
+	s := computeStats(p, cumulativeKM(p.Points.Coordinates))
+	if s.RepeatedKM < 5 || s.RepeatedKM > 10 {
+		t.Errorf("Palomar spur: repeated %.1f km, want 5-10", s.RepeatedKM)
+	}
+	// The demo ride reuses part of Pomerado Road out and back.
+	d := fixturePath(t, "gh_demo.json")
+	if r := computeStats(d, cumulativeKM(d.Points.Coordinates)).RepeatedKM; r < 10 {
+		t.Errorf("demo ride repeats Pomerado: want > 10 km, got %.1f", r)
+	}
+	// A straight line never repeats.
+	var line [][]float64
+	for i := 0; i < 500; i++ {
+		line = append(line, []float64{-117 + float64(i)*0.001, 33})
+	}
+	if r := repeatedKM(line, cumulativeKM(line)); r != 0 {
+		t.Errorf("straight line repeated %.1f km", r)
+	}
+}

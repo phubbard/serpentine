@@ -355,7 +355,8 @@ func (s *server) runTries(ctx context.Context, start [2]float64, tries []*loopTr
 			t.path, t.err = s.gh.route(ctx, req)
 			if t.err == nil {
 				t.stats = computeStats(t.path, cumulativeKM(t.path.Points.Coordinates))
-				t.score = loopScore(t.stats, targetM/1000)
+				// A loop shouldn't ride any road twice: spurs cost as much as dirt.
+				t.score = loopScore(t.stats, targetM/1000) + 5*t.stats.RepeatedKM/t.stats.KM
 			}
 		}(t)
 	}
