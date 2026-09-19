@@ -5,7 +5,7 @@ Base: `https://serpentine.phfactor.net/v1` (LAN: `http://axiom:8990/v1`). JSON. 
 Maps URLs, which Apple and Google want as `lat,lon`. Implemented in `server/`; this file is the
 contract the iOS app codes against — change both together.
 
-Status: `point_to_point` and `loop` implemented; `out_and_back` and `charging` return 400 until
+Status: `point_to_point`, `loop` and `charging` implemented; `out_and_back` returns 400 until
 built; `POST /chargers` not built.
 
 ## POST /plan
@@ -20,7 +20,12 @@ built; `POST /chargers` not built.
   "seed": 7,                        // loop: optional, default 1; change it for a different loop
   "twistiness": 0.5,                // 0..1, default 0.5 → per-request custom_model (ADR-009)
   "avoid": ["unpaved", "ferries"],  // default both; [] to allow them
-  "charging": { "enabled": false }  // not implemented; enabled=true → 400
+  "charging": {                     // optional; omitted or enabled=false → no energy/chargers
+    "enabled": true,
+    "soc_start": 1.0,                // default 1.0
+    "soc_min_arrival": 0.15,         // default 0.15; never plan below this
+    "charge_to": 0.9                 // default 0.9
+  }
 }
 ```
 
@@ -47,12 +52,25 @@ Response (200):
     "target_m": 150000, "heading_deg": 315, "seed": 6, "score": -0.103,
     "candidates": 16, "failed": 6, "requested_m": 112500
   },
+  "energy": {                       // charging requests only
+    "usable_kwh": 15.1, "kwh_est": 14.42, "soc_start": 0.6, "soc_min_arrival": 0.15, "charge_to": 0.9,
+    "soc_end_est": 0.29, "feasible": true, "stops": 1, "charge_min": 98,
+    "total_time_s": 13517,           // riding + charging + charger detours
+    "warning": "..."                 // present when feasible is false
+  },
+  "chargers": [                      // charging requests only; every usable site, in route order
+    { "id": "nrel:282931", "name": "…", "lonlat": [lon, lat], "address": "…", "network": "ChargePoint Network",
+      "ports": 10, "power_kw": 6.5,  // advertised, 0 = unpublished; the bike charges at ≤ 6.6
+      "connectors": ["J1772", "TESLA"], "hours": "24 hours daily", "pricing": "…",
+      "km_from_start": 55.3, "off_route_km": 0.0, "soc_arrival_est": 0.26,
+      "stop": true, "dwell_min": 98 }
+  ],
   "handoff": {
     "apple_maps_url": "https://maps.apple.com/directions?source=lat,lon&waypoint=…&destination=lat,lon&mode=driving&avoid=tolls,highways",
     "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=…&waypoints=…|…&destination=…&travelmode=driving",
     "source": [lon, lat], "destination": [lon, lat],
     "waypoints": [[lon, lat], ...],  // ≤ 10
-    "waypoint_roads": ["Pala Road", ...]
+    "waypoint_roads": ["Pala Road", "Charge: <site name>", ...]   // charge stops always included
   },
   "gpx_url": "/v1/plan/1f0c….gpx"
 }
@@ -62,7 +80,9 @@ Response (200):
 roundabout). `i` indexes `polyline`.
 
 Errors: `{"error": "..."}` with 400 (bad request / not implemented), 422 (the engine couldn't route
-it — point off the map, or no loop from this start), 502 (routing engine down).
+it — point off the map, or no loop from this start), 502 (routing engine or charger data down), 503
+(charging requested but the server has no NREL key). An infeasible charge plan is still a 200:
+`energy.feasible` is false and `energy.warning` says why.
 
 The iOS app opens `apple_maps_url` with `UIApplication.shared.open` (it goes straight to Maps; see
 ADR-012 for why pasting it into Safari behaves differently).
@@ -74,7 +94,7 @@ cache (24 h, 500 plans); 404 after that — request the plan again.
 
 ## GET /health
 
-`{"ok": true, "version": "10-bfa274f", "graphhopper": "11.0", "graph_data_date": "…", "graph_import_date": "…"}`;
+`{"ok": true, "version": "13-a0f5c3b", "graphhopper": "11.0", "graph_data_date": "…", "graph_import_date": "…", "chargers": true}`;
 503 with `"ok": false` if GraphHopper is unreachable.
 
 ## Loop generation (ADR-010)
@@ -97,3 +117,12 @@ One waypoint 1 km into each named road of ≥ 3 km on our route, one per road, n
 the endpoints, at most 10 (longest roads kept). Apple has to drive that road to reach the stop.
 Source and destination move to the first/last non-service road so Apple never says "walking
 required". Verified by hand on the demo ride (ADR-012); the ≥ 12-waypoint cap is still unmeasured.
+
+## Charge stops (ADR-014)
+
+NREL `nearby-route` (2 mi corridor; public, open, Level 2, J1772 or Tesla) is called once per plan.
+Pedestals within 150 m merge into one site. Energy is summed along the polyline (see ADR-014 for the
+model); when the pack would end below `soc_min_arrival`, the stop is the furthest site still
+reachable above it, charged to `charge_to` at `min(advertised kW, 6.6)`, up to 3 stops. The route
+itself is not re-routed through the charger; the charger becomes a handoff waypoint and Apple routes
+the detour. Detours are costed as 2 × off-route distance.

@@ -12,8 +12,8 @@ the reference for competitor and API facts; don't re-research what it already an
 ## Status (2026-09-18)
 
 - Feasibility done. GraphHopper serving on axiom:8989 (first good import 2026-09-18); loops 35–200 ms.
-- serpentine-api (Go, `server/`) running on axiom:8990 via launchd: `point_to_point` and `loop` plans,
-  loop scoring, Apple Maps handoff, GPX. `make -C server test|run|deploy|logs`. No app code yet.
+- serpentine-api (Go, `server/`) running on axiom:8990 via launchd, public at `/v1`: `point_to_point`
+  and `loop` plans, loop scoring, charge stops (NREL), Apple Maps handoff, GPX. `make -C server test|run|deploy|logs`. No app code yet.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.
 - Shared agent memory: Memento page `/projects/serpentine.md` at `http://webserver:8321/mcp` (see
   Memento section). Keep it in sync with major status changes.
@@ -53,7 +53,7 @@ Caddy on webserver (Pi 5, .3)          ← the house's only internet-facing host
    ▼
 serpentine-api on axiom (Mac Studio M4 Max, 128 GB, .7)   ← phase 1, Go, :8990
    ├─► GraphHopper 11, :8989, Docker, us-west graph, profile "motorcycle" (LM/hybrid mode)
-   ├─► NREL AFDC API (chargers along route, filtered J1772 / TESLA L2)   ← server-side, key never on phone
+   ├─► NREL AFDC API at developer.nlr.gov (J1772 / TESLA L2 along route)  ← key only on axiom, X-Api-Key
    └─► (later) elevation, HPMS AADT, cached tiles
 ```
 

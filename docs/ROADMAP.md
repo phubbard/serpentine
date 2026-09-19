@@ -46,8 +46,9 @@ Acceptance:
 - [x] Caddy points `/v1/*` at serpentine-api (`infra/caddy/serpentine.caddyfile`) — live and verified 2026-09-18
 - [ ] `out_and_back` mode (ADR-005)
 - [x] Route cache keyed on request hash; repeat requests served in < 50 ms (in-memory, ~1 ms)
-- [ ] NREL key read from env, never logged, never returned
-- [ ] Energy model unit-tested against the SR/S spec numbers and one real ride log
+- [x] NREL key read from env or a mode-600 key file, never logged, never returned (ADR-014)
+- [x] Charge-stop planning in `POST /v1/plan` (`charging`), stops become handoff waypoints
+- [~] Energy model unit-tested against the SR/S spec numbers — **still needs one real ride log** (ADR-014)
 
 ## Phase 2 — `ios/`: SwiftUI app, TestFlight
 
