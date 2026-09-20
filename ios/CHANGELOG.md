@@ -5,16 +5,16 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [Unreleased]
 
+## [0.1.0]
+
 - A garage: keep more than one bike, pick from a catalogue of Zero, LiveWire and Can-Am models, or
   type your own numbers when the spec sheet doesn't match what you ride. Charge stops are planned for
   the bike you picked, at its own charging rate and plugs — including any adapters you carry.
 
 - Runs on the Mac: the plan form sits in a sidebar beside a full-window map. ⌘R plans another ride.
 
-## [0.1.0]
-
 - Charge stops keep enough in the battery to reach another charger, so a dead or busy one isn't a
-  rescue. Turn it off under Zero SR/S if you'd rather ride the longest legs possible.
+  rescue. Turn it off under your bike's section if you'd rather ride the longest legs possible.
 - Charge stops now say what riders report about them: out of service, trouble charging, or not
   confirmed working for years. A stop reported dead is replaced before you ever see it.
 - Each charge stop shows its nearest backup, so a dead or occupied charger doesn't need a replan.
