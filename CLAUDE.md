@@ -118,6 +118,10 @@ Principles that constrain every design choice here:
   "No profiles for 'net.phfactor.serpentine' were found" — sign in again under Xcode → Settings →
   Accounts. `SIGN_WITH_KEY=1` signs with the ASC API key instead, but the App Manager key gets
   "Cloud signing permission error" (cloud-managed distribution certs need an Admin-role key).
+- Mac screenshots: size the Catalyst window to 1440×900 points (`osascript -e 'tell application
+  "System Events" to tell process "Serpentine" to set size of window 1 to {1440, 900}'`) and capture it
+  with `screencapture -o -x -l <CGWindowID>` — on a Retina display that lands exactly on 2880×1800, the
+  largest size ASC takes. Window captures carry an alpha channel, so convert as for iOS.
 - App Store screenshots without tapping: Debug builds accept `-screenshotPlan` (add `-outAndBack`)
   as launch arguments and plan the Ramona charging ride on launch: `xcrun simctl launch <udid>
   net.phfactor.serpentine -screenshotPlan`. Clean status bar: `xcrun simctl status_bar <udid> override
