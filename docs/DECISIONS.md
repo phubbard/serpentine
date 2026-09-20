@@ -399,3 +399,18 @@ Two things not to repeat: the Zero community wiki's suggestion of a cheater plug
 (unsafe, must never surface in the app), and a search-engine claim about "circuit harmonics" attributed
 to Can-Am, whose own pages don't contain the word. Can-Am is too new and too rare to have any owner
 reliability record at all — treat it as unknown, not as known-good.
+
+### ADR-019 amendment · 2026-09-19 · commute mode parked: the rider doesn't commute
+
+ADR-019 measured that a valley commute has no curves to offer and recommended asking the tester what
+their commute crosses before building the variety machinery. The answer removed the question: *"Oh I
+don't commute, I just go drive in the hills on weekends and free days. I'm only a few miles from HQ so
+I drive a car for that."*
+
+So the demand was never there either, and roughly 8 hours of planned work (commute slices 2 and 3) is
+parked unbuilt. Slice 1 survives on its own merits as plain A→B with a detour budget. What this rider
+actually does — hill rides on weekends and free days — is loops, out-and-backs and time budgets, all
+of which shipped already.
+
+Worth remembering as a pattern: "add a commute mode" arrived as a feature request, and two questions
+(what does the route cross, and do you even ride it) turned it into a no. Ask both before building.

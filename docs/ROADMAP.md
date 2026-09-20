@@ -132,15 +132,23 @@ like any A→B plan, so the privacy policy is unaffected.
       returns the same 12-minute route whatever the budget (0.1 km curvy); Los Gatos → NVIDIA likewise.
       Santa Cruz → NVIDIA over CA 9 has 19 km of curves and they're already on the fastest line. Slice 2
       is only worth building for riders with hills between home and work — confirm with the tester first.
-- [ ] **Commute slice 2 — a different route each day** (~4–5 h): score `alternative_route` candidates
+**Parked 2026-09-19 — the commute use case evaporated on contact with the rider.** Asked directly, the
+San Jose tester said: *"Oh I don't commute, I just go drive in the hills on weekends and free days…
+I'm only a few miles from HQ so I drive a car for that."* That matches ADR-019's measurement (a valley
+commute has no curves to sell) and removes the demand as well as the supply. Slice 1 shipped and is
+useful on its own as A→B. Slices 2 and 3 below stay written down but unbuilt until a real rider asks
+for them — which for this tester is weekend hill rides, i.e. loops, out-and-backs and time budgets,
+all of which already exist.
+
+- [ ] ~~**Commute slice 2 — a different route each day**~~ (parked; ~4–5 h if revived): score `alternative_route` candidates
       with `score.go`, reject any over the cap, rotate by day number (repeatable, differs Mon/Tue).
       Needs an alternatives fixture and an ADR. Fallback if 2 alternatives prove too few: seeded
       via-points offset from the direct line (+2–3 h).
-- [ ] **Commute slice 3 — commute polish** (~3–4 h): saved Home and Work (UserDefaults), to-work /
+- [ ] ~~**Commute slice 3 — commute polish**~~ (parked; ~3–4 h if revived): saved Home and Work (UserDefaults), to-work /
       to-home swap, and the phone sending its last ~5 simplified polylines so the server penalises them
       (reuse `corridorModel`, ADR-015, weaker multiplier; watch the 64 KB body cap). Then screenshots
       and the public pages.
-- [ ] **Commute tuning** (after real commutes, bike arrives October): our profile is tuned for empty
+- [ ] ~~**Commute tuning**~~ (parked with the above): our profile is tuned for empty
       mountain roads, and a "curvy" detour through town means lights and residential streets. Likely
       needs an urban_density penalty — per-request if possible, since a base-profile change costs a
       25-minute reimport per iteration (ADR-009). Whether a variant is *pleasant* is a judgment only
