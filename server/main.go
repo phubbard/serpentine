@@ -50,6 +50,11 @@ var aboutPage []byte
 //go:embed web/img
 var imgFS embed.FS
 
+// statsPage is the operational dashboard at /stats (LAN-only; ADR-026).
+//
+//go:embed web/stats.html
+var statsPage []byte
+
 // vehicleCatalog is the bike list the app caches (ADR-020). Data only: planning still uses the
 // vehicle in the request, and today that is always the SR/S.
 //
@@ -71,6 +76,7 @@ type server struct {
 	nrel  *nrelClient // nil when no key is configured: charging requests get 503
 	ocm   *ocmClient  // nil when no key is configured: plans simply carry no reliability data
 	cache *planCache
+	stats *metrics
 	log   *slog.Logger
 }
 
@@ -86,9 +92,11 @@ func main() {
 	flag.Parse()
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	s := &server{gh: newGHClient(strings.TrimRight(*ghURL, "/")), cache: newPlanCache(500, planCacheTTL), log: log}
+	s := &server{gh: newGHClient(strings.TrimRight(*ghURL, "/")), cache: newPlanCache(500, planCacheTTL),
+		stats: newMetrics(), log: log}
 	if *tileCache != "" {
 		s.tiles = newTileProxy(*tileCache, *tileURL)
+		s.tiles.stats = s.stats
 	}
 	if key, err := nrelKey(*nrelKeyFile); err != nil {
 		log.Error("nrel key", "err", err)
@@ -103,6 +111,7 @@ func main() {
 		os.Exit(1)
 	} else if key != "" {
 		s.ocm = newOCMClient(*ocmURL, key)
+		s.ocm.stats = s.stats
 	} else {
 		log.Warn("no Open Charge Map key: plans carry no charger reliability data")
 	}
@@ -172,6 +181,10 @@ func (s *server) routes() http.Handler {
 	static, _ := fs.Sub(vendorFS, "web/vendor")
 	mux.Handle("GET /v1/static/", http.StripPrefix("/v1/static/", staticHandler(http.FileServerFS(static))))
 	mux.HandleFunc("GET /v1/health", s.handleHealth)
+	// Outside /v1 on purpose: the Pi's Caddy proxies /v1/* and /, so these stay on the LAN with no
+	// password to leak (ADR-026).
+	mux.HandleFunc("GET /stats", servePage(statsPage))
+	mux.HandleFunc("GET /stats.json", s.handleStats)
 	mux.HandleFunc("POST /v1/plan", s.handlePlan)
 	mux.HandleFunc("GET /v1/plan/{file}", s.handleGPX)
 	return s.logRequests(mux)
@@ -193,6 +206,16 @@ func servePage(page []byte) http.HandlerFunc {
 		w.Header().Set("Cache-Control", "no-cache")
 		_, _ = w.Write(page)
 	}
+}
+
+func (s *server) handleStats(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	healthy, ghVersion, graphDate := false, "", ""
+	if info, err := s.gh.info(ctx); err == nil {
+		healthy, ghVersion, graphDate = true, info.Version, info.DataDate
+	}
+	writeJSON(w, http.StatusOK, s.stats.snapshot(version, healthy, s.nrel != nil, s.ocm != nil, ghVersion, graphDate))
 }
 
 func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -219,6 +242,7 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := req.normalize(); err != nil {
+		s.stats.failure("bad")
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -228,6 +252,7 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request) {
 	}
 	id := req.cacheKey()
 	if res, ok := s.cache.get(id); ok {
+		s.stats.plan(req.shape(true, 0))
 		s.log.Info("plan", "mode", req.Mode, "cached", true, "km", res.DistanceM/1000)
 		writeJSON(w, http.StatusOK, res)
 		return
@@ -242,12 +267,18 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request) {
 		var ge *ghError
 		switch {
 		case errors.As(err, &ge):
+			s.stats.failure("unroutable")
 			writeError(w, http.StatusUnprocessableEntity, ge.Message)
 		case errors.Is(err, errChargerData):
+			s.stats.failure("nrel")
+			s.stats.failure("upstream")
 			writeError(w, http.StatusBadGateway, "charger data unavailable")
 		case errors.Is(err, errNoLoop), errors.Is(err, errNoOutBack):
+			s.stats.failure("unroutable")
 			writeError(w, http.StatusUnprocessableEntity, err.Error())
 		default:
+			s.stats.failure("gh")
+			s.stats.failure("upstream")
 			s.log.Error("plan: routing engine", "err", err)
 			writeError(w, http.StatusBadGateway, "routing engine unavailable")
 		}
@@ -255,6 +286,10 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.cache.put(id, res)
+	s.stats.plan(req.shape(false, time.Since(start).Seconds()))
+	if e := res.Energy; e != nil {
+		s.stats.chargeOutcome(e.Feasible, strings.Contains(e.Warning, "no other charger"))
+	}
 	attrs := []any{"mode", req.Mode, "km", res.DistanceM / 1000, "ms", time.Since(start).Milliseconds(), "waypoints", len(res.Handoff.Waypoints)}
 	if loop := res.Loop; loop != nil {
 		attrs = append(attrs, "target_km", loop.TargetM/1000, "candidates", loop.Candidates, "failed", loop.Failed, "score", loop.Score)
@@ -496,6 +531,7 @@ func (s *server) planOnce(ctx context.Context, req *planRequest, cm *customModel
 		if len(dead) == 0 || attempt > 0 {
 			return res, nil
 		}
+		s.stats.ocm(0, 0, len(dead))
 		s.log.Info("plan: charger reported out of service, replanning stops", "dropped", len(dead))
 		stations = withoutStations(stations, dead)
 	}

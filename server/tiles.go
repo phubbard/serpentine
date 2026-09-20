@@ -28,6 +28,7 @@ const (
 )
 
 type tileProxy struct {
+	stats    *metrics
 	dir      string // cache root; "" disables the proxy
 	upstream string // URL template with {z} {x} {y}
 	http     *http.Client
@@ -146,6 +147,7 @@ func (t *tileProxy) handle(w http.ResponseWriter, r *http.Request) {
 	}
 	p := t.path(z, x, y)
 	st, statErr := os.Stat(p)
+	t.stats.tile(statErr == nil && time.Since(st.ModTime()) <= tileMaxAge)
 	if statErr != nil || time.Since(st.ModTime()) > tileMaxAge {
 		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
 		ferr := t.fetch(ctx, z, x, y)

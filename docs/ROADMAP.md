@@ -111,11 +111,11 @@ Acceptance:
 Design in ADR-026. Counters only, no events, no rider in them; LAN-only by living outside `/v1/*`,
 which the Pi's Caddy is the only thing that proxies.
 
-- [ ] **Counters in serpentine-api** (~2 h): hourly buckets for plans by mode/budget/charging, outcomes
+- [x] **Counters in serpentine-api** — done 2026-09-20: hourly buckets for plans by mode/budget/charging, outcomes
       and cache hits, a latency histogram, upstream failures (GraphHopper, NREL, OCM), charge-plan
       feasibility, tile proxy hit rate. A test that asserts the metric struct holds no coordinates,
       no IPs and nothing per-ride — the guard rail matters more than the numbers.
-- [ ] **`/stats.json` and `/stats`** (~2 h): the JSON plus a static embedded dashboard (no external
+- [x] **`/stats.json` and `/stats`** — done 2026-09-20 (verified LAN 200, public 404): the JSON plus a static embedded dashboard (no external
       anything) answering: is it up, is the graph current, rides today, p50/p95, what is failing, are
       the charger sources answering. Add the sentence to `/v1/privacy` when it ships.
 - [ ] **Optional persistence** (~1 h): append the hourly aggregate to `~/serpentine-api/stats.jsonl`,

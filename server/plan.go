@@ -187,6 +187,24 @@ func checkLonLat(field string, p [2]float64) error {
 	return nil
 }
 
+// shape is what a request tells the operational counters: what kind of ride, never where (ADR-026).
+func (r *planRequest) shape(cached bool, seconds float64) planShape {
+	budget := "distance"
+	if r.DurationS > 0 {
+		budget = "time"
+	}
+	p := planShape{Mode: r.Mode, Budget: budget, Cached: cached, Seconds: seconds}
+	if r.Charging != nil {
+		p.Charging = true
+		p.Reserve = r.Charging.ReserveForBackup == nil || *r.Charging.ReserveForBackup
+		if r.Vehicle != nil {
+			def := srs()
+			p.Custom = r.Vehicle.Name != def.Name || r.Vehicle.UsableKWh != def.UsableKWh
+		}
+	}
+	return p
+}
+
 func (r *planRequest) cacheKey() string {
 	b, _ := json.Marshal(r)
 	sum := sha256.Sum256(append([]byte(profileVersion+"\n"), b...))

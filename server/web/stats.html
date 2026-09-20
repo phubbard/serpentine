@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Serpentine — system</title>
+<!-- The operational dashboard (ADR-026). LAN-only: the Pi's Caddy proxies /v1/* and / and nothing
+     else, so /stats never leaves the house. Counters only — there is nothing here about any rider. -->
+<style>
+  :root { --bg:#14161a; --panel:#1c1f26; --ink:#e9ecf1; --muted:#8e97a6; --line:#2a2f3a;
+          --ok:#3fb59c; --warn:#e0a458; --bad:#e06c75; --bar:#3fb59c; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:15px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  main { max-width:980px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:20px; margin:0 0 4px; letter-spacing:.02em; }
+  .sub { color:var(--muted); margin:0 0 20px; font-size:13px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:20px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .card h2 { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 6px; font-weight:600; }
+  .big { font-size:26px; font-variant-numeric:tabular-nums; }
+  .ok { color:var(--ok); } .warn { color:var(--warn); } .bad { color:var(--bad); }
+  table { width:100%; border-collapse:collapse; }
+  td { padding:3px 0; font-variant-numeric:tabular-nums; }
+  /* The value must never be the thing that gets clipped — it is the only reason to read the row. */
+  td:last-child { text-align:right; color:var(--muted); white-space:nowrap; padding-left:12px; width:1%; }
+  td:first-child { overflow-wrap:anywhere; }
+  .spark { display:flex; align-items:flex-end; gap:2px; height:56px; margin-top:8px; }
+  .spark i { flex:1; background:var(--bar); border-radius:2px 2px 0 0; min-height:1px; opacity:.85; }
+  .spark i[style*="height:1%"] { background:var(--line); }
+  .spark i.f { background:var(--bad); }
+  footer { color:var(--muted); font-size:12px; margin-top:24px; }
+  a { color:var(--ok); }
+</style>
+</head>
+<body>
+<main>
+  <h1>serpentine <span id="version" class="muted"></span></h1>
+  <p class="sub" id="subtitle">loading…</p>
+
+  <div class="grid" id="health"></div>
+
+  <div class="card">
+    <h2>Plans per hour (last week)</h2>
+    <div class="spark" id="spark"></div>
+  </div>
+
+  <div class="grid" style="margin-top:20px">
+    <div class="card"><h2>Today</h2><table id="today"></table></div>
+    <div class="card"><h2>This week</h2><table id="week"></table></div>
+    <div class="card"><h2>Charger data</h2><table id="chargers"></table></div>
+  </div>
+
+  <footer>
+    Counts only — no locations, no routes, no addresses, nothing per rider (ADR-026). Hourly buckets,
+    seven days, in memory: a restart clears them. Refreshes every 30&nbsp;s.
+  </footer>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const n = x => (x ?? 0).toLocaleString();
+
+function dur(s) {
+  if (s < 3600) return Math.round(s / 60) + " min";
+  if (s < 86400) return (s / 3600).toFixed(1) + " h";
+  return (s / 86400).toFixed(1) + " days";
+}
+
+function rows(el, pairs) {
+  el.innerHTML = pairs.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
+}
+
+function card(title, value, cls) {
+  return `<div class="card"><h2>${title}</h2><div class="big ${cls || ""}">${value}</div></div>`;
+}
+
+async function refresh() {
+  let s;
+  try {
+    s = await (await fetch("/stats.json", { cache: "no-store" })).json();
+  } catch (e) {
+    $("subtitle").textContent = "can't reach the API";
+    return;
+  }
+  $("version").textContent = s.version;
+  $("subtitle").textContent = `up ${dur(s.uptime_s)} · graph data ${(s.graph_data_date || "?").slice(0, 10)}`;
+
+  const fails = s.today.bad_request + s.today.unroutable + s.today.upstream_fail;
+  $("health").innerHTML =
+    card("GraphHopper", s.healthy ? "up" : "down", s.healthy ? "ok" : "bad") +
+    card("Chargers", s.chargers ? "on" : "off", s.chargers ? "ok" : "warn") +
+    card("Reliability", s.reliability ? "on" : "off", s.reliability ? "ok" : "warn") +
+    card("Rides today", n(s.today.plans)) +
+    card("p95", s.today.p95_s ? s.today.p95_s + " s" : "—", s.today.p95_s > 10 ? "warn" : "") +
+    card("Failures today", n(fails), fails ? "warn" : "ok");
+
+  // A fixed week of slots, so a quiet server reads as quiet rather than as one wide bar.
+  const seen = new Map((s.hours || []).map(h => [h.hour, h]));
+  const thisHour = Math.floor(Date.now() / 3600000) * 3600;
+  const slots = [];
+  for (let i = 167; i >= 0; i--) slots.push(seen.get(thisHour - i * 3600) || { hour: thisHour - i * 3600, plans: 0, fails: 0 });
+  const peak = Math.max(1, ...slots.map(h => h.plans));
+  $("spark").innerHTML = slots.map(h =>
+    `<i class="${h.fails ? "f" : ""}" style="height:${h.plans ? Math.max(4, (h.plans / peak) * 100) : 1}%" title="${new Date(h.hour * 1000).toLocaleString()}: ${h.plans} plans, ${h.fails} failed"></i>`
+  ).join("");
+
+  for (const [el, b] of [["today", s.today], ["week", s.week]]) {
+    rows($(el), [
+      ["plans", n(b.plans)],
+      ["from cache", n(b.cached)],
+      ["loop / o&b / A→B", `${n(b.mode.loop)}/${n(b.mode.out_and_back)}/${n(b.mode.point_to_point)}`],
+      ["by time budget", n(b.budget.time)],
+      ["with charging", n(b.charging)],
+      ["own bike", n(b.custom_bike)],
+      ["p50 / p95", `${b.p50_s || 0} / ${b.p95_s || 0} s`],
+      ["bad request", n(b.bad_request)],
+      ["no ride there", n(b.unroutable)],
+      ["upstream failed", n(b.upstream_fail)],
+    ]);
+  }
+  const w = s.week;
+  rows($("chargers"), [
+    ["charge plans ok", n(w.charge_feasible)],
+    ["infeasible", n(w.charge_infeasible)],
+    ["no backup nearby", n(w.charge_no_backup)],
+    ["OCM lookups", n(w.ocm_lookups)],
+    ["OCM from cache", n(w.ocm_cache_hits)],
+    ["OCM failed", n(w.ocm_fail)],
+    ["dead charger replans", n(w.ocm_replans)],
+    ["NREL failed", n(w.nrel_fail)],
+    ["tiles / cached", `${n(w.tiles)} / ${n(w.tile_hits)}`],
+  ]);
+}
+
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>

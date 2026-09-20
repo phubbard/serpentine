@@ -282,7 +282,11 @@ func testServerWithNREL(gh *httptest.Server, nrel *nrelClient) *httptest.Server 
 }
 
 func testServerWith(gh *httptest.Server, nrel *nrelClient, ocm *ocmClient) *httptest.Server {
-	s := &server{gh: newGHClient(gh.URL), nrel: nrel, ocm: ocm, cache: newPlanCache(10, time.Hour), log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	s := &server{gh: newGHClient(gh.URL), nrel: nrel, ocm: ocm, cache: newPlanCache(10, time.Hour),
+		stats: newMetrics(), log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	if ocm != nil {
+		ocm.stats = s.stats
+	}
 	return httptest.NewServer(s.routes())
 }
 

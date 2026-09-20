@@ -48,6 +48,7 @@ const (
 )
 
 type ocmClient struct {
+	stats *metrics
 	base  string
 	key   string
 	http  *http.Client
@@ -105,12 +106,15 @@ func (c *ocmClient) lookup(ctx context.Context, lonlat [2]float64) *reliability 
 	c.mu.Lock()
 	if e, ok := c.cache[key]; ok && time.Since(e.at) < ocmCacheTTL {
 		c.mu.Unlock()
+		c.stats.ocm(1, 1, 0)
 		return e.info
 	}
 	c.mu.Unlock()
+	c.stats.ocm(1, 0, 0)
 
 	info, err := c.fetch(ctx, lonlat)
 	if err != nil {
+		c.stats.failure("ocm")
 		return nil // caller logs; the ride is still valid without this
 	}
 	c.mu.Lock()

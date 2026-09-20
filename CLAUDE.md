@@ -22,6 +22,8 @@ the reference for competitor and API facts; don't re-research what it already an
   On TestFlight since 2026-09-18 (0.1.0 build 29) as **"Serpentine EV"** (ASC app id 6813768490;
   home-screen name stays "Serpentine"), internal group "Internal" with automatic distribution. `make -C server test|run|deploy|logs`. No app code yet.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.
+- Ops dashboard: `http://axiom:8990/stats` (LAN only — Caddy proxies `/v1/*` and `/`, so `/stats`
+  404s from outside). Counters only, hourly, in memory, cleared by a restart (ADR-026).
 - Shared agent memory: Memento page `/projects/serpentine.md` at `http://webserver:8321/mcp` (see
   Memento section). Keep it in sync with major status changes.
 
