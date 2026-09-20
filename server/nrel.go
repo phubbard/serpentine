@@ -96,13 +96,13 @@ func routeWKT(coords [][]float64, stepKM float64) string {
 }
 
 // nearbyRoute returns public, open, Level 2 J1772/Tesla stations within corridorMiles of the route.
-func (c *nrelClient) nearbyRoute(ctx context.Context, coords [][]float64, corridorMiles float64) ([]nrelStation, error) {
+func (c *nrelClient) nearbyRoute(ctx context.Context, coords [][]float64, corridorMiles float64, connectors string) ([]nrelStation, error) {
 	form := url.Values{}
 	form.Set("route", routeWKT(coords, 1.0))
 	form.Set("distance", strconv.FormatFloat(corridorMiles, 'f', 1, 64))
 	form.Set("fuel_type", "ELEC")
 	form.Set("ev_charging_level", "2")
-	form.Set("ev_connector_type", "J1772,TESLA")
+	form.Set("ev_connector_type", connectors)
 	form.Set("status", "E")
 	form.Set("access", "public")
 	form.Set("limit", "all")

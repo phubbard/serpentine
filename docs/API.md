@@ -31,6 +31,16 @@ built.
     "soc_min_arrival": 0.15,         // default 0.15; never plan below this
     "charge_to": 0.9,                // default 0.9
     "reserve_for_backup": true       // default true: arrive able to reach another charger (ADR-023)
+  },
+  "vehicle": {                      // optional; omitted = the Zero SR/S. Ignored without `charging`.
+    "name": "Can-Am Pulse",
+    "kind": "electric",             // only "electric" so far
+    "usable_kwh": 8.9,
+    "city_wh_per_km": 55.3,         // what the model needs; ranges are quoted at speeds
+    "highway_wh_per_km": 69.1,      //   manufacturers no longer publish (ADR-020)
+    "ac_kw": 6.6,
+    "dc_kw": 0,                     // carried, not yet planned for
+    "connectors": ["J1772"]         // J1772, J1772COMBO, CHADEMO, TESLA — NREL's vocabulary
   }
 }
 ```
@@ -227,3 +237,25 @@ Charge stops and their backups carry what Open Charge Map knows, when it has a l
 `note` is a single sentence to show as-is, present only when there is something to say. A stop whose
 listing is *not* operational never reaches the client: it is dropped and the stops are planned again
 without it.
+
+## The bike (`vehicle`)
+
+The app owns the garage; the server is stateless, so every charging request carries the bike it is
+planning for (ADR-025). A catalogue entry and a rider's hand-edited numbers are the same thing here.
+Omitting `vehicle` keeps the Zero SR/S the app was built around, so older builds are unaffected.
+
+Consumption is **Wh/km, not a range claim**: manufacturers quote ranges against test speeds they no
+longer publish, and Wh/km is what the model consumes. To convert a published range: `usable_kWh /
+(miles × 1.609) × 1000`.
+
+`connectors` uses NREL's vocabulary — `J1772`, `J1772COMBO` (CCS1), `CHADEMO`, `TESLA`. There is no
+NACS value; Tesla hardware is `TESLA`, separated by charging level. Adapters belong to the rider, not
+the bike, so the app sends the union of what the bike takes and what its owner carries.
+
+**DC is carried but not yet planned.** `dc_kw` and DC connectors are stored and validated, but station
+selection still reads Level 2 units, so a bike that can *only* fast-charge is refused rather than sent
+to posts it cannot use:
+
+```json
+{"error": "LiveWire ONE charges too slowly on AC to plan Level 2 stops, and DC fast charging isn't planned yet"}
+```

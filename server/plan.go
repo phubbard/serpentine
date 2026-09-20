@@ -29,6 +29,7 @@ type planRequest struct {
 	Twistiness *float64      `json:"twistiness,omitempty"`
 	Avoid      []string      `json:"avoid,omitempty"`
 	Charging   *chargingOpts `json:"charging,omitempty"`
+	Vehicle    *vehicle      `json:"vehicle,omitempty"` // omitted = the Zero SR/S (ADR-025)
 }
 
 type badRequest struct{ msg string }
@@ -87,6 +88,17 @@ func (r *planRequest) normalize() error {
 	}
 	if err := r.normalizeCharging(); err != nil {
 		return err
+	}
+	if r.Charging == nil {
+		r.Vehicle = nil // nothing to model, and it would only split the cache
+	} else {
+		if r.Vehicle == nil {
+			v := srs()
+			r.Vehicle = &v
+		}
+		if err := r.Vehicle.normalize(); err != nil {
+			return err
+		}
 	}
 	if r.Twistiness == nil {
 		t := 0.5
@@ -258,7 +270,7 @@ type planResult struct {
 
 // buildResult assembles the response. stations is nil unless charging was requested; turnIdx is
 // the out-and-back turnaround's polyline index, or -1.
-func buildResult(id, mode string, p *ghPath, loop *loopInfo, ob *outBackInfo, turnIdx int, stations []nrelStation, co *chargingOpts) *planResult {
+func buildResult(id, mode string, p *ghPath, loop *loopInfo, ob *outBackInfo, turnIdx int, stations []nrelStation, co *chargingOpts, v *vehicle) *planResult {
 	coords := p.Points.Coordinates
 	cum := cumulativeKM(coords)
 	roads := roadsOf(p, cum)
@@ -273,7 +285,7 @@ func buildResult(id, mode string, p *ghPath, loop *loopInfo, ob *outBackInfo, tu
 	if co != nil {
 		sites = sitesFromStations(stations)
 		placeOnRoute(sites, coords, cum)
-		sum := planCharging(sites, energyProfile(p, cum), float64(p.Time)/1000, *co)
+		sum := planCharging(v, sites, energyProfile(v, p, cum), float64(p.Time)/1000, *co)
 		sum.ChargersNearby = len(sites)
 		energy = &sum
 		for _, c := range sites {

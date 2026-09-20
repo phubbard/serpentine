@@ -15,25 +15,25 @@ import (
 func TestEnergyMatchesSRSSpec(t *testing.T) {
 	// Flat highway at 113 km/h for 116 mi, and flat city at 40 km/h for 171 mi, should each use
 	// the whole 15.1 kWh nominal pack, plus the safety margin.
-	hwy := segmentKWh(116*1.609344, 113, 0)
-	city := segmentKWh(171*1.609344, 40, 0)
-	want := usableKWh * consumptionMargin
+	hwy := bike.segmentKWh(116*1.609344, 113, 0)
+	city := bike.segmentKWh(171*1.609344, 40, 0)
+	want := bike.UsableKWh * consumptionMargin
 	for name, got := range map[string]float64{"highway": hwy, "city": city} {
 		if math.Abs(got-want) > 0.01 {
 			t.Errorf("%s: %.2f kWh, want %.2f", name, got, want)
 		}
 	}
 	// 1000 m of climbing costs about a kWh; the same descent returns about a quarter of it.
-	if c := segmentKWh(0, 60, 1000) / consumptionMargin; c < 0.9 || c > 1.2 {
+	if c := bike.segmentKWh(0, 60, 1000) / consumptionMargin; c < 0.9 || c > 1.2 {
 		t.Errorf("1000 m climb = %.2f kWh", c)
 	}
-	if up, down := segmentKWh(0, 60, 1000), segmentKWh(0, 60, -1000); -down > up/2 {
+	if up, down := bike.segmentKWh(0, 60, 1000), bike.segmentKWh(0, 60, -1000); -down > up/2 {
 		t.Errorf("regen %.2f should be well under climb %.2f", -down, up)
 	}
-	if chargeMinutes(0.2, 0.9, 19.2) != chargeMinutes(0.2, 0.9, 0) {
+	if bike.chargeMinutes(0.2, 0.9, 19.2) != bike.chargeMinutes(0.2, 0.9, 0) {
 		t.Error("the bike's 6.6 kW onboard charger caps any station, known or unknown power")
 	}
-	if m := chargeMinutes(0.2, 0.9, 6.6); m < 100 || m > 120 {
+	if m := bike.chargeMinutes(0.2, 0.9, 6.6); m < 100 || m > 120 {
 		t.Errorf("20→90 %% at 6.6 kW took %.0f min, want ~107", m)
 	}
 }
@@ -81,13 +81,13 @@ func opts(start, min, to float64) chargingOpts {
 
 func TestPlanChargingPalomar(t *testing.T) {
 	p, cum, sites := palomarSites(t)
-	energy := energyProfile(p, cum)
-	if kwh := energy[len(energy)-1]; kwh < 8 || kwh > usableKWh*1.5 {
+	energy := energyProfile(&bike, p, cum)
+	if kwh := energy[len(energy)-1]; kwh < 8 || kwh > bike.UsableKWh*1.5 {
 		t.Fatalf("Palomar loop estimate %.1f kWh is implausible", kwh)
 	}
 
 	// Starting half full, the loop can't be done without a stop.
-	sum := planCharging(sites, energy, float64(p.Time)/1000, opts(0.5, 0.15, 0.9))
+	sum := planCharging(&bike, sites, energy, float64(p.Time)/1000, opts(0.5, 0.15, 0.9))
 	if !sum.Feasible || sum.Stops == 0 {
 		t.Fatalf("half pack: want a feasible plan with a stop, got %+v", sum)
 	}
@@ -102,7 +102,7 @@ func TestPlanChargingPalomar(t *testing.T) {
 
 	// Nearly empty in Ramona: the chargers 0.3 km away are the first stop.
 	_, _, sites = palomarSites(t)
-	sum = planCharging(sites, energy, float64(p.Time)/1000, opts(0.16, 0.15, 0.9))
+	sum = planCharging(&bike, sites, energy, float64(p.Time)/1000, opts(0.16, 0.15, 0.9))
 	first := -1.0
 	for _, c := range sites {
 		if c.Stop {
@@ -118,7 +118,7 @@ func TestPlanChargingPalomar(t *testing.T) {
 	}
 
 	// No chargers on the route: say so instead of pretending.
-	sum = planCharging(nil, energy, float64(p.Time)/1000, opts(0.5, 0.15, 0.9))
+	sum = planCharging(&bike, nil, energy, float64(p.Time)/1000, opts(0.5, 0.15, 0.9))
 	if sum.Feasible || sum.Warning == "" {
 		t.Errorf("no chargers should be infeasible with a warning, got %+v", sum)
 	}
@@ -126,7 +126,7 @@ func TestPlanChargingPalomar(t *testing.T) {
 
 func TestChargeStopBecomesHandoffWaypoint(t *testing.T) {
 	p, cum, sites := palomarSites(t)
-	planCharging(sites, energyProfile(p, cum), 0, opts(0.5, 0.15, 0.9))
+	planCharging(&bike, sites, energyProfile(&bike, p, cum), 0, opts(0.5, 0.15, 0.9))
 	var stops []charger
 	var forced []forcedWaypoint
 	for _, c := range sites {
@@ -188,7 +188,7 @@ func TestPlanWithCharging(t *testing.T) {
 
 func TestSelectChargersTrims(t *testing.T) {
 	p, cum, sites := palomarSites(t)
-	sum := planCharging(sites, energyProfile(p, cum), 0, opts(0.5, 0.15, 0.9))
+	sum := planCharging(&bike, sites, energyProfile(&bike, p, cum), 0, opts(0.5, 0.15, 0.9))
 	sel := selectChargers(sites)
 	if len(sel) >= len(sites) {
 		t.Errorf("selection %d should be smaller than %d sites", len(sel), len(sites))
@@ -260,15 +260,15 @@ func TestSiteName(t *testing.T) {
 // another charger, so a dead or occupied one isn't a rescue.
 func TestArrivalReserve(t *testing.T) {
 	p, cum, sites := palomarSites(t)
-	energy := energyProfile(p, cum)
+	energy := energyProfile(&bike, p, cum)
 
 	off := opts(0.6, 0.15, 0.9)
 	no := false
 	off.ReserveForBackup = &no
-	loose := planCharging(sites, energy, 0, off)
+	loose := planCharging(&bike, sites, energy, 0, off)
 
 	_, _, sites2 := palomarSites(t) // planCharging marks sites, so start from clean ones
-	strict := planCharging(sites2, energy, 0, opts(0.6, 0.15, 0.9))
+	strict := planCharging(&bike, sites2, energy, 0, opts(0.6, 0.15, 0.9))
 
 	if !strict.ReserveForBackup || loose.ReserveForBackup {
 		t.Fatalf("the summary must say which rule was used: strict %v, loose %v",
@@ -284,13 +284,13 @@ func TestArrivalReserve(t *testing.T) {
 		if !c.Stop {
 			continue
 		}
-		need := backupReserveKWh(&c, sites2)
+		need := backupReserveKWh(&bike, &c, sites2)
 		if need == 0 {
 			continue // nothing else in range; the warning covers this case
 		}
-		if c.SocArrival < strict.SocMinArrival+need/usableKWh {
+		if c.SocArrival < strict.SocMinArrival+need/bike.UsableKWh {
 			t.Errorf("%s: arrive %.2f, needs %.2f to reach another charger",
-				c.Name, c.SocArrival, strict.SocMinArrival+need/usableKWh)
+				c.Name, c.SocArrival, strict.SocMinArrival+need/bike.UsableKWh)
 		}
 	}
 }
@@ -299,7 +299,7 @@ func TestArrivalReserve(t *testing.T) {
 // but the rider has to be told there is no second option.
 func TestArrivalReserveWarnsWhenAlone(t *testing.T) {
 	p, cum, sites := palomarSites(t)
-	energy := energyProfile(p, cum)
+	energy := energyProfile(&bike, p, cum)
 	var lonely []charger
 	for _, c := range sites {
 		if c.Stop || len(lonely) > 0 {
@@ -310,11 +310,14 @@ func TestArrivalReserveWarnsWhenAlone(t *testing.T) {
 	if len(lonely) != 1 {
 		t.Skip("need exactly one site for this case")
 	}
-	if got := backupReserveKWh(&lonely[0], lonely); got != 0 {
+	if got := backupReserveKWh(&bike, &lonely[0], lonely); got != 0 {
 		t.Errorf("a site with no neighbours needs no reserve, got %.2f kWh", got)
 	}
-	sum := planCharging(lonely, energy, 0, opts(0.5, 0.15, 0.9))
+	sum := planCharging(&bike, lonely, energy, 0, opts(0.5, 0.15, 0.9))
 	if sum.Stops == 1 && sum.Warning == "" {
 		t.Error("a stop with no backup nearby should say so")
 	}
 }
+
+// bike is the default vehicle the tests model: the Zero SR/S the app was built around.
+var bike = srs()

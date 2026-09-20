@@ -477,7 +477,7 @@ func (s *server) planOnce(ctx context.Context, req *planRequest, cm *customModel
 	}
 	var stations []nrelStation
 	if req.Charging != nil {
-		stations, err = s.nrel.nearbyRoute(ctx, path.Points.Coordinates, chargerCorridorMiles)
+		stations, err = s.nrel.nearbyRoute(ctx, path.Points.Coordinates, chargerCorridorMiles, req.Vehicle.searchConnectors())
 		if err != nil {
 			s.log.Error("plan: charger data", "err", err)
 			return nil, errChargerData
@@ -487,7 +487,7 @@ func (s *server) planOnce(ctx context.Context, req *planRequest, cm *customModel
 	// out of service is dropped and the charge plan is made again without it — once, so a run of bad
 	// listings can't loop (ADR-022).
 	for attempt := 0; ; attempt++ {
-		res := buildResult(id, req.Mode, path, loop, ob, turnIdx, stations, req.Charging)
+		res := buildResult(id, req.Mode, path, loop, ob, turnIdx, stations, req.Charging, req.Vehicle)
 		res.Detour = detour
 		if req.Charging == nil || s.ocm == nil {
 			return res, nil

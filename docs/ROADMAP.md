@@ -164,7 +164,7 @@ Decisions from the 2026-09-19 interview are in ADR-020. Shape: the **app owns th
 **server stays stateless** — every plan request carries the resolved vehicle, so a hand-edited bike
 behaves exactly like a catalog one.
 
-- [ ] **Vehicle on the wire**: `vehicle` in `POST /v1/plan` (electric: usable kWh, city/highway Wh/km,
+- [x] **Vehicle on the wire** — done 2026-09-20 (ADR-025): `vehicle` in `POST /v1/plan` (electric: usable kWh, city/highway Wh/km,
       AC kW, DC kW, connectors; combustion: tank, L/100 km, reserve). No vehicle = today's SR/S, so
       shipped builds keep working. Replaces the package constants in `energy.go` and the hardcoded
       `J1772,TESLA` in `nrel.go`.

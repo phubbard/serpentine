@@ -506,3 +506,35 @@ The archive and export both succeed and sign. **Not yet uploaded:** macOS has to
 Store Connect → App Information → platforms first, or Apple rejects the `.pkg`. And when both binaries
 go up, `make testflight-notes MIN_BUILDS=2` — the `.pkg` processes slower than the `.ipa` — never in
 parallel, because they share DerivedData and a parallel run has corrupted an export before.
+
+## ADR-025 · 2026-09-20 · The bike rides in the request
+
+First step of the garage (ADR-020's design, now built server-side). `energy.go` held the Zero SR/S as
+package constants: 15.1 kWh, its two range figures, 6.6 kW, and a hardcoded `J1772,TESLA` search in
+`nrel.go`. Those are now a `vehicle` in the plan request, and the energy model is methods on it.
+
+**Stateless, per Paul's preference for keeping state in the request rather than the server.** The app
+owns the garage; the server never learns who rides what. A catalogue bike and a hand-edited one are
+indistinguishable here, which is what makes "the spec sheet is wrong for my bike" a first-class case
+instead of a support problem. It also keeps the cache honest: two bikes are two plans, because the
+vehicle is part of the cache key — and `connectors` is sorted during validation so the same bike
+listed in a different order doesn't split the cache.
+
+**Consumption is Wh/km, not a range claim.** Manufacturers quote ranges at test speeds they no longer
+publish (ADR-020), so a range is not a number a model can use without inventing the speed behind it.
+Wh/km is what `segmentKWh` actually consumes, and converting a published range is one line of
+arithmetic the app can do once.
+
+**Omitting the vehicle keeps the SR/S**, so builds already in TestFlight are unaffected — verified
+against the live engine: the same Ramona loop returns 117 mi, one stop, 110 minutes, ending at 46 %,
+exactly as before the refactor. The default keeps `TESLA` alongside `J1772` because today's behaviour
+assumes the Tap adapter (ADR-014); when the app's garage ships, adapters come from the rider.
+
+**A bike that can only fast-charge is refused, not planned.** The LiveWire ONE takes ~1.4 kW on AC —
+LiveWire says outright it "is not compatible with Level 2 Charging" (ADR-021) — so sending it to a
+J1772 post would be a plan that strands someone. Until DC station selection exists, that request gets
+a 400 saying so in plain words. Carrying `dc_kw` and DC connectors through validation now means DC
+planning is the only missing piece rather than a redesign.
+
+Still to come: the app's garage UI (catalogue picker, custom bikes, adapters, the setup flow), DC
+station selection and its charge maths, and petrol bikes with fuel stops from our own OSM extract.
