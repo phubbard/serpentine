@@ -414,3 +414,36 @@ of which shipped already.
 
 Worth remembering as a pattern: "add a commute mode" arrived as a feature request, and two questions
 (what does the route cross, and do you even ride it) turned it into a no. Ask both before building.
+
+## ADR-022 · 2026-09-19 · Open Charge Map answers "does it work?", per station, and can veto a stop
+
+NREL says a charger exists and what it has; it never says whether it works, and ADR-021 established
+that the failure riders actually hit is per-station. Open Charge Map publishes exactly the missing
+piece: an operational status, a last-verified date, and typed rider check-ins — including *failed to
+charge (equipment not operational)*, *(equipment problem)*, *(not compatible with their vehicle)*,
+*(needed an access card)* and *spot occupied by another vehicle*. That last pair is the compatibility
+and contention data we concluded we had no source for.
+
+**Scope, deliberately narrow.** Only when the rider asked for charging, and only for stops and their
+backups — never the alternates, of which there can be dozens and to which nobody is being sent. The
+server sends the coordinates of chargers it already chose, nothing about the rider, the device or the
+rest of the route; the phone never talks to OCM. Results are cached 24 h. Any failure is silent and
+non-fatal: no reliability data means the plan we shipped yesterday.
+
+**It can veto.** A stop whose listing says not operational is dropped and the charge plan is made
+again without it, once — bounded so a run of bad listings can't loop. Everything else is advisory and
+surfaces as one plain sentence: riders reported trouble, reported temporarily unavailable, or not
+confirmed working since a date. Stale beats silent: a charger last confirmed in 2019 is not the same
+as a charger confirmed last month, and the rider should see the difference.
+
+**What it cannot fix: coverage.** Measured on the day it went in — a Ramona loop's stop (La Jolla
+CAINE Village, on tribal land) has *no OCM listing within 2 km*, while a Santa Cruz mountains loop got
+status and a November 2025 verification date for every stop and backup. OCM is thinnest exactly where
+this app is most useful and a dead charger hurts most: rural, far from anywhere, no second option.
+So this raises the floor in populated areas and changes nothing in the back country. It is not a
+substitute for the arrival-reserve rule, which remains the only mitigation that works everywhere.
+
+The key lives on axiom at `~/serpentine-api/ocm.key` (mode 600), passed by the launchd job, never in
+the repo, logs or Memento — same handling as NREL. Registered as the "Serpentine" application on
+Paul's OCM account. The privacy policy and the support page were updated in the same change, per
+ADR-017 and the rule in CLAUDE.md: the data flow changed, so the page that describes it changed.

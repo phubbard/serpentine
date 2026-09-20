@@ -206,3 +206,23 @@ unchanged: one route at the requested twistiness.
 near zero means the quick way already *is* the best road — common in a flat street grid, where a
 detour budget buys nothing at all (measured San Jose → Santa Clara: 0.1 km of curvy road whatever the
 budget).
+
+## Charger reliability (`reliability`)
+
+Charge stops and their backups carry what Open Charge Map knows, when it has a listing within 250 m
+(ADR-022). Absent means OCM has nothing there — common in rural areas — not that the charger is fine.
+
+```json
+"reliability": {
+  "operational": true,
+  "status": "Operational",
+  "last_confirmed": "2025-11-11",
+  "stale": false,
+  "recent_failures": 0,
+  "note": "One rider reported trouble charging here in the last year."
+}
+```
+
+`note` is a single sentence to show as-is, present only when there is something to say. A stop whose
+listing is *not* operational never reaches the client: it is dropped and the stops are planned again
+without it.

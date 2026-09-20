@@ -188,7 +188,12 @@ behaves exactly like a catalog one.
       extract** — no third party, no key, principle 1 intact; needs an osmium/Go pass into a small
       static index on axiom. Most rides need nothing: with 150–250 mi of tank and 5-minute fills this
       is "warn when the ride outruns your tank, and show fuel near the route", not a charge plan.
-- [ ] **Charger reliability** (ADR-021 rules out the obvious approach: reliability varies per stall,
+- [~] **Charger reliability** — Open Charge Map lookup shipped 2026-09-19 (ADR-022): status, last-verified
+      date and rider fault check-ins on stops and backups, with a dead stop dropped and replanned.
+      Coverage is the limit: nothing listed near the Ramona stop, full data in the Santa Cruz mountains.
+      Still to do: the arrival-reserve rule (works everywhere, unlike this), surfacing the backup in the
+      app, retry overhead in DC stop estimates, and showing `note` in the ride view.
+      (ADR-021 rules out the obvious approach: reliability varies per stall,
       not per network, so no blocklists). Cheap wins needing no new data: require enough charge on
       arrival to reach the backup site, surface the backup in the app, prefer multi-stall sites, and
       add retry overhead to DC stop estimates (LiveWire's own advice is up to three attempts; owners

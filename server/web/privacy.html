@@ -47,6 +47,12 @@ No tracking.</p>
     Serpentine's server sends the shape of the route (a line on the map, with nothing about you or
     your device) to the U.S. Department of Energy's Alternative Fuel Stations API
     (<code>developer.nlr.gov</code>, formerly NREL). Your phone never contacts it directly.</li>
+  <li><b>Whether a charger works, via Open Charge Map.</b> Only if you turn on charging: once stops
+    have been chosen, Serpentine's server asks Open Charge Map (<code>api.openchargemap.io</code>)
+    what riders report about those particular chargers — whether they are in service, when one was
+    last confirmed working, and whether anyone recently failed to charge there. It sends only the
+    coordinates of those chargers, nothing about you, your device or the rest of your route, and your
+    phone never contacts it directly. A stop reported out of service is dropped and replanned.</li>
   <li><b>Maps, place search and navigation, via Apple.</b> The map, the place search and turn-by-turn
     guidance are Apple Maps. Search terms go to Apple, not to Serpentine, and when you tap
     "Navigate in Apple Maps" the planned stops are handed to the Maps app. Apple's privacy policy

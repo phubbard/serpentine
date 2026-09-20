@@ -69,6 +69,7 @@ type server struct {
 	tiles *tileProxy // nil when -tile-cache is unset: /v1/tiles 404s
 	gh    *ghClient
 	nrel  *nrelClient // nil when no key is configured: charging requests get 503
+	ocm   *ocmClient  // nil when no key is configured: plans simply carry no reliability data
 	cache *planCache
 	log   *slog.Logger
 }
@@ -78,6 +79,8 @@ func main() {
 	ghURL := flag.String("gh", envOr("SERPENTINE_GH", "http://localhost:8989"), "GraphHopper base URL")
 	nrelURL := flag.String("nrel", envOr("SERPENTINE_NREL", nrelDefaultBase), "NREL alt-fuel-stations base URL")
 	nrelKeyFile := flag.String("nrel-key-file", "", "file holding the NREL API key (or set NREL_API_KEY)")
+	ocmURL := flag.String("ocm", envOr("SERPENTINE_OCM", ocmDefaultBase), "Open Charge Map API base URL")
+	ocmKeyFile := flag.String("ocm-key-file", "", "file holding the Open Charge Map API key (or set OCM_API_KEY)")
 	tileCache := flag.String("tile-cache", "", "directory for cached map tiles (enables /v1/tiles)")
 	tileURL := flag.String("tile-upstream", tileDefaultURL, "raster tile URL template")
 	flag.Parse()
@@ -94,6 +97,14 @@ func main() {
 		s.nrel = newNRELClient(*nrelURL, key)
 	} else {
 		log.Warn("no NREL key: charging disabled")
+	}
+	if key, err := apiKey("OCM_API_KEY", *ocmKeyFile); err != nil {
+		log.Error("ocm key", "err", err)
+		os.Exit(1)
+	} else if key != "" {
+		s.ocm = newOCMClient(*ocmURL, key)
+	} else {
+		log.Warn("no Open Charge Map key: plans carry no charger reliability data")
 	}
 
 	srv := &http.Server{
@@ -119,8 +130,11 @@ func main() {
 }
 
 // nrelKey reads NREL_API_KEY, else the key file. The key is never logged.
-func nrelKey(file string) (string, error) {
-	if k := os.Getenv("NREL_API_KEY"); k != "" {
+func nrelKey(file string) (string, error) { return apiKey("NREL_API_KEY", file) }
+
+// apiKey reads the environment variable, else the key file. Keys are never logged.
+func apiKey(env, file string) (string, error) {
+	if k := os.Getenv(env); k != "" {
 		return k, nil
 	}
 	if file == "" {
@@ -469,9 +483,22 @@ func (s *server) planOnce(ctx context.Context, req *planRequest, cm *customModel
 			return nil, errChargerData
 		}
 	}
-	res := buildResult(id, req.Mode, path, loop, ob, turnIdx, stations, req.Charging)
-	res.Detour = detour
-	return res, nil
+	// Plan the stops, then ask Open Charge Map whether riders report them working. A stop reported
+	// out of service is dropped and the charge plan is made again without it — once, so a run of bad
+	// listings can't loop (ADR-022).
+	for attempt := 0; ; attempt++ {
+		res := buildResult(id, req.Mode, path, loop, ob, turnIdx, stations, req.Charging)
+		res.Detour = detour
+		if req.Charging == nil || s.ocm == nil {
+			return res, nil
+		}
+		dead := s.addReliability(ctx, res)
+		if len(dead) == 0 || attempt > 0 {
+			return res, nil
+		}
+		s.log.Info("plan: charger reported out of service, replanning stops", "dropped", len(dead))
+		stations = withoutStations(stations, dead)
+	}
 }
 
 var errChargerData = errors.New("charger data unavailable")

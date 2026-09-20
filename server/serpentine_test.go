@@ -278,7 +278,11 @@ func fakeGH(t *testing.T, failHeadings map[float64]bool, calls *atomic.Int32) *h
 func testServer(gh *httptest.Server) *httptest.Server { return testServerWithNREL(gh, nil) }
 
 func testServerWithNREL(gh *httptest.Server, nrel *nrelClient) *httptest.Server {
-	s := &server{gh: newGHClient(gh.URL), nrel: nrel, cache: newPlanCache(10, time.Hour), log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	return testServerWith(gh, nrel, nil)
+}
+
+func testServerWith(gh *httptest.Server, nrel *nrelClient, ocm *ocmClient) *httptest.Server {
+	s := &server{gh: newGHClient(gh.URL), nrel: nrel, ocm: ocm, cache: newPlanCache(10, time.Hour), log: slog.New(slog.NewTextHandler(io.Discard, nil))}
 	return httptest.NewServer(s.routes())
 }
 

@@ -49,6 +49,7 @@ type charger struct {
 	Stop        bool       `json:"stop"`
 	Role        string     `json:"role"`                // "stop", "backup" (near a stop) or "alternate"
 	DwellMin    float64    `json:"dwell_min,omitempty"` // stops only
+	Reliability *reliability `json:"reliability,omitempty"` // Open Charge Map, stops and backups only (ADR-022)
 
 	idx int
 }
