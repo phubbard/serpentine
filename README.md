@@ -5,7 +5,7 @@ minimal traffic over minimum time; plans charge stops for a Zero SR/S; generates
 rides; hands off to Apple Maps for voice navigation. No subscription.
 
 Plan by distance, by the time you have ("two hours on Saturday"), or A→B with a detour budget — the
-quick way plus however long you'll spend on better roads. Status: routing engine and API running in-house; iOS app v0.1 on TestFlight (iPhone and iPad) as
+quick way plus however long you'll spend on better roads. Status: routing engine and API running in-house; iOS app v0.1 on TestFlight (iPhone, iPad and Mac via Catalyst) as
 "Serpentine EV". Product page: <https://serpentine.phfactor.net/v1/about>; support:
 <https://serpentine.phfactor.net/v1/support>; privacy policy: <https://serpentine.phfactor.net/v1/privacy>. `serpentine-api` plans
 point-to-point rides, scored loops and out-and-backs with charge stops (plus backup chargers) and an

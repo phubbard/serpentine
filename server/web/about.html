@@ -45,6 +45,11 @@
   .phone { justify-self: center; width: min(320px, 78vw); }
   .phone img { width: 100%; height: auto; display: block; border-radius: 38px; border: 1px solid var(--line);
                box-shadow: 0 24px 48px -24px rgba(0,0,0,.35); }
+  .levels b { color: var(--ink); }
+  .shot { justify-self: center; width: 100%; }
+  .shot img { width: 100%; height: auto; display: block; border-radius: 12px; border: 1px solid var(--line);
+              box-shadow: 0 24px 48px -24px rgba(0,0,0,.45); }
+  .small { font-size: 15px; }
   .kicker { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--warm); margin-bottom: 8px; }
 
   .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 24px 0 72px; }
@@ -71,10 +76,11 @@
   <p class="lede">Pick a start and how far you want to ride. Serpentine finds a loop on curvy, quiet
   roads, then hands it to Apple Maps for turn-by-turn voice guidance.</p>
   <p class="ctas">
-    <a class="cta" href="mailto:pfh@phfactor.net?subject=Serpentine%20beta">Join the beta</a>
+    <a class="cta" href="mailto:pfh@phfactor.net?subject=Serpentine%20beta">Join the iPhone &amp; iPad beta</a>
+    <a class="cta secondary" href="mailto:pfh@phfactor.net?subject=Serpentine%20Mac%20beta">Join the Mac beta</a>
     <a class="cta secondary" href="/v1/">Try it live in your browser</a>
   </p>
-  <span class="cta-note">In TestFlight now · coming to the App Store · iPhone and iPad</span>
+  <span class="cta-note">In TestFlight now · coming to the App Store · iPhone, iPad and Mac</span>
   <div class="hero-shot">
     <img src="/v1/img/ipad-loop.jpg" width="1200" height="1600" alt="Serpentine on iPad: an 88-mile loop from Ramona through Julian, Descanso and Alpine, with a charging stop at El Capitan">
   </div>
@@ -118,10 +124,16 @@
       <div class="kicker">Electric</div>
       <h2>Charging stops for the Zero SR/S.</h2>
       <p>Turn on charging and Serpentine plans stops at public J1772 and Tesla destination chargers
-      along the route. It estimates your charge on arrival and how long you'll wait.</p>
+      along the route. It estimates your charge on arrival and how long you'll wait, and holds back
+      enough battery to reach a second charger in case the first one is dead or busy.</p>
       <p>The estimates err on the cautious side. A stop you didn't need beats a long walk.</p>
+      <p class="levels"><b>Level 1</b> is a household socket — overnight, and useful mainly at home.
+      <b>Level 2</b> is the public J1772 post: an hour or two, and what Serpentine plans today, because
+      it's all a Zero SR/S accepts. <b>Level 3</b> is DC fast charging, minutes rather than hours — it
+      matters for bikes that take it, like the LiveWire ONE now and Zero from 2027, and arrives here
+      when support for those bikes does.</p>
     </div>
-    <div class="phone"><img src="/v1/img/phone-03-charging.jpg" width="552" height="1200" alt="Charging details: energy used, state of charge and a planned stop"></div>
+    <div class="shot"><img src="/v1/img/mac-charging.jpg" width="1200" height="750" alt="Serpentine on the Mac: the ride's charging detail beside the map"></div>
   </section>
 
   <section class="feature">
@@ -142,13 +154,31 @@
   </div>
 </section>
 
+  <section class="feature flip">
+    <div class="text">
+      <div class="kicker">Two sources</div>
+      <h2>Where a charger is, and whether it works.</h2>
+      <p>Knowing a charger exists isn't the same as knowing it's alive. Serpentine asks two databases,
+      because neither answers both questions.</p>
+      <p><a href="https://afdc.energy.gov/stations">The U.S. Department of Energy's station data</a>
+      says where chargers are, what connectors and how many bays. <a href="https://openchargemap.org/">Open
+      Charge Map</a> says what riders found when they turned up: out of service, trouble charging, or
+      last confirmed working years ago. A stop reported dead is replaced before you see it.</p>
+      <p class="small">Charger status and check-ins from Open Charge Map contributors, licensed
+      <a href="https://openchargemap.org/site/about/terms">CC BY-SA 4.0</a>. Neither database is
+      complete — coverage is thinnest on the remote roads worth riding — so treat both as a good hint
+      and take the backup seriously.</p>
+    </div>
+    <div class="phone"><img src="/v1/img/phone-03-charging.jpg" width="552" height="1200" alt="A charge stop showing arrival charge, dwell time and its backup charger"></div>
+  </section>
+
   <div class="facts">
     <div class="fact"><h3>No account, no tracking</h3><p>No sign-up, ads or analytics. Your start point is used
       to plan the ride and isn't kept. <a href="/v1/privacy">Privacy policy</a></p></div>
     <div class="fact"><h3>Pay once</h3><p>No subscription. The routing runs on a server we own, so there's no
       per-ride bill to pass on to you.</p></div>
-    <div class="fact"><h3>Western US</h3><p>Currently plans rides in the western United States. Requires
-      iOS 18.4 or later on iPhone or iPad.</p></div>
+    <div class="fact"><h3>Western US</h3><p>Currently plans rides in the western United States. Runs on
+      iPhone and iPad (iOS 18.4 or later) and on the Mac (macOS 15.4 or later).</p></div>
   </div>
 </main>
 
