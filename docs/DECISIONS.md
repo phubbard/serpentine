@@ -447,3 +447,33 @@ The key lives on axiom at `~/serpentine-api/ocm.key` (mode 600), passed by the l
 the repo, logs or Memento — same handling as NREL. Registered as the "Serpentine" application on
 Paul's OCM account. The privacy policy and the support page were updated in the same change, per
 ADR-017 and the rule in CLAUDE.md: the data flow changed, so the page that describes it changed.
+
+## ADR-023 · 2026-09-19 · Arrive able to reach another charger (on by default, and a toggle)
+
+ADR-021 found that the charging failure riders actually hit is per-stall — a dead unit, an occupied
+bay, a handshake that won't complete — and that the mitigation they use is "move to the next one".
+ADR-022 added Open Charge Map so we can sometimes *know* a charger is dead, but measured that its
+coverage is thinnest exactly where being stranded is worst. So the only mitigation that works
+everywhere is to keep enough charge in hand to go somewhere else.
+
+A stop is now chosen only if, on arrival, the pack still holds `soc_min_arrival` **plus** the energy
+to reach the nearest other usable site: off the route to the stop, along the route, off the route to
+that site. Costed at the *highway* rate, because a reserve that assumes gentle riding is not a
+reserve.
+
+**On by default, with a toggle** ("Keep enough for a backup"). Default-on because the failure it
+prevents is being stranded at dusk on Engineers Road and the cost is small; a toggle because a rider
+who knows the area, or is chasing the longest possible legs, is entitled to overrule us. Requests
+without the field get the safe behaviour, so builds already in TestFlight benefit without an update.
+
+**Measured on real rides the day it shipped.** A 190 km Ramona loop from full: identical plan, because
+the stop already satisfied the rule. A 260 km loop from 60 %: the first stop moves from "Dgs Dgs Tp
+Phf" to "Prp Oceanside" for **two extra minutes of charging** — same number of stops, same finishing
+charge. A 300 km out-and-back from 50 %: identical. So the rule is nearly free around San Diego; it
+mostly changes *which* charger is picked rather than adding stops. That is the good case, and it
+won't hold everywhere: in thin country it will shorten legs and can add a stop.
+
+Two honest edges. When a site has no neighbour at all within range, the rule cannot be satisfied and
+we use it anyway rather than refusing to plan a ride — the summary then warns that there is no backup
+near that stop. And when no stop satisfies the rule, the existing "no reachable charger" warning now
+adds that turning the reserve off may help, so the rider can see the trade rather than guess at it.

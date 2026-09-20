@@ -30,43 +30,47 @@ type chargingOpts struct {
 	SocStart      *float64 `json:"soc_start,omitempty"`
 	SocMinArrival *float64 `json:"soc_min_arrival,omitempty"`
 	ChargeTo      *float64 `json:"charge_to,omitempty"`
+	// ReserveForBackup: arrive at each stop still able to reach another charger, so a dead or
+	// occupied one is an annoyance rather than a rescue (ADR-023). Default true.
+	ReserveForBackup *bool `json:"reserve_for_backup,omitempty"`
 }
 
 type charger struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	LonLat      [2]float64 `json:"lonlat"`
-	Address     string     `json:"address"`
-	Network     string     `json:"network"`
-	Ports       int        `json:"ports"`
-	PowerKW     float64    `json:"power_kw"` // advertised; 0 = not published
-	Connectors  []string   `json:"connectors"`
-	Hours       string     `json:"hours,omitempty"`
-	Pricing     string     `json:"pricing,omitempty"`
-	KMFromStart float64    `json:"km_from_start"`
-	OffRouteKM  float64    `json:"off_route_km"`
-	SocArrival  float64    `json:"soc_arrival_est"`
-	Stop        bool       `json:"stop"`
-	Role        string     `json:"role"`                // "stop", "backup" (near a stop) or "alternate"
-	DwellMin    float64    `json:"dwell_min,omitempty"` // stops only
+	ID          string       `json:"id"`
+	Name        string       `json:"name"`
+	LonLat      [2]float64   `json:"lonlat"`
+	Address     string       `json:"address"`
+	Network     string       `json:"network"`
+	Ports       int          `json:"ports"`
+	PowerKW     float64      `json:"power_kw"` // advertised; 0 = not published
+	Connectors  []string     `json:"connectors"`
+	Hours       string       `json:"hours,omitempty"`
+	Pricing     string       `json:"pricing,omitempty"`
+	KMFromStart float64      `json:"km_from_start"`
+	OffRouteKM  float64      `json:"off_route_km"`
+	SocArrival  float64      `json:"soc_arrival_est"`
+	Stop        bool         `json:"stop"`
+	Role        string       `json:"role"`                  // "stop", "backup" (near a stop) or "alternate"
+	DwellMin    float64      `json:"dwell_min,omitempty"`   // stops only
 	Reliability *reliability `json:"reliability,omitempty"` // Open Charge Map, stops and backups only (ADR-022)
 
 	idx int
 }
 
 type energySummary struct {
-	UsableKWh      float64 `json:"usable_kwh"`
-	KWhEst         float64 `json:"kwh_est"`
-	SocStart       float64 `json:"soc_start"`
-	SocMinArrival  float64 `json:"soc_min_arrival"`
-	ChargeTo       float64 `json:"charge_to"`
-	SocEndEst      float64 `json:"soc_end_est"`
-	Feasible       bool    `json:"feasible"`
-	Stops          int     `json:"stops"`
-	ChargeMin      float64 `json:"charge_min"`
-	ChargersNearby int     `json:"chargers_nearby"` // all usable sites in the corridor; `chargers` is a selection
-	TotalTimeS     float64 `json:"total_time_s"`    // riding + charging + detours
-	Warning        string  `json:"warning,omitempty"`
+	UsableKWh        float64 `json:"usable_kwh"`
+	KWhEst           float64 `json:"kwh_est"`
+	SocStart         float64 `json:"soc_start"`
+	SocMinArrival    float64 `json:"soc_min_arrival"`
+	ChargeTo         float64 `json:"charge_to"`
+	SocEndEst        float64 `json:"soc_end_est"`
+	Feasible         bool    `json:"feasible"`
+	Stops            int     `json:"stops"`
+	ChargeMin        float64 `json:"charge_min"`
+	ChargersNearby   int     `json:"chargers_nearby"` // all usable sites in the corridor; `chargers` is a selection
+	TotalTimeS       float64 `json:"total_time_s"`    // riding + charging + detours
+	ReserveForBackup bool    `json:"reserve_for_backup"`
+	Warning          string  `json:"warning,omitempty"`
 }
 
 // sitesFromStations merges co-located pedestals and drops restricted or non-usable ones.
@@ -230,13 +234,37 @@ func selectChargers(sites []charger) []charger {
 func round1(x float64) float64 { return math.Round(x*10) / 10 }
 func round2(x float64) float64 { return math.Round(x*100) / 100 }
 
+// backupReserveKWh is the energy needed to get from c to the nearest other usable site: off the route
+// to c, along the route, then off the route to that site. Costed at the highway rate because a
+// reserve that assumes gentle riding is not a reserve. Returns 0 when nothing else is in range —
+// there is no backup to hold charge for, and the rider is told so.
+func backupReserveKWh(c *charger, sites []charger) float64 {
+	best := math.Inf(1)
+	for i := range sites {
+		b := &sites[i]
+		if b.ID == c.ID {
+			continue
+		}
+		km := math.Abs(b.KMFromStart-c.KMFromStart) + c.OffRouteKM + b.OffRouteKM
+		if km < best {
+			best = km
+		}
+	}
+	if math.IsInf(best, 1) {
+		return 0
+	}
+	return best * highwayKWhPerKM * consumptionMargin
+}
+
 // planCharging walks the route choosing stops. energy is cumulative kWh per vertex.
 func planCharging(sites []charger, energy []float64, rideTimeS float64, o chargingOpts) energySummary {
 	socStart, socMin, chargeTo := *o.SocStart, *o.SocMinArrival, *o.ChargeTo
+	reserve := o.ReserveForBackup == nil || *o.ReserveForBackup
 	detourKWh := func(c *charger) float64 { return 2 * c.OffRouteKM * cityKWhPerKM * consumptionMargin }
 	detourS := func(c *charger) float64 { return 2 * c.OffRouteKM / 40 * 3600 } // ~40 km/h in town
 
-	sum := energySummary{UsableKWh: usableKWh, SocStart: socStart, SocMinArrival: socMin, ChargeTo: chargeTo}
+	sum := energySummary{UsableKWh: usableKWh, SocStart: socStart, SocMinArrival: socMin, ChargeTo: chargeTo,
+		ReserveForBackup: reserve}
 	total := energy[len(energy)-1]
 	sum.KWhEst = round2(total)
 
@@ -264,10 +292,17 @@ func planCharging(sites []charger, energy []float64, rideTimeS float64, o chargi
 		}
 		// Furthest reachable site ahead; among near-equals prefer more ports.
 		var pick *charger
+		strandable := false // a chosen stop with no other charger in reach
 		for k := range sites {
 			c := &sites[k]
 			if c.idx <= from || c.Stop || c.SocArrival < socMin {
 				continue
+			}
+			if reserve {
+				need := backupReserveKWh(c, sites)
+				if need > 0 && c.SocArrival < socMin+need/usableKWh {
+					continue // reachable, but we would arrive unable to go anywhere else
+				}
 			}
 			if pick == nil || c.idx > pick.idx || (c.idx == pick.idx && c.Ports > pick.Ports) {
 				pick = c
@@ -276,7 +311,13 @@ func planCharging(sites []charger, energy []float64, rideTimeS float64, o chargi
 		if pick == nil {
 			sum.SocEndEst = round2(end)
 			sum.Warning = "no reachable charger before the pack drops below the minimum; shorten the ride or start fuller"
+			if reserve {
+				sum.Warning += " (or turn off arriving with enough charge to reach a backup)"
+			}
 			break
+		}
+		if reserve && backupReserveKWh(pick, sites) == 0 {
+			strandable = true
 		}
 		pick.Stop = true
 		pick.DwellMin = math.Round(chargeMinutes(pick.SocArrival, chargeTo, pick.PowerKW))
@@ -284,6 +325,9 @@ func planCharging(sites []charger, energy []float64, rideTimeS float64, o chargi
 		sum.ChargeMin += pick.DwellMin
 		extraS += pick.DwellMin*60 + detourS(pick)
 		// Leaving the charger at chargeTo, minus the drive back to the route.
+		if strandable && sum.Warning == "" {
+			sum.Warning = "no other charger near " + pick.Name + "; if it is out of service there is no backup"
+		}
 		from, socFrom = pick.idx, chargeTo-detourKWh(pick)/2/usableKWh
 	}
 	sum.TotalTimeS = math.Round(rideTimeS + extraS)

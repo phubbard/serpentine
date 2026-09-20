@@ -255,3 +255,66 @@ func TestSiteName(t *testing.T) {
 		}
 	}
 }
+
+// The arrival-reserve rule (ADR-023): a stop must be reachable *and* leave enough charge to get to
+// another charger, so a dead or occupied one isn't a rescue.
+func TestArrivalReserve(t *testing.T) {
+	p, cum, sites := palomarSites(t)
+	energy := energyProfile(p, cum)
+
+	off := opts(0.6, 0.15, 0.9)
+	no := false
+	off.ReserveForBackup = &no
+	loose := planCharging(sites, energy, 0, off)
+
+	_, _, sites2 := palomarSites(t) // planCharging marks sites, so start from clean ones
+	strict := planCharging(sites2, energy, 0, opts(0.6, 0.15, 0.9))
+
+	if !strict.ReserveForBackup || loose.ReserveForBackup {
+		t.Fatalf("the summary must say which rule was used: strict %v, loose %v",
+			strict.ReserveForBackup, loose.ReserveForBackup)
+	}
+	// Holding charge back can only make legs shorter, never longer: same or more stops.
+	if strict.Stops < loose.Stops {
+		t.Errorf("reserving for a backup gave fewer stops (%d) than not (%d)", strict.Stops, loose.Stops)
+	}
+
+	// Every chosen stop must have had the reserve in hand on arrival.
+	for _, c := range sites2 {
+		if !c.Stop {
+			continue
+		}
+		need := backupReserveKWh(&c, sites2)
+		if need == 0 {
+			continue // nothing else in range; the warning covers this case
+		}
+		if c.SocArrival < strict.SocMinArrival+need/usableKWh {
+			t.Errorf("%s: arrive %.2f, needs %.2f to reach another charger",
+				c.Name, c.SocArrival, strict.SocMinArrival+need/usableKWh)
+		}
+	}
+}
+
+// A lone charger with nothing else in range can still be used — refusing to plan would be worse —
+// but the rider has to be told there is no second option.
+func TestArrivalReserveWarnsWhenAlone(t *testing.T) {
+	p, cum, sites := palomarSites(t)
+	energy := energyProfile(p, cum)
+	var lonely []charger
+	for _, c := range sites {
+		if c.Stop || len(lonely) > 0 {
+			continue
+		}
+		lonely = append(lonely, c)
+	}
+	if len(lonely) != 1 {
+		t.Skip("need exactly one site for this case")
+	}
+	if got := backupReserveKWh(&lonely[0], lonely); got != 0 {
+		t.Errorf("a site with no neighbours needs no reserve, got %.2f kWh", got)
+	}
+	sum := planCharging(lonely, energy, 0, opts(0.5, 0.15, 0.9))
+	if sum.Stops == 1 && sum.Warning == "" {
+		t.Error("a stop with no backup nearby should say so")
+	}
+}

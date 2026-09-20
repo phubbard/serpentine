@@ -158,11 +158,13 @@ func TestDeadChargerIsReplanned(t *testing.T) {
 	if code != 200 {
 		t.Fatalf("baseline plan: %d", code)
 	}
-	firstStop := stopNames(res)
-	if len(firstStop) == 0 {
+	stops := stopIDs(res)
+	if len(stops) == 0 {
 		t.Skip("fixture produced no charge stop, nothing to condemn")
 	}
-	condemned := firstStop[0]
+	// By id, not name: NREL lists distinct sites that share a name, so a name match would condemn
+	// the innocent and make this test lie.
+	condemned := stops[0]
 
 	// Now an OCM that calls that one dead and everything else fine.
 	var lookups atomic.Int32
@@ -174,7 +176,7 @@ func TestDeadChargerIsReplanned(t *testing.T) {
 		lat, _ := strconv.ParseFloat(r.URL.Query().Get("latitude"), 64)
 		lon, _ := strconv.ParseFloat(r.URL.Query().Get("longitude"), 64)
 		status, title, live := 50, "Operational", true
-		if nameAt(res, lon, lat) == condemned {
+		if idAt(res, lon, lat) == condemned {
 			status, title, live = ocmNotOperational, "Not Operational", false
 		}
 		writeJSONList(w, []ocmPOI{poi(lon, lat, status, title, live, time.Now().AddDate(0, -1, 0))})
@@ -190,9 +192,9 @@ func TestDeadChargerIsReplanned(t *testing.T) {
 	if lookups.Load() == 0 {
 		t.Fatal("OCM was never consulted")
 	}
-	for _, name := range stopNames(res2) {
-		if name == condemned {
-			t.Errorf("%q is reported out of service but is still a planned stop", condemned)
+	for _, id := range stopIDs(res2) {
+		if id == condemned {
+			t.Errorf("%s is reported out of service but is still a planned stop", condemned)
 		}
 	}
 	// Whatever it settled on, the rider must still be told what's known about it.
@@ -214,18 +216,18 @@ func chargersOf(res map[string]any) []map[string]any {
 	return out
 }
 
-func stopNames(res map[string]any) []string {
-	var names []string
+func stopIDs(res map[string]any) []string {
+	var ids []string
 	for _, c := range chargersOf(res) {
 		if stop, _ := c["stop"].(bool); stop {
-			names = append(names, fmt.Sprint(c["name"]))
+			ids = append(ids, fmt.Sprint(c["id"]))
 		}
 	}
-	return names
+	return ids
 }
 
-// nameAt finds the charger a lookup is about, by the coordinates the client sent.
-func nameAt(res map[string]any, lon, lat float64) string {
+// idAt finds the charger a lookup is about, by the coordinates the client sent.
+func idAt(res map[string]any, lon, lat float64) string {
 	for _, c := range chargersOf(res) {
 		ll, _ := c["lonlat"].([]any)
 		if len(ll) != 2 {
@@ -234,7 +236,7 @@ func nameAt(res map[string]any, lon, lat float64) string {
 		clon, _ := ll[0].(float64)
 		clat, _ := ll[1].(float64)
 		if math.Abs(clon-lon) < 1e-4 && math.Abs(clat-lat) < 1e-4 {
-			return fmt.Sprint(c["name"])
+			return fmt.Sprint(c["id"])
 		}
 	}
 	return ""

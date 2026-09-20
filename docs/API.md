@@ -29,7 +29,8 @@ built.
     "enabled": true,
     "soc_start": 1.0,                // default 1.0
     "soc_min_arrival": 0.15,         // default 0.15; never plan below this
-    "charge_to": 0.9                 // default 0.9
+    "charge_to": 0.9,                // default 0.9
+    "reserve_for_backup": true       // default true: arrive able to reach another charger (ADR-023)
   }
 }
 ```

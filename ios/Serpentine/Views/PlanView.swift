@@ -71,11 +71,14 @@ struct PlanView: View {
                 if planner.charging {
                     LabeledContent("Starting charge", value: "\(Int(planner.socPercent)) %")
                     Slider(value: $planner.socPercent, in: 20...100, step: 5)
+                    Toggle("Keep enough for a backup", isOn: $planner.reserveForBackup).tint(.accentColor)
                 }
             } header: {
                 Text("Zero SR/S")
             } footer: {
-                Text("Stops are planned at J1772 and Tesla destination chargers, charging at 6.6 kW.")
+                Text(planner.charging && planner.reserveForBackup
+                     ? "Stops are planned at J1772 and Tesla destination chargers, charging at 6.6 kW. You'll arrive at each stop with enough charge to reach another one, in case it's dead or busy."
+                     : "Stops are planned at J1772 and Tesla destination chargers, charging at 6.6 kW.")
             }
 
             Section {

@@ -29,6 +29,7 @@ struct PlanRequest: Encodable, Sendable {
 struct ChargingOptions: Encodable, Sendable {
     var enabled = true
     var socStart: Double
+    var reserveForBackup: Bool
 }
 
 struct PlanResult: Decodable, Sendable, Identifiable, Hashable {

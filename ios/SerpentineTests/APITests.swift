@@ -42,15 +42,16 @@ private func fixture(_ name: String) throws -> PlanResult {
 @Test func encodesRequestInWireFormat() throws {
     let req = PlanRequest(mode: .outAndBack, start: [-116.868, 33.042], distanceM: 150_000,
                           headingDeg: nil, seed: 3, twistiness: 0.5,
-                          charging: ChargingOptions(socStart: 0.6))
+                          charging: ChargingOptions(socStart: 0.6, reserveForBackup: true))
     let json = try #require(try JSONSerialization.jsonObject(with: SerpentineAPI.encoder().encode(req)) as? [String: Any])
     #expect(json["mode"] as? String == "out_and_back")
     #expect(json["distance_m"] as? Double == 150_000)
     #expect(json["heading_deg"] == nil, "nil options are omitted, not null")
     #expect((json["start"] as? [Double])?.first == -116.868, "[lon, lat] order")
-    let charging = try #require(json["charging"] as? [String: Any])
-    #expect(charging["soc_start"] as? Double == 0.6)
-    #expect(charging["enabled"] as? Bool == true)
+    let chargingJSON = try #require(json["charging"] as? [String: Any])
+    #expect(chargingJSON["soc_start"] as? Double == 0.6)
+    #expect(chargingJSON["enabled"] as? Bool == true)
+    #expect(chargingJSON["reserve_for_backup"] as? Bool == true, "the reserve rule travels with charging")
 }
 
 @Test func coordinatesAreLonLatOnTheWire() {

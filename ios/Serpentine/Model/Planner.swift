@@ -48,6 +48,7 @@ final class Planner {
     var heading: Heading?
     var charging = false
     var socPercent: Double = 100
+    var reserveForBackup = true
     var start: StartPoint?
     var destination: StartPoint?
     var maxExtraMin: Double = 15
@@ -79,7 +80,8 @@ final class Planner {
             headingDeg: goingSomewhere ? nil : heading?.rawValue,
             seed: goingSomewhere ? nil : seed,
             twistiness: twistiness,
-            charging: charging ? ChargingOptions(socStart: socPercent / 100) : nil
+            charging: charging ? ChargingOptions(socStart: socPercent / 100,
+                                                reserveForBackup: reserveForBackup) : nil
         )
     }
 

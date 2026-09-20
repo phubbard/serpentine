@@ -5,6 +5,8 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [Unreleased]
 
+- Charge stops keep enough in the battery to reach another charger, so a dead or busy one isn't a
+  rescue. Turn it off under Zero SR/S if you'd rather ride the longest legs possible.
 - Charge stops now say what riders report about them: out of service, trouble charging, or not
   confirmed working for years. A stop reported dead is replaced before you ever see it.
 - Each charge stop shows its nearest backup, so a dead or occupied charger doesn't need a replan.
