@@ -41,6 +41,12 @@ struct SerpentineAPI: Sendable {
         return try Self.decoder().decode(PlanResult.self, from: data)
     }
 
+    /// The bike catalogue. A convenience the app caches — planning never depends on it.
+    func vehicles() async throws -> [CatalogVehicle] {
+        let data = try await send(URLRequest(url: base.appending(path: "vehicles")))
+        return try Self.decoder().decode(CatalogResponse.self, from: data).vehicles
+    }
+
     /// Downloads the plan's GPX to a temporary file, for the share sheet.
     func downloadGPX(for plan: PlanResult) async throws -> URL {
         guard let url = URL(string: plan.gpxUrl, relativeTo: base) else {

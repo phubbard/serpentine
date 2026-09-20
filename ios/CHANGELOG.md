@@ -5,6 +5,10 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [Unreleased]
 
+- A garage: keep more than one bike, pick from a catalogue of Zero, LiveWire and Can-Am models, or
+  type your own numbers when the spec sheet doesn't match what you ride. Charge stops are planned for
+  the bike you picked, at its own charging rate and plugs — including any adapters you carry.
+
 - Runs on the Mac: the plan form sits in a sidebar beside a full-window map. ⌘R plans another ride.
 
 ## [0.1.0]

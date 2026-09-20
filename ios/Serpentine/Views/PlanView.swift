@@ -7,6 +7,8 @@ struct PlanView: View {
     @Environment(LocationProvider.self) private var location
     @State private var searching = false
     @State private var searchingDestination = false
+    @State private var showingGarage = false
+    @Environment(Garage.self) private var garage
 
     var body: some View {
         @Bindable var planner = planner
@@ -74,11 +76,13 @@ struct PlanView: View {
                     Toggle("Keep enough for a backup", isOn: $planner.reserveForBackup).tint(.accentColor)
                 }
             } header: {
-                Text("Zero SR/S")
+                HStack {
+                    Text(garage.selected.name)
+                    Spacer()
+                    Button("Garage") { showingGarage = true }.font(.caption).textCase(nil)
+                }
             } footer: {
-                Text(planner.charging && planner.reserveForBackup
-                     ? "Stops are planned at J1772 and Tesla destination chargers, charging at 6.6 kW. You'll arrive at each stop with enough charge to reach another one, in case it's dead or busy."
-                     : "Stops are planned at J1772 and Tesla destination chargers, charging at 6.6 kW.")
+                Text(chargingFootnote)
             }
 
             Section {
@@ -98,9 +102,12 @@ struct PlanView: View {
             }
         }
         .navigationTitle("Serpentine")
+        .onChange(of: garage.selected) { _, bike in planner.bike = bike }
+        .task { planner.bike = garage.selected }
         .sheet(isPresented: $searching) {
             PlaceSearchView(title: "Start from", near: location.coordinate) { planner.start = $0 }
         }
+        .sheet(isPresented: $showingGarage) { GarageView() }
         .sheet(isPresented: $searchingDestination) {
             PlaceSearchView(title: "Go to", near: planner.start?.coordinate ?? location.coordinate) {
                 planner.destination = $0
@@ -128,6 +135,22 @@ struct PlanView: View {
         } else {
             Label("No destination chosen", systemImage: "flag.slash").foregroundStyle(.secondary)
         }
+    }
+
+    /// Says what was assumed, in the rider's terms: a steady rate at the plugs we'll look for.
+    private var chargingFootnote: String {
+        let bike = garage.selected
+        let plugs = Set(bike.connectors + bike.adapters)
+        var names: [String] = []
+        if plugs.contains("J1772") { names.append("J1772") }
+        if plugs.contains("TESLA") { names.append("Tesla destination") }
+        if names.isEmpty { names = ["Level 2"] }
+        var s = "Stops are planned at \(names.joined(separator: " and ")) chargers, assuming a steady "
+            + String(format: "%.1f", bike.acKW) + " kW — real charging slows as the battery fills."
+        if planner.reserveForBackup {
+            s += " You'll arrive at each stop with enough charge to reach another one, in case it's dead or busy."
+        }
+        return s
     }
 
     private var planButtonTitle: String {

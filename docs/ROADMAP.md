@@ -195,7 +195,7 @@ behaves exactly like a catalog one.
       no `NACS` filter value** (verified 2026-09-19). Tesla hardware arrives as `TESLA` and is split by
       `ev_charging_level`, so "NACS" in the catalog means TESLA + DC. DC stations carry
       `ev_dc_fast_num`, `ev_network` and connector lists, which is what stop selection needs.
-- [ ] **Adapters stay on the phone**: the garage entry records what the bike takes natively and what
+- [x] **Adapters stay on the phone** — done 2026-09-20: the garage entry records what the bike takes natively and what
       the rider has adapters for; the app sends the union. Setup asks once (bikes, which chargers to
       show, adapters, consumption tweak).
 - [ ] **Flat charging rate, stated plainly in the UI** ("assumes a steady 6.6 kW"). Real DC tapers, so

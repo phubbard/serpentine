@@ -49,6 +49,9 @@ final class Planner {
     var charging = false
     var socPercent: Double = 100
     var reserveForBackup = true
+    /// The bike being ridden, set from the garage. Only sent when charging is on: without it the
+    /// server has nothing to model and it would only split the route cache (ADR-025).
+    var bike: Bike = .srs
     var start: StartPoint?
     var destination: StartPoint?
     var maxExtraMin: Double = 15
@@ -81,7 +84,8 @@ final class Planner {
             seed: goingSomewhere ? nil : seed,
             twistiness: twistiness,
             charging: charging ? ChargingOptions(socStart: socPercent / 100,
-                                                reserveForBackup: reserveForBackup) : nil
+                                                reserveForBackup: reserveForBackup) : nil,
+            vehicle: charging ? bike.wire : nil
         )
     }
 

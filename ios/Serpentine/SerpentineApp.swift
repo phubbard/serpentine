@@ -5,12 +5,14 @@ import SwiftUI
 struct SerpentineApp: App {
     @State private var planner = Planner()
     @State private var location = LocationProvider()
+    @State private var garage = Garage()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(planner)
                 .environment(location)
+                .environment(garage)
         }
     }
 }

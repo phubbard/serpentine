@@ -24,6 +24,45 @@ struct PlanRequest: Encodable, Sendable {
     var seed: Int?
     var twistiness: Double
     var charging: ChargingOptions?
+    var vehicle: VehicleWire?
+}
+
+/// The bike, as the server wants it (ADR-025). Wh/km rather than a range, because manufacturers
+/// quote ranges at speeds they no longer publish.
+struct VehicleWire: Encodable, Sendable {
+    var name: String
+    var kind: String
+    var usableKwh: Double
+    var cityWhPerKm: Double
+    var highwayWhPerKm: Double
+    var acKw: Double
+    var dcKw: Double
+    var connectors: [String]
+}
+
+/// An entry in the catalogue at /v1/vehicles. Nearly everything is optional: manufacturers don't
+/// publish the same fields, and the catalogue says so rather than inventing them.
+struct CatalogVehicle: Decodable, Sendable, Identifiable {
+    let id: String
+    let make: String
+    let model: String
+    let year: Int?
+    let kind: String
+    let batteryMaxKwh: Double?
+    let batteryNominalKwh: Double?
+    let rangeCityMi: Double?
+    let rangeHighwayMi: Double?
+    let rangeHighwayLowMi: Double?
+    let acKw: Double?
+    let dcKw: Double?
+    let connectors: [String]?
+    let confidence: String?
+    let notes: String?
+}
+
+struct CatalogResponse: Decodable, Sendable {
+    let version: String
+    let vehicles: [CatalogVehicle]
 }
 
 struct ChargingOptions: Encodable, Sendable {
