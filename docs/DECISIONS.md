@@ -538,3 +538,44 @@ planning is the only missing piece rather than a redesign.
 
 Still to come: the app's garage UI (catalogue picker, custom bikes, adapters, the setup flow), DC
 station selection and its charge maths, and petrol bikes with fuel stops from our own OSM extract.
+
+## ADR-026 · 2026-09-20 · Operational stats: counters only, LAN-only, no rider in them
+
+Paul wants a dashboard to watch the system. The risk is obvious: "analytics" is how privacy promises
+die, and `/v1/privacy` currently says plans are never logged and nothing about a rider is kept. This
+design is written so that stays true.
+
+**What is collected: counters, never events.** In-memory tallies in serpentine-api, bucketed by hour:
+
+- Plans by mode, by budget (distance / time), charging on or off, reserve on or off, default bike or
+  a rider's own. *Not which bike* — a rare model plus an area is a fingerprint.
+- Outcomes: served, served-from-cache, 4xx by reason, 5xx by upstream. Cache hit rate.
+- Latency as a histogram (fixed buckets → p50/p95), not per-request timings.
+- Upstreams: GraphHopper failures, NREL failures, OCM lookups / hits / misses / failures, and how
+  often a stop was replanned because a charger was reported dead.
+- Charge plans: feasible vs not, stop counts, how often "no backup nearby" fired.
+- Tile proxy: requests and cache hit rate. Process: version, uptime, graph import date.
+
+**What is never collected**, and this list belongs in the code as well as here: coordinates of any
+kind, polylines, distances or durations of an individual ride, IP addresses, user agents, request or
+response bodies, timestamps finer than the hour bucket. A counter cannot be de-anonymised into a
+rider's Saturday, which is the whole point.
+
+**LAN-only, by construction rather than by password.** The dashboard lives at `/stats` and
+`/stats.json` — *outside* the `/v1/*` prefix. The Pi's Caddy proxies `/v1/*` and `/`, and everything
+else hits its catch-all 404, so these paths are unreachable from the internet without anyone
+remembering to protect them. Paul reads them at `http://axiom:8990/stats` on the LAN. No auth to
+leak, no token to rotate, and no public numbers for anyone to scrape.
+
+**Retention: 7 days of hourly buckets in memory** (~168 rows, kilobytes), lost on restart, which is
+acceptable for "is it healthy". If longer history proves useful, the hourly aggregate — never raw
+events — can be appended to `~/serpentine-api/stats.jsonl` and rotated at 90 days, matching the
+access log's retention (ADR-017).
+
+**The dashboard is a static embedded page**, same rules as the rest of `server/web/`: no external
+scripts, fonts or CDNs, one fetch of `/stats.json`, bars and sparklines drawn with CSS. It should
+answer at a glance: is it up, is GraphHopper healthy, how many rides today, how slow is the slowest
+decile, what's failing, and are the charger sources answering.
+
+The privacy policy needs one sentence added when this ships — not because counters are personal data,
+but because the page says what the server keeps, and it will then keep something new.
