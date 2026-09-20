@@ -5,6 +5,8 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [Unreleased]
 
+- Runs on the Mac: the plan form sits in a sidebar beside a full-window map. ⌘R plans another ride.
+
 ## [0.1.0]
 
 - Charge stops keep enough in the battery to reach another charger, so a dead or busy one isn't a

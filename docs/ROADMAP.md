@@ -85,7 +85,9 @@ Acceptance:
       in the sidebar, ride in the detail column; collapses to the old push on iPhone), 600 pt map on
       regular width. 13" App Store screenshots in `ios/AppStore/screenshots/13/` (2026-09-19).
       Ships with the next TestFlight build; iPad screenshots become mandatory from then on.
-- [ ] **Mac via Catalyst** (one ASC listing, a `.pkg` beside the `.ipa`; mapbook is the template):
+- [x] **Mac via Catalyst** — done 2026-09-19 (ADR-024): builds, runs and archives with no code changes;
+      `make build-mac|archive-testflight-mac|upload-testflight-mac`. Waiting only on macOS being enabled
+      in ASC → App Information before the first `.pkg` upload. As specified:
   - `project.yml`: `SUPPORTS_MACCATALYST: YES`, `DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO`
     (keep `net.phfactor.serpentine`), `MACCATALYST_DEPLOYMENT_TARGET` = the macOS twin of iOS 18.4
     (15.4). Native Catalyst, not "Designed for iPad": mapbook hit TCC requests silently no-opping in

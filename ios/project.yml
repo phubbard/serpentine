@@ -34,7 +34,14 @@ targets:
         MARKETING_VERSION: "0.1.0"
         # CURRENT_PROJECT_VERSION comes from Build.gen.xcconfig (scheme pre-action, git commit count).
         TARGETED_DEVICE_FAMILY: "1,2"
-        SUPPORTS_MACCATALYST: NO
+        # Native Catalyst, not "Designed for iPad": the compat layer has TCC bugs (mapbook hit
+        # Contacts silently no-opping), and location is the one permission this app cannot lose.
+        SUPPORTS_MACCATALYST: YES
+        # macOS 15.4 is the twin of iOS 18.4, our floor for the unified Maps URL.
+        MACCATALYST_DEPLOYMENT_TARGET: "15.4"
+        # Keep net.phfactor.serpentine on the Mac too: one App Store listing, one TCC identity.
+        DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
+        CODE_SIGN_ENTITLEMENTS: Serpentine/Serpentine.entitlements
         ENABLE_PREVIEWS: YES
         # Maintained Info.plist: INFOPLIST_KEY_* auto-injection drops custom keys (playbook §5).
         GENERATE_INFOPLIST_FILE: NO

@@ -48,6 +48,11 @@ struct ResultView: View {
                         Label("Share GPX", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity)
                     }
                 }
+                #if targetEnvironment(macCatalyst)
+                // On the Mac the toolbar is easy to miss, and "give me a different ride" is the most
+                // used control there is. Keep it in the page as well (⌘R does the same).
+                anotherButton.frame(maxWidth: .infinity)
+                #endif
             }
 
             if let e = plan.energy {
@@ -90,14 +95,27 @@ struct ResultView: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            Button {
-                Task { await planner.plan(another: true) }
-            } label: {
-                if planner.isPlanning { ProgressView() } else { Label("Another", systemImage: "arrow.triangle.2.circlepath") }
+            // Explicit placement: a bare toolbar button doesn't reliably reach the window toolbar on
+            // Mac Catalyst, where there is no navigation bar to fall back on.
+            ToolbarItem(placement: .primaryAction) {
+                anotherButton
+                    .keyboardShortcut("r", modifiers: .command)
             }
-            .disabled(planner.isPlanning)
         }
         .task(id: plan.id) { gpxFile = await planner.gpxFile(for: plan) }
+    }
+
+    private var anotherButton: some View {
+        Button {
+            Task { await planner.plan(another: true) }
+        } label: {
+            if planner.isPlanning {
+                ProgressView()
+            } else {
+                Label("Another", systemImage: "arrow.triangle.2.circlepath")
+            }
+        }
+        .disabled(planner.isPlanning)
     }
 
     private func stat(_ value: String, _ label: String) -> some View {

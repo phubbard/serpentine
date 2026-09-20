@@ -1,6 +1,6 @@
 # serpentine
 
-Curvy-road motorcycle ride planner for iPhone and iPad. Favours roads with plentiful turns, moderate speeds and
+Curvy-road motorcycle ride planner for iPhone, iPad and Mac (Catalyst). Favours roads with plentiful turns, moderate speeds and
 minimal traffic over minimum time; plans charge stops for a Zero SR/S; generates loops and out-and-back
 rides; hands off to Apple Maps for voice navigation. No subscription.
 

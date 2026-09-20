@@ -477,3 +477,32 @@ Two honest edges. When a site has no neighbour at all within range, the rule can
 we use it anyway rather than refusing to plan a ride — the summary then warns that there is no backup
 near that stop. And when no stop satisfies the rule, the existing "no reachable charger" warning now
 adds that turning the reserve off may help, so the rider can see the trade rather than guess at it.
+
+## ADR-024 · 2026-09-19 · Mac Catalyst: the port was free, the toolbar was not
+
+The app runs on the Mac, from the same source and the same App Store listing. What it took:
+`SUPPORTS_MACCATALYST: YES`, `MACCATALYST_DEPLOYMENT_TARGET: 15.4` (the twin of our iOS 18.4 floor),
+`DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO` so the bundle id stays `net.phfactor.serpentine`
+on every platform, and an entitlements file. **Zero code changes to build.** The iPad split view did
+the work: a sidebar and a big map is already a Mac layout.
+
+Native Catalyst rather than "Designed for iPad", following mapbook's scar tissue: the compatibility
+layer has TCC bugs (Contacts requests silently no-opping there), and location is the one permission
+this app cannot do without. The entitlements are the sandbox, `personal-information.location` —
+without it Catalyst TCC returns denied and the app never even appears in Privacy & Security — and
+`network.client`, without which a sandboxed app reaches neither our server nor MapKit.
+
+**The one real defect was the toolbar.** "Another", the button that asks for a different ride, is the
+most used control in the app, and on the Mac it renders as a 28-point icon in the far top-right corner
+of the window — present, but easy to miss entirely, which is how it was reported. Fixed three ways:
+an explicit `ToolbarItem(placement: .primaryAction)` rather than a bare toolbar button, a ⌘R shortcut,
+and, under `#if targetEnvironment(macCatalyst)`, a full-width "Another" button in the page beside
+Navigate and Share GPX. Verified against the running Mac app: clicking it planned 97 mi where the
+previous ride was 88 mi.
+
+Release plumbing mirrors iOS: `make build-mac`, `archive-testflight-mac` and `upload-testflight-mac`
+(Catalyst exports a `.pkg`, and `altool --type osx` takes it), with `ExportOptions-TestFlight-Mac.plist`.
+The archive and export both succeed and sign. **Not yet uploaded:** macOS has to be enabled under App
+Store Connect → App Information → platforms first, or Apple rejects the `.pkg`. And when both binaries
+go up, `make testflight-notes MIN_BUILDS=2` — the `.pkg` processes slower than the `.ipa` — never in
+parallel, because they share DerivedData and a parallel run has corrupted an export before.
