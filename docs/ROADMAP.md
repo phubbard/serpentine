@@ -180,11 +180,12 @@ behaves exactly like a catalog one.
       extract** — no third party, no key, principle 1 intact; needs an osmium/Go pass into a small
       static index on axiom. Most rides need nothing: with 150–250 mi of tank and 5-minute fills this
       is "warn when the ride outruns your tank, and show fuel near the route", not a charge plan.
-- [ ] **Charger reliability** — the open question (ADR-020 "still open"). Cheap wins that need no new
-      data: require enough charge on arrival to reach the backup site, surface the backup in the app,
-      prefer many-port sites, and carry a per-bike "known bad" network list (LiveWire's DC fussiness).
-      Open Charge Map as a second source, and possibly anonymous "worked / didn't" reports, are the only
-      routes to real data — both need a decision.
+- [ ] **Charger reliability** (ADR-021 rules out the obvious approach: reliability varies per stall,
+      not per network, so no blocklists). Cheap wins needing no new data: require enough charge on
+      arrival to reach the backup site, surface the backup in the app, prefer multi-stall sites, and
+      add retry overhead to DC stop estimates (LiveWire's own advice is up to three attempts; owners
+      report 10–15 min just to start). Open Charge Map as a second source, and possibly anonymous
+      "worked / didn't" reports, are the only routes to real data — both still need Paul's decision.
 - [ ] App Store listing stays **"Serpentine EV"** for now; revisit if gas bikes become a headline
       feature (name, screenshots and the public pages move together — see CLAUDE.md).
 

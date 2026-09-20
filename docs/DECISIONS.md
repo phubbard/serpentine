@@ -324,3 +324,45 @@ publishes none of it. Options under discussion: requiring enough arrival charge 
 site (cheapest and needs no new data), a per-bike known-bad-network list in the catalog, Open Charge
 Map as a second source, and anonymous "worked / didn't" reports — the last being the only way to get
 real data at our scale, and the only one that adds server state. Not decided; see the roadmap.
+
+## ADR-021 · 2026-09-19 · Charger reliability is per-stall, not per-network — so don't build a blocklist
+
+Research into LiveWire's reputation for refusing DC chargers (ADR-020 left this open). The premise is
+real and LiveWire admitted it: **service bulletin L1002** (2023-03-24) ships an onboard-charger
+software update for 2021–2022 LiveWire ONE that "reduce[s] compatibility concerns at public level 3
+charging stations… which may have previously displayed errors"
+(<https://static.nhtsa.gov/odi/tsbs/2023/MC-10233719-0001.pdf>). Dealer-installed, US only, and
+nothing equivalent exists for the 2020 Harley LiveWire. LiveWire's own FAQ tells riders to retry a
+failed session "up to two more times", which is its own kind of admission.
+
+**But the cause is probably mechanical, and that kills the feature I was about to propose.** The
+error owners report is "Charge Port Lock Fault", cascading into an EVSE fault, and the workaround
+that keeps working is to *lift the cable* so the connector seats and the lock can engage. A heavy DC
+cable hanging off a motorcycle's small, high inlet tilts the plug enough to jam the locking pin; the
+same failure is documented on a Chevy Bolt, diagnosed the same way, fixed the same way. Stations
+appear to differ mainly in whether they demand a confirmed port latch before proceeding.
+
+Owners say the rest directly: *"You are making the mistake of assuming a network is the same as a
+charger… This model charger doesn't work yet. This one does. Same network."* Evidence bears it out —
+Electrify America and ChargePoint each collect both failures and successes, and the single brand-level
+claim against ABB is contradicted by a filmed ABB success on EVgo. **No source anywhere names a
+failing hardware model number.**
+
+So: **no per-bike, per-network blocklist.** It would encode a correlation the evidence rejects, be
+unmaintainable, and libel networks that work fine. What the finding supports instead:
+
+1. **Model gating, and it is inverted between platforms.** LiveWire ONE: CCS DC plus 120 V only, and
+   J1772 L2 is useless to it. S2: L1/L2 only, no DC at all. Sending either to the other's charger type
+   strands the rider. This is already in `vehicles.json` and must drive which stations we search.
+2. **Budget retry time at every DC stop.** LiveWire's own advice is up to three attempts, and owners
+   report 10–15 minutes just to start a session. A stop estimate assuming first-try success is wrong
+   often enough to cost trust — the same reason ADR-014 keeps the energy model pessimistic.
+3. **Prefer multi-stall sites.** "Move to the next stall" is the most effective mitigation in every
+   source, and it needs no new data.
+4. **If we ever warn, warn about the station, not the brand** — "this station model may not work",
+   never "avoid ChargePoint".
+
+Unresolved and not to be guessed at: no failing hardware model numbers, no LiveWire pack voltage (so
+the minimum-station-voltage theory stays unverified), and no evidence on which CCS protocol version
+any of these bikes implement. The broader reliability questions from ADR-020 — arrival reserve,
+Open Charge Map, anonymous reports — are still Paul's to decide.
