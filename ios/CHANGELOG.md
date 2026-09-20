@@ -5,6 +5,8 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [Unreleased]
 
+## [0.1.0]
+
 - Charge stops keep enough in the battery to reach another charger, so a dead or busy one isn't a
   rescue. Turn it off under Zero SR/S if you'd rather ride the longest legs possible.
 - Charge stops now say what riders report about them: out of service, trouble charging, or not
@@ -12,8 +14,6 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 - Each charge stop shows its nearest backup, so a dead or occupied charger doesn't need a replan.
 - Plan by time instead of distance, and a "Go somewhere" mode: the quick way there plus however long
   you'll spend on better roads.
-
-## [0.1.0]
 
 - iPad: the plan form sits beside a large map, in portrait or landscape.
 - Plan a loop or an out-and-back from your location or any searched place: pick a distance, how
