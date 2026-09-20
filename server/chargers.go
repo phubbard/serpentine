@@ -113,8 +113,42 @@ func sitesFromStations(stations []nrelStation) []charger {
 // bayCode matches the pedestal suffixes networks append to a site name: "A07-A08", "A05", "#2", "1".
 var bayCode = regexp.MustCompile(`^(#?\d+|[A-Z]\d{1,3}(-[A-Z]?\d{1,3})?)$`)
 
+// ordinaryWord holds the short words that really are words, so title-casing lowercases them
+// instead of mistaking them for operator initials. The Spanish articles are here because half of
+// San Diego County's place names use them ("EL CAPITAN", "LOS COCHES").
+var ordinaryWord = map[string]bool{
+	"a": true, "an": true, "and": true, "at": true, "by": true, "de": true, "del": true,
+	"el": true, "for": true, "in": true, "la": true, "las": true, "los": true, "of": true,
+	"on": true, "or": true, "san": true, "the": true, "to": true, "up": true, "via": true,
+	"bay": true, "big": true, "gym": true, "inn": true, "new": true, "oak": true, "old": true,
+	"sea": true, "spa": true, "sun": true,
+}
+
+// knownAcronym covers the shouted initialisms that are longer than the length rule catches.
+var knownAcronym = map[string]bool{
+	"EV": true, "EVSE": true, "DCFC": true, "HOA": true, "YMCA": true, "USA": true, "DMV": true,
+}
+
+// acronym reports whether a shouted token should stay shouted. NREL names are full of operator
+// initials — DGS, CRC, CSD, TVH — and title-casing them ("Dgs Ramona Crc") reads as broken.
+func acronym(w string) bool {
+	if knownAcronym[w] {
+		return true
+	}
+	if len(w) > 3 {
+		return false // too long to call: "EFCC" may be initials, "PALOMARCOLLFB" is a run-on
+	}
+	for _, r := range w {
+		if r < 'A' || r > 'Z' {
+			return false
+		}
+	}
+	return !ordinaryWord[strings.ToLower(w)]
+}
+
 // siteName tidies an NREL station name for display: drops trailing bay codes ("EL CAPITAN
-// A07-A08" → "El Capitan") and title-cases names shouted in capitals. Mixed-case names are kept.
+// A07-A08" → "El Capitan") and title-cases names shouted in capitals, leaving short acronyms
+// shouted ("DGS RAMONA CRC" → "DGS Ramona CRC"). Mixed-case names are kept.
 func siteName(name string) string {
 	words := strings.Fields(name)
 	for len(words) > 1 && bayCode.MatchString(strings.TrimRight(words[len(words)-1], ",;")) {
@@ -131,6 +165,9 @@ func siteName(name string) string {
 		lower := strings.ToLower(w)
 		if len(w) <= 3 && strings.ContainsAny(w, "0123456789") {
 			continue // keep codes like "CA" or "76" as they are
+		}
+		if acronym(w) {
+			continue
 		}
 		words[i] = strings.ToUpper(lower[:1]) + lower[1:]
 	}

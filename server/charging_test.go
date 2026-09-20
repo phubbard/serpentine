@@ -243,12 +243,18 @@ func TestSiteName(t *testing.T) {
 		"EL CAPITAN A07-A08":             "El Capitan",
 		"SANPASQUALPARK A05 A06":         "Sanpasqualpark",
 		"RAMONA SHOPPING SUNVALLEY #2":   "Ramona Shopping Sunvalley",
-		"DGS RAMONA CRC 2":               "Dgs Ramona Crc",
 		"Felicita Plaza (Escondido, CA)": "Felicita Plaza (Escondido, CA)",
 		"Solana at Grand":                "Solana at Grand",
-		"EFCC EV #3":                     "Efcc Ev",
-		"LOS COCHES MS A1, A2":           "Los Coches Ms",
 		"A1":                             "A1", // never strip the whole name
+
+		// Operator initials stay shouted; the words around them don't (seen live 2026-09-19).
+		"DGS RAMONA CRC 2":     "DGS Ramona CRC",
+		"CSD CA SYNC":          "CSD CA Sync",
+		"RPG 23B":              "RPG 23B",
+		"TVH STATION":          "TVH Station",
+		"EFCC EV #3":           "Efcc EV",
+		"LOS COCHES MS A1, A2": "Los Coches MS",
+		"PALOMARCOLLFB":        "Palomarcollfb", // one run-on token: nothing to split on
 	} {
 		if got := siteName(in); got != want {
 			t.Errorf("siteName(%q) = %q, want %q", in, got, want)
