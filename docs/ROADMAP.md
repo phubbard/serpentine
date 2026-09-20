@@ -158,7 +158,11 @@ behaves exactly like a catalog one.
       AC kW, DC kW, connectors; combustion: tank, L/100 km, reserve). No vehicle = today's SR/S, so
       shipped builds keep working. Replaces the package constants in `energy.go` and the hardcoded
       `J1772,TESLA` in `nrel.go`.
-- [ ] **Catalog** at `GET /v1/vehicles` (static, versioned, cacheable; app caches it and can plan
+- [x] **Catalog** at `GET /v1/vehicles` — done 2026-09-19: 16 entries (Zero MY2025 street/dual-sport,
+      LiveWire ONE + S2s, Can-Am Pulse/Origin, two petrol placeholders), each carrying its source and a
+      confidence flag, with a test enforcing both and NREL-valid connectors. Planning still ignores it
+      until the vehicle rides in the request. Gaps: LiveWire and Can-Am don't publish usable-vs-gross
+      capacity, and Zero no longer says what speeds its highway figures assume. As originally specified: (static, versioned, cacheable; app caches it and can plan
       offline-ish): Zero lineup, LiveWire (One, S2 Del Mar, S2 Mulholland), Can-Am (Origin, Pulse),
       plus generic gas bikes. Spec-sheet numbers with sources in the file, each field user-editable in
       the app — an edited bike is just a custom vehicle.

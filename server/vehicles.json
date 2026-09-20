@@ -1,0 +1,311 @@
+{
+  "version": "2026-09-19",
+  "note": "Vehicle catalog served at /v1/vehicles (ADR-020). The app caches this and sends the resolved vehicle with each plan, so a rider's edits behave exactly like a catalog entry. Every entry carries where its numbers came from and how much to trust them: 'verified' = read off the manufacturer's own spec page or sheet, 'derived' = computed from published figures (shown in the formula), 'press' = reputable coverage only, 'unverified' = plausible but unconfirmed, do not rely on it. Ranges are manufacturer claims and optimistic by nature; the energy model stays pessimistic regardless. Zero labels its highway figures 'Low-Speed' and 'High-Speed Highway Commuting' and no longer publishes the speeds behind them; older sheets used 55 and 70 mph and that mapping is likely but unverified, so don't treat it as Zero's claim. Zero's US pages are MY2025 — there is no published MY2026 US spec. The Zero SR (naked) is discontinued, and the XE/XB are omitted: Zero quotes their range at 31 mph and they top out near 50 mph, which puts them outside what this app plans for.",
+  "vehicles": [
+    {
+      "id": "zero-srs",
+      "make": "Zero",
+      "model": "SR/S",
+      "year": 2025,
+      "kind": "electric",
+      "battery_max_kwh": 17.3,
+      "battery_nominal_kwh": 15.1,
+      "range_city_mi": 171,
+      "range_highway_mi": 116,
+      "ac_kw": 6.6,
+      "ac_kw_upgraded": 12.6,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "zeromotorcycles.com/model/zero-srs power-system + range tables, 2026-09-19",
+      "confidence": "verified",
+      "notes": "12.6 kW needs the $3,000 dealer-fit 6 kW Rapid Charging Module, which excludes the Power Tank. Power Tank ($3,200) takes the pack to nearly 21 kWh max; Zero doesn't publish the resulting nominal capacity or range. DC fast charging announced 2026-09-03 for 2027 models, retrofittable to MY2022+ — nothing ships today."
+    },
+    {
+      "id": "zero-srf",
+      "make": "Zero",
+      "model": "SR/F",
+      "year": 2025,
+      "kind": "electric",
+      "battery_max_kwh": 17.3,
+      "battery_nominal_kwh": 15.1,
+      "range_city_mi": 176,
+      "range_highway_mi": 117,
+      "ac_kw": 6.6,
+      "ac_kw_upgraded": 12.6,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "zeromotorcycles.com/model/zero-srf power-system + range tables, 2026-09-19",
+      "confidence": "verified",
+      "notes": "Rapid Charger adds 6 kW; Zero publishes charge times rather than a combined kW for this model, so 12.6 is arithmetic, not their claim."
+    },
+    {
+      "id": "zero-dsrx",
+      "make": "Zero",
+      "model": "DSR/X",
+      "year": 2025,
+      "kind": "electric",
+      "battery_max_kwh": 17.3,
+      "battery_nominal_kwh": 15.1,
+      "range_city_mi": 179,
+      "range_highway_mi": 107,
+      "ac_kw": 6.6,
+      "ac_kw_upgraded": 12.6,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "zeromotorcycles.com/model/zero-dsrx, 2026-09-19 (EU MY2026 page carries identical figures)",
+      "confidence": "verified",
+      "notes": "Press reported a 6 kW charger as standard for MY2026; Zero's own page still lists 6.6 kW integrated with the Rapid Charger separate. Unresolved. Power Tank option to nearly 21 kWh."
+    },
+    {
+      "id": "zero-s",
+      "make": "Zero",
+      "model": "S",
+      "year": 2025,
+      "kind": "electric",
+      "battery_max_kwh": 14.4,
+      "battery_nominal_kwh": 12.6,
+      "range_city_mi": 154,
+      "range_highway_mi": 101,
+      "range_highway_low_mi": 113,
+      "ac_kw": 3.0,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "zeromotorcycles.com/model/zero-s, 2026-09-19",
+      "confidence": "verified",
+      "notes": "3.0 kW standard charger. The EU MY2026 S is a different, power-restricted bike (15.6/13.6 kWh, 163 mi city) — don't use EU figures here.",
+      "ac_kw_upgraded": 9.0
+    },
+    {
+      "id": "zero-ds",
+      "make": "Zero",
+      "model": "DS",
+      "year": 2025,
+      "kind": "electric",
+      "battery_max_kwh": 14.4,
+      "battery_nominal_kwh": 12.6,
+      "range_city_mi": 144,
+      "range_highway_mi": 98,
+      "range_highway_low_mi": 107,
+      "ac_kw": 3.0,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "zeromotorcycles.com/model/zero-ds, 2026-09-19",
+      "confidence": "verified",
+      "notes": "3.0 kW standard charger. EU MY2026 DS differs (15.6/13.6 kWh); US figures only here.",
+      "ac_kw_upgraded": 9.0
+    },
+    {
+      "id": "zero-dsr",
+      "make": "Zero",
+      "model": "DSR",
+      "year": 2025,
+      "kind": "electric",
+      "battery_max_kwh": 15.6,
+      "battery_nominal_kwh": 13.6,
+      "range_city_mi": 155,
+      "range_highway_mi": 100,
+      "ac_kw": 3.3,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "zeromotorcycles.com/model/zero-dsr, 2026-09-19",
+      "confidence": "verified",
+      "notes": "Only a 3.3 kW onboard charger as standard — half the SR/S — so charge stops are long unless the rider has the $3,000 Rapid Charger. Combined 9.3 kW is arithmetic, not a Zero claim. US-only; absent from the EU MY2026 lineup.",
+      "ac_kw_upgraded": 9.3
+    },
+    {
+      "id": "zero-fx",
+      "make": "Zero",
+      "model": "FX",
+      "year": 2025,
+      "kind": "electric",
+      "battery_max_kwh": 7.2,
+      "battery_nominal_kwh": 6.3,
+      "range_city_mi": 102,
+      "range_highway_mi": 57,
+      "range_highway_low_mi": 65,
+      "ac_kw": 0.65,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "zeromotorcycles.com/model/zero-fx, 2026-09-19",
+      "confidence": "verified",
+      "notes": "650 W onboard charger: an overnight bike, and public charging barely helps. Accessory chargers cut a full charge to 4.1 h (one) or 1.8 h (max) but Zero never states their kW. US-only."
+    },
+    {
+      "id": "zero-fxe",
+      "make": "Zero",
+      "model": "FXE",
+      "year": 2025,
+      "kind": "electric",
+      "battery_max_kwh": 7.2,
+      "battery_nominal_kwh": 6.3,
+      "range_city_mi": 105,
+      "range_highway_mi": 59,
+      "range_highway_low_mi": 66,
+      "ac_kw": 0.65,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "zeromotorcycles.com/model/zero-fxe, 2026-09-19",
+      "confidence": "verified",
+      "notes": "650 W onboard charger, as the FX. US-only."
+    },
+    {
+      "id": "livewire-one",
+      "make": "LiveWire",
+      "model": "ONE",
+      "year": 2023,
+      "kind": "electric",
+      "battery_max_kwh": 15.4,
+      "battery_nominal_kwh": null,
+      "range_city_mi": 146,
+      "range_highway_mi": 95,
+      "ac_kw": 1.4,
+      "dc_kw": 13,
+      "connectors": [
+        "J1772COMBO"
+      ],
+      "source": "livewire.com/livewire-one-electric-motorcycle and the LiveWire charging guide, 2026-09-19; AC kW derived from 13 mi/hr; DC 13 kW from Move Electric press only",
+      "confidence": "press",
+      "notes": "Level 2 is useless on this bike: LiveWire states it 'is not compatible with Level 2 Charging' and an L2 station charges it no faster than a household socket, so plan DC (CCS1) stops only. LiveWire's own page lists a 108 mi highway figure that exceeds its 95 mi combined figure — the 95 is used here as the safer number. Model year is unresolved (2021-2023); likely out of production."
+    },
+    {
+      "id": "livewire-s2-delmar",
+      "make": "LiveWire",
+      "model": "S2 Del Mar",
+      "year": 2026,
+      "kind": "electric",
+      "battery_max_kwh": 10.5,
+      "battery_nominal_kwh": null,
+      "range_city_mi": 113,
+      "range_highway_mi": 43,
+      "range_highway_low_mi": 70,
+      "ac_kw": 4.4,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "livewire.com/s2-del-mar-electric-motorcycle, 2026-09-19; 43 mi @ 70 mph from RevZilla; AC kW derived from 10.5 kWh / 142 min (0-100%)",
+      "confidence": "derived",
+      "notes": "The S2 platform has no DC fast charging at all — LiveWire says so explicitly. The 43 mi at 70 mph against 70 mi at 55 mph is the only full speed curve published in this lineup; treat the other S2s' 55 mph numbers with the same ~39 % drop at freeway speed."
+    },
+    {
+      "id": "livewire-s2-mulholland",
+      "make": "LiveWire",
+      "model": "S2 Mulholland",
+      "year": 2026,
+      "kind": "electric",
+      "battery_max_kwh": 10.5,
+      "battery_nominal_kwh": null,
+      "range_city_mi": 120,
+      "range_highway_mi": null,
+      "range_highway_low_mi": 73,
+      "ac_kw": 4.4,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "livewire.com/s2-mulholland-electric-motorcycle, 2026-09-19; AC kW derived as for the Del Mar",
+      "confidence": "derived",
+      "notes": "No DC fast charging. Only a 55 mph highway figure is published; expect roughly 45 mi at 70 mph by analogy with the Del Mar."
+    },
+    {
+      "id": "livewire-s2-alpinista",
+      "make": "LiveWire",
+      "model": "S2 Alpinista",
+      "year": 2026,
+      "kind": "electric",
+      "battery_max_kwh": 10.5,
+      "battery_nominal_kwh": null,
+      "range_city_mi": 120,
+      "range_highway_mi": null,
+      "range_highway_low_mi": 71,
+      "ac_kw": 4.4,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "livewire.com/s2-alpinista-electric-motorcycle, 2026-09-19; AC kW derived as for the Del Mar",
+      "confidence": "derived",
+      "notes": "No DC fast charging. 55 mph figure only."
+    },
+    {
+      "id": "canam-pulse",
+      "make": "Can-Am",
+      "model": "Pulse",
+      "year": 2026,
+      "kind": "electric",
+      "battery_max_kwh": 8.9,
+      "battery_nominal_kwh": null,
+      "range_city_mi": 100,
+      "range_highway_mi": null,
+      "range_highway_low_mi": 55,
+      "ac_kw": 6.6,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "BRP MY26 Pulse spec sheet PDF, 2026-09-19 (8.9 kWh, 100 mi city, 80 mi WMTC combined, 55 mi @ 50 mph, 6.6 kW, J1772)",
+      "confidence": "verified",
+      "notes": "BRP states no Level 3 charging of any kind: not CCS, not CHAdeMO, not NACS. Highest published constant-speed figure is only 50 mph; Electrek measured ~50 mi at 62 mph. Whether 8.9 kWh is usable or gross is not published — treat as gross."
+    },
+    {
+      "id": "canam-origin",
+      "make": "Can-Am",
+      "model": "Origin",
+      "year": 2026,
+      "kind": "electric",
+      "battery_max_kwh": 8.9,
+      "battery_nominal_kwh": null,
+      "range_city_mi": 90,
+      "range_highway_mi": null,
+      "range_highway_low_mi": 52,
+      "ac_kw": 6.6,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "BRP MY26 Origin spec sheet PDF, 2026-09-19 (8.9 kWh, 90 mi city, 71 mi WMTC combined, 52 mi @ 50 mph, 6.6 kW, J1772)",
+      "confidence": "verified",
+      "notes": "No DC fast charging. Same caveats as the Pulse."
+    },
+    {
+      "id": "petrol-midsize",
+      "make": "Generic",
+      "model": "Petrol bike (mid-size)",
+      "kind": "combustion",
+      "tank_l": 15,
+      "l_per_100km": 5.0,
+      "reserve_l": 2.5,
+      "source": "Placeholder: a typical 600-900 cc bike. Riders are expected to correct it.",
+      "confidence": "unverified",
+      "notes": "Petrol rides need fuel stops only when they outrun the tank; there is no dwell to plan for. Fuel stations will come from our own OSM extract, not a third-party API."
+    },
+    {
+      "id": "petrol-touring",
+      "make": "Generic",
+      "model": "Petrol bike (touring)",
+      "kind": "combustion",
+      "tank_l": 22,
+      "l_per_100km": 5.5,
+      "reserve_l": 3.5,
+      "source": "Placeholder: a typical large touring bike. Riders are expected to correct it.",
+      "confidence": "unverified",
+      "notes": "As above."
+    }
+  ]
+}

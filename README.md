@@ -12,7 +12,8 @@ Apple Maps handoff; try it at
 <https://serpentine.phfactor.net/v1/>.
 
 - `FEASIBILITY.md` — market survey, technical feasibility, costs, risks, sources (Sept 2026)
-- `server/` — serpentine-api (Go, stdlib only): loops, time budgets, charging, Apple Maps handoff, browser test page
+- `server/` — serpentine-api (Go, stdlib only): loops, time budgets, charging, Apple Maps handoff, the
+  vehicle catalog (`vehicles.json`, served at `/v1/vehicles`), browser test page
   with a map (vendored Leaflet, cached OSM tiles)
 - `infra/` — GraphHopper 11 motorcycle profile, docker-compose, Caddy site block, setup + smoke tests
 - `demo/`, `tools/` — a hardwired demo ride and the script that routes it

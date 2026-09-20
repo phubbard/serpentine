@@ -50,6 +50,12 @@ var aboutPage []byte
 //go:embed web/img
 var imgFS embed.FS
 
+// vehicleCatalog is the bike list the app caches (ADR-020). Data only: planning still uses the
+// vehicle in the request, and today that is always the SR/S.
+//
+//go:embed vehicles.json
+var vehicleCatalog []byte
+
 // Vendored Leaflet for the test page's map, served at /v1/static/.
 //
 //go:embed web/vendor
@@ -140,6 +146,11 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("GET /v1/privacy", servePage(privacyPage))
 	mux.HandleFunc("GET /v1/support", servePage(supportPage))
 	mux.HandleFunc("GET /v1/about", servePage(aboutPage))
+	mux.HandleFunc("GET /v1/vehicles", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		_, _ = w.Write(vehicleCatalog)
+	})
 	mux.HandleFunc("GET /{$}", servePage(aboutPage))
 	imgs, _ := fs.Sub(imgFS, "web/img")
 	mux.Handle("GET /v1/img/", http.StripPrefix("/v1/img/", staticHandler(http.FileServerFS(imgs))))

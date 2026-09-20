@@ -612,3 +612,75 @@ func TestDetourBudget(t *testing.T) {
 		t.Errorf("max_extra_s 9999: %d, want 400", code)
 	}
 }
+
+// The catalog is hand-written data the app depends on, so check its shape and that nothing claims
+// more certainty than it has (ADR-020).
+func TestVehicleCatalog(t *testing.T) {
+	var calls atomic.Int32
+	gh := fakeGH(t, nil, &calls)
+	defer gh.Close()
+	api := testServer(gh)
+	defer api.Close()
+	resp, err := http.Get(api.URL + "/v1/vehicles")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 || resp.Header.Get("Content-Type") != "application/json" {
+		t.Fatalf("catalog: %d %s", resp.StatusCode, resp.Header.Get("Content-Type"))
+	}
+	var cat struct {
+		Version  string `json:"version"`
+		Vehicles []struct {
+			ID         string   `json:"id"`
+			Kind       string   `json:"kind"`
+			Source     string   `json:"source"`
+			Confidence string   `json:"confidence"`
+			Connectors []string `json:"connectors"`
+			ACkW       *float64 `json:"ac_kw"`
+			DCkW       *float64 `json:"dc_kw"`
+			TankL      *float64 `json:"tank_l"`
+		} `json:"vehicles"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&cat); err != nil {
+		t.Fatalf("catalog isn't valid JSON: %v", err)
+	}
+	if cat.Version == "" || len(cat.Vehicles) < 10 {
+		t.Fatalf("catalog looks empty: version %q, %d vehicles", cat.Version, len(cat.Vehicles))
+	}
+	seen := map[string]bool{}
+	ok := map[string]bool{"verified": true, "derived": true, "press": true, "unverified": true}
+	// NREL takes these and rejects anything else, NACS included (ADR-020).
+	valid := map[string]bool{"J1772": true, "J1772COMBO": true, "CHADEMO": true, "TESLA": true}
+	for _, v := range cat.Vehicles {
+		if v.ID == "" || seen[v.ID] {
+			t.Errorf("missing or duplicate id %q", v.ID)
+		}
+		seen[v.ID] = true
+		if v.Source == "" || !ok[v.Confidence] {
+			t.Errorf("%s: source %q, confidence %q", v.ID, v.Source, v.Confidence)
+		}
+		switch v.Kind {
+		case "electric":
+			if len(v.Connectors) == 0 || v.DCkW == nil || v.ACkW == nil {
+				t.Errorf("%s: an electric bike needs connectors, an AC rating and a DC rating (0 for none)", v.ID)
+			}
+			// A bike that can't take DC has to have somewhere to charge (ADR-020: the LiveWire ONE
+			// is the reverse case — DC only, because its AC rate is a rounding error).
+			if v.DCkW != nil && *v.DCkW == 0 && v.ACkW != nil && *v.ACkW == 0 {
+				t.Errorf("%s: no AC and no DC charging at all", v.ID)
+			}
+			for _, c := range v.Connectors {
+				if !valid[c] {
+					t.Errorf("%s: connector %q isn't an NREL code", v.ID, c)
+				}
+			}
+		case "combustion":
+			if v.TankL == nil {
+				t.Errorf("%s: a petrol bike needs a tank size", v.ID)
+			}
+		default:
+			t.Errorf("%s: kind %q", v.ID, v.Kind)
+		}
+	}
+}
