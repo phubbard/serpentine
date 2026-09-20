@@ -20,7 +20,7 @@
       ],
       "source": "zeromotorcycles.com/model/zero-srs power-system + range tables, 2026-09-19",
       "confidence": "verified",
-      "notes": "12.6 kW needs the $3,000 dealer-fit 6 kW Rapid Charging Module, which excludes the Power Tank. Power Tank ($3,200) takes the pack to nearly 21 kWh max; Zero doesn't publish the resulting nominal capacity or range. DC fast charging announced 2026-09-03 for 2027 models, retrofittable to MY2022+ — nothing ships today."
+      "notes": "12.6 kW needs the $3,000 dealer-fit 6 kW Rapid Charging Module, which excludes the Power Tank. Power Tank ($3,200) takes the pack to nearly 21 kWh max; Zero doesn't publish the resulting nominal capacity or range. DC fast charging announced 2026-09-03 for 2027 models, retrofittable to MY2022+ — nothing ships today.  Zero's pack is roughly 102 V, far below the ~150-200 V floor of car DC hardware (ADR-021), which is why the 2027 answer is a fast-charge module and not just a port. The contactor opens above 50 °C, so a hot bike after a hard ride may refuse to charge."
     },
     {
       "id": "zero-srf",
@@ -40,7 +40,7 @@
       ],
       "source": "zeromotorcycles.com/model/zero-srf power-system + range tables, 2026-09-19",
       "confidence": "verified",
-      "notes": "Rapid Charger adds 6 kW; Zero publishes charge times rather than a combined kW for this model, so 12.6 is arithmetic, not their claim."
+      "notes": "Rapid Charger adds 6 kW; Zero publishes charge times rather than a combined kW for this model, so 12.6 is arithmetic, not their claim.  Same ~102 V pack limitation and 50 °C charging cutoff as the SR/S (ADR-021)."
     },
     {
       "id": "zero-dsrx",
@@ -60,7 +60,7 @@
       ],
       "source": "zeromotorcycles.com/model/zero-dsrx, 2026-09-19 (EU MY2026 page carries identical figures)",
       "confidence": "verified",
-      "notes": "Press reported a 6 kW charger as standard for MY2026; Zero's own page still lists 6.6 kW integrated with the Rapid Charger separate. Unresolved. Power Tank option to nearly 21 kWh."
+      "notes": "Press reported a 6 kW charger as standard for MY2026; Zero's own page still lists 6.6 kW integrated with the Rapid Charger separate. Unresolved. Power Tank option to nearly 21 kWh.  Same ~102 V pack limitation and 50 °C charging cutoff as the SR/S (ADR-021)."
     },
     {
       "id": "zero-s",
@@ -80,7 +80,7 @@
       ],
       "source": "zeromotorcycles.com/model/zero-s, 2026-09-19",
       "confidence": "verified",
-      "notes": "3.0 kW standard charger. The EU MY2026 S is a different, power-restricted bike (15.6/13.6 kWh, 163 mi city) — don't use EU figures here.",
+      "notes": "3.0 kW standard charger. The EU MY2026 S is a different, power-restricted bike (15.6/13.6 kWh, 163 mi city) — don't use EU figures here.  Uses Zero's J1772 adapter rather than a native inlet: Zero states the adapter does not work at stations requiring authentication (ADR-021).",
       "ac_kw_upgraded": 9.0
     },
     {
@@ -101,7 +101,7 @@
       ],
       "source": "zeromotorcycles.com/model/zero-ds, 2026-09-19",
       "confidence": "verified",
-      "notes": "3.0 kW standard charger. EU MY2026 DS differs (15.6/13.6 kWh); US figures only here.",
+      "notes": "3.0 kW standard charger. EU MY2026 DS differs (15.6/13.6 kWh); US figures only here.  Uses Zero's J1772 adapter rather than a native inlet: no stations requiring authentication (ADR-021).",
       "ac_kw_upgraded": 9.0
     },
     {
@@ -121,7 +121,7 @@
       ],
       "source": "zeromotorcycles.com/model/zero-dsr, 2026-09-19",
       "confidence": "verified",
-      "notes": "Only a 3.3 kW onboard charger as standard — half the SR/S — so charge stops are long unless the rider has the $3,000 Rapid Charger. Combined 9.3 kW is arithmetic, not a Zero claim. US-only; absent from the EU MY2026 lineup.",
+      "notes": "Only a 3.3 kW onboard charger as standard — half the SR/S — so charge stops are long unless the rider has the $3,000 Rapid Charger. Combined 9.3 kW is arithmetic, not a Zero claim. US-only; absent from the EU MY2026 lineup.  Uses Zero's J1772 adapter rather than a native inlet: no stations requiring authentication (ADR-021).",
       "ac_kw_upgraded": 9.3
     },
     {
@@ -142,7 +142,7 @@
       ],
       "source": "zeromotorcycles.com/model/zero-fx, 2026-09-19",
       "confidence": "verified",
-      "notes": "650 W onboard charger: an overnight bike, and public charging barely helps. Accessory chargers cut a full charge to 4.1 h (one) or 1.8 h (max) but Zero never states their kW. US-only."
+      "notes": "650 W onboard charger: an overnight bike, and public charging barely helps. Accessory chargers cut a full charge to 4.1 h (one) or 1.8 h (max) but Zero never states their kW. US-only.  Uses Zero's J1772 adapter rather than a native inlet: no stations requiring authentication (ADR-021)."
     },
     {
       "id": "zero-fxe",
@@ -162,7 +162,7 @@
       ],
       "source": "zeromotorcycles.com/model/zero-fxe, 2026-09-19",
       "confidence": "verified",
-      "notes": "650 W onboard charger, as the FX. US-only."
+      "notes": "650 W onboard charger, as the FX. US-only.  Uses Zero's J1772 adapter rather than a native inlet: no stations requiring authentication (ADR-021)."
     },
     {
       "id": "livewire-one",
@@ -181,7 +181,7 @@
       ],
       "source": "livewire.com/livewire-one-electric-motorcycle and the LiveWire charging guide, 2026-09-19; AC kW derived from 13 mi/hr; DC 13 kW from Move Electric press only",
       "confidence": "press",
-      "notes": "Level 2 is useless on this bike: LiveWire states it 'is not compatible with Level 2 Charging' and an L2 station charges it no faster than a household socket, so plan DC (CCS1) stops only. LiveWire's own page lists a 108 mi highway figure that exceeds its 95 mi combined figure — the 95 is used here as the safer number. Model year is unresolved (2021-2023); likely out of production."
+      "notes": "Level 2 is useless on this bike: LiveWire states it 'is not compatible with Level 2 Charging' and an L2 station charges it no faster than a household socket, so plan DC (CCS1) stops only. LiveWire's own page lists a 108 mi highway figure that exceeds its 95 mi combined figure — the 95 is used here as the safer number. Model year is unresolved (2021-2023); likely out of production.  Charging failures are well documented and partly bike-side: LiveWire shipped service bulletin L1002 for 2021-22 bikes to improve DC station compatibility, and owners hit 'charge port lock' faults that clear by supporting the cable. Budget retry time at DC stops (ADR-021)."
     },
     {
       "id": "livewire-s2-delmar",
@@ -261,7 +261,7 @@
       ],
       "source": "BRP MY26 Pulse spec sheet PDF, 2026-09-19 (8.9 kWh, 100 mi city, 80 mi WMTC combined, 55 mi @ 50 mph, 6.6 kW, J1772)",
       "confidence": "verified",
-      "notes": "BRP states no Level 3 charging of any kind: not CCS, not CHAdeMO, not NACS. Highest published constant-speed figure is only 50 mph; Electrek measured ~50 mi at 62 mph. Whether 8.9 kWh is usable or gross is not published — treat as gross."
+      "notes": "BRP states no Level 3 charging of any kind: not CCS, not CHAdeMO, not NACS. Highest published constant-speed figure is only 50 mph; Electrek measured ~50 mi at 62 mph. Whether 8.9 kWh is usable or gross is not published — treat as gross.  No owner reliability record exists yet — too new and too rare. Unknown, not known-good."
     },
     {
       "id": "canam-origin",
@@ -281,7 +281,7 @@
       ],
       "source": "BRP MY26 Origin spec sheet PDF, 2026-09-19 (8.9 kWh, 90 mi city, 71 mi WMTC combined, 52 mi @ 50 mph, 6.6 kW, J1772)",
       "confidence": "verified",
-      "notes": "No DC fast charging. Same caveats as the Pulse."
+      "notes": "No DC fast charging. Same caveats as the Pulse.  No owner reliability record exists yet — unknown, not known-good."
     },
     {
       "id": "petrol-midsize",

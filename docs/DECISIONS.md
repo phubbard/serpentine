@@ -366,3 +366,36 @@ Unresolved and not to be guessed at: no failing hardware model numbers, no LiveW
 the minimum-station-voltage theory stays unverified), and no evidence on which CCS protocol version
 any of these bikes implement. The broader reliability questions from ADR-020 — arrival reserve,
 Open Charge Map, anonymous reports — are still Paul's to decide.
+
+### ADR-021 amendment · 2026-09-19 · firmware timing counts as much as the lock; Zero's pack is too low-voltage for car DC
+
+Further research corrected three things in the finding above.
+
+**Bike-side firmware is as much the cause as the connector lock.** Energica publicly conceded the same
+failure class and fixed it in firmware FW43 — "vehicle-to-charger interface issues may render that
+charger useless for the customer", an "adjustment of the timing error threshold to save riders from
+losing hook up", validated directly with ChargePoint, Electrify America, EVgo and Tesla
+(<https://web.archive.org/web/20240905162042/https://www.energicamotor.com/us/global-charging-compatibility/>,
+the live page now 404s). That is the same shape as LiveWire's L1002. Two manufacturers independently
+shipping handshake-timing fixes means the mechanical lock is *a* cause, not *the* cause — weight them
+equally. It also means the failure is partly a moving target: a bike's firmware version matters, and
+we cannot know it.
+
+**Why no Zero can use a car DC charger at all: the pack sits around 102 V** (96–118 V), against
+CharIN's 200 V floor and a real hardware floor near 150 V on ABB and Alpitronic units — 50–100 V below
+anything installed. Zero doesn't publish pack voltage; this is third-party (zerologs.bike, the
+unofficial manual), so treat it as unverified but load-bearing: it explains both the dead CHAdeMO era
+and why Zero's 2027 answer is a *fast-charge module*, not merely a port. Also withdrawn: the earlier
+guess that DC sessions fault near 80 % because stations enforce a minimum current. CharIN sets that
+floor at 1–5 A; a bike tapering to 20–30 A is nowhere near it.
+
+**Two shippable, well-sourced warnings**, both Zero's own words: its J1772 adapter (the older
+DS/DSR/FX/FXE/S/SR platform, not the SR/F, SR/S or DSR/X, which have real inlets) "does not support
+charging stations that require such authentication", and the contactor opens above 50 °C, which blocks
+charging after hard riding stacked onto repeated charges. The second matters to this app specifically:
+a curvy-road planner routes exactly the kind of ride that arrives hot.
+
+Two things not to repeat: the Zero community wiki's suggestion of a cheater plug to defeat GFCI trips
+(unsafe, must never surface in the app), and a search-engine claim about "circuit harmonics" attributed
+to Can-Am, whose own pages don't contain the word. Can-Am is too new and too rare to have any owner
+reliability record at all — treat it as unknown, not as known-good.
