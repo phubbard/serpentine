@@ -16,8 +16,8 @@ Apple Maps handoff; try it at
 - `FEASIBILITY.md` — market survey, technical feasibility, costs, risks, sources (Sept 2026, competitor
   table amended Oct 2026)
 - `server/` — serpentine-api (Go, stdlib only): loops, time budgets, per-bike charging against a local
-  daily copy of every US public charger, with
-  charger-reliability checks, Apple Maps handoff, the
+  daily copy of every US public charger, with charger-reliability checks and tidied station names,
+  Apple Maps handoff, the
   vehicle catalog (`vehicles.json`, served at `/v1/vehicles`), browser test page
   with a map (vendored Leaflet, cached OSM tiles)
 - `infra/` — GraphHopper 11 motorcycle profile (whole-US graph), docker-compose, Caddy site block,
