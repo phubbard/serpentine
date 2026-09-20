@@ -139,6 +139,18 @@ struct Charger: Decodable, Sendable, Identifiable {
     let stop: Bool
     let role: String?
     let dwellMin: Double?
+    let reliability: Reliability?
+}
+
+/// What Open Charge Map knows about a charger: absent means it has no listing there, which is common
+/// in the back country and is not the same as "it's fine".
+struct Reliability: Decodable, Sendable {
+    let operational: Bool
+    let status: String?
+    let lastConfirmed: String?
+    let stale: Bool?
+    let recentFailures: Int?
+    let note: String?
 }
 
 struct Handoff: Decodable, Sendable {

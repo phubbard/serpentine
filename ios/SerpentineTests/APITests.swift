@@ -2,8 +2,9 @@ import Foundation
 import Testing
 @testable import Serpentine
 
-// Fixtures are real serpentine-api responses (2026-09-18): a 150 km Ramona loop with charging from
-// 60 %, and a 120 km out-and-back. If these stop decoding, docs/API.md and the app have drifted.
+// Fixtures are real serpentine-api responses: a 150 km Ramona loop with charging from 60 %, a 120 km
+// out-and-back (both 2026-09-18), and a Santa Cruz mountains loop carrying Open Charge Map
+// reliability data (2026-09-19). If these stop decoding, docs/API.md and the app have drifted.
 
 private final class BundleToken {}
 
@@ -104,3 +105,21 @@ private func fixture(_ name: String) throws -> PlanResult {
     #expect(!Format.climb(meters: 3000, locale: Locale(identifier: "en_US")).contains("mi"))
 }
 
+
+@Test func decodesChargerReliability() throws {
+    let plan = try fixture("plan_loop_reliability")
+    let chargers = try #require(plan.chargers)
+    // Only stops and backups are looked up; alternates are left alone (ADR-022).
+    for c in chargers where c.reliability != nil {
+        #expect(c.role == "stop" || c.role == "backup", "\(c.role ?? "?") shouldn't carry reliability")
+    }
+    let rated = chargers.filter { $0.reliability != nil }
+    #expect(!rated.isEmpty, "the fixture should carry reliability data")
+    let r = try #require(rated.first?.reliability)
+    #expect(r.operational)
+    #expect(r.lastConfirmed?.isEmpty == false, "a verification date is the useful part")
+    // A stop reported dead never reaches the app: it gets replanned server-side.
+    for c in chargers where c.stop {
+        #expect(c.reliability?.operational ?? true)
+    }
+}

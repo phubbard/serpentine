@@ -21,6 +21,6 @@ Apple Maps handoff; try it at
 - `demo/`, `tools/` — a hardwired demo ride and the script that routes it
 - `ios/AppStore/screenshots/` — App Store screenshots: 6.9" (1320×2868), 6.5" (1284×2778), 13" iPad
   (2064×2752); `upload/` holds the opaque JPEGs ASC takes
-- `docs/` — roadmap, decisions (ADR-001..021, including what the charging research found and what it
+- `docs/` — roadmap, decisions (ADR-001..022, including what the charging research found and what it
   rules out), API contract
 - `CLAUDE.md` — orientation for agents and future me: architecture, conventions, gotchas

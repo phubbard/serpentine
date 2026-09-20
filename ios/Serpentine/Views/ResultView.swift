@@ -12,6 +12,14 @@ struct ResultView: View {
     private var coordinates: [CLLocationCoordinate2D] { plan.polyline.map(\.coordinate) }
     private var stops: [Charger] { (plan.chargers ?? []).filter(\.stop) }
 
+    /// The nearest listed backup to a stop, so a rider who finds it dead or full knows where to go
+    /// next without opening the app again (ADR-021: "move to the next stall" is the real mitigation).
+    private func backup(for stop: Charger) -> Charger? {
+        (plan.chargers ?? [])
+            .filter { $0.role == "backup" && ($0.reliability?.operational ?? true) }
+            .min { abs($0.kmFromStart - stop.kmFromStart) < abs($1.kmFromStart - stop.kmFromStart) }
+    }
+
     var body: some View {
         List {
             Section {
@@ -55,6 +63,15 @@ struct ResultView: View {
                             Text("\(Format.distance(km: c.kmFromStart)) in · arrive \(Format.percent(c.socArrivalEst)) · charge \(Int(c.dwellMin ?? 0)) min")
                                 .font(.subheadline)
                             Text("\(c.ports) ports · \(c.network)").font(.caption).foregroundStyle(.secondary)
+                            if let note = c.reliability?.note {
+                                Label(note, systemImage: "exclamationmark.bubble")
+                                    .font(.caption).foregroundStyle(.orange)
+                            }
+                            if let backup = backup(for: c) {
+                                Label("Backup: \(backup.name), \(Format.distance(km: backup.kmFromStart)) in",
+                                      systemImage: "arrow.triangle.branch")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
