@@ -579,3 +579,34 @@ decile, what's failing, and are the charger sources answering.
 
 The privacy policy needs one sentence added when this ships — not because counters are personal data,
 but because the page says what the server keeps, and it will then keep something new.
+
+## ADR-027 · 2026-09-20 · Stats persist in SQLite, driven by the sqlite3 CLI
+
+ADR-026's counters lived in memory, so every deploy erased the week. Paul asked for SQLite, which is
+the right shape — a queryable file he can open with anything — but every Go SQLite driver is a
+dependency, and this server is deliberately stdlib-only (CLAUDE.md).
+
+**So: SQLite through `/usr/bin/sqlite3`.** One row per hour, written every five minutes and again on
+shutdown; exec cost is irrelevant at that rate. It ships with macOS (3.54 on axiom, with `-json`
+output, which is how rows are read back). Zero dependencies, and the result is an ordinary
+`~/serpentine-api/stats.db` that `sqlite3`, Datasette or a spreadsheet can read. If in-process
+queries are ever wanted, swapping in a pure-Go driver is a contained change behind `statsStore` —
+and it would need its own ADR, because it would be this repo's first Go dependency.
+
+Counters are restored into memory at startup, so the dashboard's week spans restarts. Hours are
+**upserted whole**, never incremented, so a flush is idempotent and a crash costs at most the last
+few minutes. Retention is 90 days, swept on each save, matching the access log (ADR-017).
+
+The schema is all `INTEGER` but for the hour key and the latency histogram, and a test walks
+`pragma_table_info` asserting exactly that: no text column can appear that might one day hold a
+coordinate, a route or a rider.
+
+**Two bugs this found, both only visible by actually restarting the thing.** The final flush ran in a
+goroutine that raced process exit and lost the write; it is now synchronous in `main`. And my first
+attempt to verify used `pkill -f "serpentine-api$"`, which matched nothing because the command line
+ends in its flags — so an earlier "it doesn't work" reading was the test being wrong, not the code.
+Verified properly: two plans, SIGTERM, the row lands in the database, launchd restarts, the dashboard
+reads 2 again and counting continues on top.
+
+Accepted limits: a `SIGKILL` (or `launchctl kickstart -k`) skips the flush and loses up to five
+minutes of counts, which is the right trade for counters that exist to answer "is it healthy".

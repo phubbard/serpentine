@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"log/slog"
+	"maps"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -59,6 +63,71 @@ type metrics struct {
 	mu      sync.Mutex
 	started time.Time
 	hours   map[int64]*bucket
+	store   *statsStore // nil: counters live only in memory and a restart clears them
+	stored  int         // hours on disk, shown on the dashboard so a glance says persistence works
+}
+
+// restore seeds the in-memory week from disk, so a deploy doesn't erase the history.
+func (m *metrics) restore(ctx context.Context, store *statsStore) error {
+	hours, err := store.load(ctx, time.Now().Add(-metricHours*time.Hour))
+	if err != nil {
+		return err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.store = store
+	m.hours = hours
+	m.stored = store.storedHours(ctx)
+	return nil
+}
+
+// flush writes the hours that can still be changing. Whole-hour upserts, so this is idempotent and
+// a crash costs at most the last few minutes of counts.
+func (m *metrics) flush(ctx context.Context) error {
+	m.mu.Lock()
+	if m.store == nil {
+		m.mu.Unlock()
+		return nil
+	}
+	store := m.store
+	recent := map[int64]*bucket{}
+	cutoff := time.Now().Add(-2 * time.Hour).Unix()
+	for h, b := range m.hours {
+		if h >= cutoff {
+			copy := *b
+			copy.Mode, copy.Budget = maps.Clone(b.Mode), maps.Clone(b.Budget)
+			copy.Latency = slices.Clone(b.Latency)
+			recent[h] = &copy
+		}
+	}
+	m.mu.Unlock()
+
+	if err := store.save(ctx, recent); err != nil {
+		return err
+	}
+	n := store.storedHours(ctx)
+	m.mu.Lock()
+	m.stored = n
+	m.mu.Unlock()
+	return nil
+}
+
+// flushEvery keeps the database current until the context is cancelled. The *final* flush is not
+// done here: a goroutine racing process exit loses the write, which is exactly what happened the
+// first time this shipped. main calls flush synchronously on the way out.
+func (m *metrics) flushEvery(ctx context.Context, every time.Duration, log *slog.Logger) {
+	t := time.NewTicker(every)
+	defer t.Stop()
+	for {
+		select {
+		case <-t.C:
+			if err := m.flush(ctx); err != nil {
+				log.Warn("stats: flush", "err", err)
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func newMetrics() *metrics {
@@ -182,6 +251,7 @@ type snapshot struct {
 	Healthy      bool         `json:"healthy"`
 	Chargers     bool         `json:"chargers"`
 	Reliability  bool         `json:"reliability"`
+	StoredHours  int          `json:"stored_hours"` // rows in the database; 0 = memory only
 	LatencyEdges []float64    `json:"latency_edges"`
 	Hours        []hourPoint  `json:"hours"`
 	Today        bucketTotals `json:"today"`
@@ -208,7 +278,7 @@ func (m *metrics) snapshot(version string, healthy, chargers, reliability bool, 
 		Hours:   []hourPoint{}, // never null: the dashboard iterates it
 		Version: version, UptimeS: int64(time.Since(m.started).Seconds()),
 		GraphHopper: ghVersion, GraphDate: graphDate,
-		Healthy: healthy, Chargers: chargers, Reliability: reliability,
+		Healthy: healthy, Chargers: chargers, Reliability: reliability, StoredHours: m.stored,
 		LatencyEdges: latencyEdges,
 	}
 	dayStart := time.Now().Truncate(time.Hour).Add(-23 * time.Hour).Unix()

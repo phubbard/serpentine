@@ -23,7 +23,8 @@ the reference for competitor and API facts; don't re-research what it already an
   home-screen name stays "Serpentine"), internal group "Internal" with automatic distribution. `make -C server test|run|deploy|logs`. No app code yet.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.
 - Ops dashboard: `http://axiom:8990/stats` (LAN only — Caddy proxies `/v1/*` and `/`, so `/stats`
-  404s from outside). Counters only, hourly, in memory, cleared by a restart (ADR-026).
+  404s from outside). Counters only, hourly, kept in `~/serpentine-api/stats.db` via the `sqlite3`
+  CLI and restored at startup (ADR-026, ADR-027). `SIGKILL` loses up to 5 minutes of counts.
 - Shared agent memory: Memento page `/projects/serpentine.md` at `http://webserver:8321/mcp` (see
   Memento section). Keep it in sync with major status changes.
 

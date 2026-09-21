@@ -87,6 +87,7 @@ func main() {
 	nrelKeyFile := flag.String("nrel-key-file", "", "file holding the NREL API key (or set NREL_API_KEY)")
 	ocmURL := flag.String("ocm", envOr("SERPENTINE_OCM", ocmDefaultBase), "Open Charge Map API base URL")
 	ocmKeyFile := flag.String("ocm-key-file", "", "file holding the Open Charge Map API key (or set OCM_API_KEY)")
+	statsDB := flag.String("stats-db", envOr("SERPENTINE_STATS_DB", ""), "SQLite file for hourly counters (empty: memory only)")
 	tileCache := flag.String("tile-cache", "", "directory for cached map tiles (enables /v1/tiles)")
 	tileURL := flag.String("tile-upstream", tileDefaultURL, "raster tile URL template")
 	flag.Parse()
@@ -116,6 +117,21 @@ func main() {
 		log.Warn("no Open Charge Map key: plans carry no charger reliability data")
 	}
 
+	// Counters survive a restart when a database is configured; without one they are memory-only and
+	// a deploy clears them (ADR-027). Either way, a failure here never stops the server serving rides.
+	statsCtx, stopStats := context.WithCancel(context.Background())
+	defer stopStats()
+	if *statsDB != "" {
+		if store, err := newStatsStore(*statsDB); err != nil {
+			log.Warn("stats: no persistence", "err", err)
+		} else if err := s.stats.restore(statsCtx, store); err != nil {
+			log.Warn("stats: could not read history", "err", err)
+		} else {
+			log.Info("stats: persisting", "db", *statsDB, "hours", s.stats.stored)
+			go s.stats.flushEvery(statsCtx, statsFlushEvery, log)
+		}
+	}
+
 	srv := &http.Server{
 		Addr:              *addr,
 		Handler:           s.routes(),
@@ -133,6 +149,10 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
+	stopStats()                                                 // stop the ticker, then write the current hour synchronously — a goroutine would
+	if err := s.stats.flush(context.Background()); err != nil { // lose the race with process exit
+		log.Warn("stats: final flush", "err", err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(ctx)
@@ -450,11 +470,20 @@ func (s *server) planForBudget(ctx context.Context, req *planRequest, cm *custom
 			best = next
 		}
 	}
-	best.Budget = &budgetInfo{
-		TargetS: req.DurationS,
-		TotalS:  math.Round(budgetUsedS(best)),
-		Fits:    budgetUsedS(best) <= req.DurationS,
+	used := budgetUsedS(best)
+	b := &budgetInfo{TargetS: req.DurationS, TotalS: math.Round(used), Fits: used <= req.DurationS}
+	// Coming back at a third of the time asked for is not "fitting the budget", it is failing to
+	// find a ride that fills it. Say which, rather than quietly handing over a token ride.
+	if used < req.DurationS*0.6 {
+		if best.Energy != nil && best.Energy.Stops > 0 {
+			b.Note = "This bike needs a charge stop that won't fit your time. Longer rides here mean charging."
+		} else if best.Energy != nil && !best.Energy.Feasible {
+			b.Note = "A longer ride would need a charge stop, and there isn't a reachable charger for one."
+		} else {
+			b.Note = "No longer ride was available from here — this is the best that fits."
+		}
 	}
+	best.Budget = b
 	return best, attempts, nil
 }
 

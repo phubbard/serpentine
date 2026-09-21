@@ -264,6 +264,9 @@ type budgetInfo struct {
 	TargetS float64 `json:"target_s"`
 	TotalS  float64 `json:"total_s"`
 	Fits    bool    `json:"fits"`
+	// Note explains a ride that came back far shorter than asked for — nearly always a bike that
+	// needs a charge stop the budget can't hold (ADR-018 amendment).
+	Note string `json:"note,omitempty"`
 }
 
 type planResult struct {

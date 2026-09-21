@@ -85,8 +85,21 @@
     </div>
     <input id="custom" class="hidden" type="text" placeholder="lat, lon  e.g. 33.042, -116.868" style="margin-top:8px">
 
-    <label for="dist">Total distance</label>
-    <div class="row"><input id="dist" type="range" min="40" max="400" step="10" value="150"><span class="val" id="distv"></span></div>
+    <label for="budget">Plan by</label>
+    <select id="budget">
+      <option value="distance">Distance</option>
+      <option value="time">Time I have</option>
+    </select>
+
+    <div id="distrow">
+      <label for="dist">Total distance</label>
+      <div class="row"><input id="dist" type="range" min="40" max="400" step="10" value="150"><span class="val" id="distv"></span></div>
+    </div>
+
+    <div id="timerow" class="hidden">
+      <label for="mins">Time I have</label>
+      <div class="row"><input id="mins" type="range" min="30" max="480" step="15" value="120"><span class="val" id="minsv"></span></div>
+    </div>
 
     <label for="twist">Twistiness</label>
     <div class="row"><input id="twist" type="range" min="0" max="1" step="0.1" value="0.5"><span class="val" id="twistv"></span></div>
@@ -99,10 +112,13 @@
       <option value="270">West</option><option value="315">Northwest</option>
     </select>
 
-    <div class="toggle"><span>EV charging (Zero SR/S)</span><input id="ev" type="checkbox"></div>
+    <div class="toggle"><span>EV charging</span><input id="ev" type="checkbox"></div>
     <div id="evopts" class="ev hidden">
+      <label for="bike">Bike</label>
+      <select id="bike"></select>
       <label for="soc">Starting charge</label>
       <div class="row"><input id="soc" type="range" min="20" max="100" step="5" value="100"><span class="val" id="socv"></span></div>
+      <div class="toggle"><span>Keep enough for a backup</span><input id="reserve" type="checkbox" checked></div>
     </div>
   </section>
 
@@ -151,10 +167,37 @@ let seed = 1, busy = false;
 
 function bind(input, out, fmt) { const f = () => out.textContent = fmt(input.value); input.oninput = f; f(); }
 bind($("dist"), $("distv"), v => v + " km");
+bind($("mins"), $("minsv"), v => v < 60 ? v + " min" : `${Math.floor(v / 60)} h ${String(v % 60).padStart(2, "0")}`);
 bind($("twist"), $("twistv"), v => Number(v).toFixed(1));
 bind($("soc"), $("socv"), v => v + " %");
 $("ev").onchange = () => $("evopts").classList.toggle("hidden", !$("ev").checked);
 const modeLabel = () => $("mode").value === "loop" ? "Plan loop" : "Plan out and back";
+
+$("budget").onchange = () => {
+  const byTime = $("budget").value === "time";
+  $("distrow").classList.toggle("hidden", byTime);
+  $("timerow").classList.toggle("hidden", !byTime);
+};
+
+// The bike catalogue the server publishes (ADR-025). Wh/km is what the model wants; the catalogue
+// quotes ranges, so convert here exactly as the app does.
+let bikes = {};
+const whPerKM = (b, miles) => Math.round((b.battery_nominal_kwh || b.battery_max_kwh) / (miles * 1.609344) * 1000);
+
+async function loadBikes() {
+  try {
+    const cat = await (await fetch("vehicles")).json();
+    const sel = $("bike");
+    cat.vehicles.filter(v => v.kind === "electric" && v.range_city_mi).forEach((v, i) => {
+      bikes[v.id] = v;
+      sel.add(new Option(`${v.make} ${v.model}`, v.id, false, v.id === "zero-srs"));
+    });
+    sel.value = "zero-srs";
+  } catch (e) {
+    $("bike").add(new Option("Zero SR/S (catalogue unavailable)", ""));
+  }
+}
+loadBikes();
 $("mode").onchange = () => { $("go").textContent = modeLabel(); $("again").disabled = true; };
 $("preset").onchange = () => $("custom").classList.toggle("hidden", $("preset").value !== "custom");
 
@@ -188,17 +231,39 @@ async function plan() {
   $("status").className = "muted"; $("status").textContent = "Planning…";
   try {
     const body = {
-      mode: $("mode").value, start: await start(), distance_m: Number($("dist").value) * 1000,
+      mode: $("mode").value, start: await start(),
       twistiness: Number($("twist").value), seed,
     };
+    if ($("budget").value === "time") body.duration_s = Number($("mins").value) * 60;
+    else body.distance_m = Number($("dist").value) * 1000;
     if ($("heading").value !== "") body.heading_deg = Number($("heading").value);
-    if ($("ev").checked) body.charging = { enabled: true, soc_start: Number($("soc").value) / 100 };
+    if ($("ev").checked) {
+      body.charging = {
+        enabled: true,
+        soc_start: Number($("soc").value) / 100,
+        reserve_for_backup: $("reserve").checked,
+      };
+      const bike = bikes[$("bike").value];
+      if (bike) {
+        body.vehicle = {
+          name: `${bike.make} ${bike.model}`, kind: "electric",
+          usable_kwh: bike.battery_nominal_kwh || bike.battery_max_kwh,
+          city_wh_per_km: whPerKM(bike, bike.range_city_mi),
+          highway_wh_per_km: whPerKM(bike, bike.range_highway_mi || bike.range_highway_low_mi || bike.range_city_mi * 0.6),
+          ac_kw: bike.ac_kw || 0, dc_kw: bike.dc_kw || 0,
+          connectors: bike.connectors || ["J1772"],
+        };
+      }
+    }
     const t0 = performance.now();
     const r = await fetch("plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const res = await r.json();
     if (!r.ok) throw new Error(res.error || r.statusText);
     show(res);
-    $("status").textContent = `Planned in ${Math.round(performance.now() - t0)} ms · seed ${seed}`;
+    const budget = res.budget
+      ? ` · ${Math.round(res.budget.total_s / 60)} of ${Math.round(res.budget.target_s / 60)} min${res.budget.fits ? "" : " (over)"}`
+      : "";
+    $("status").textContent = `Planned in ${Math.round(performance.now() - t0)} ms · seed ${seed}${budget}`;
   } catch (e) {
     $("status").className = "error"; $("status").textContent = e.message;
   } finally {

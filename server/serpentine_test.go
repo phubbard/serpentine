@@ -692,3 +692,29 @@ func TestVehicleCatalog(t *testing.T) {
 		}
 	}
 }
+
+// A ride that comes back at a fraction of the time asked for has not "fitted the budget" — it has
+// failed to fill it, and the rider deserves to be told why (ADR-018 amendment).
+func TestShortRideAgainstABigBudgetExplainsItself(t *testing.T) {
+	var calls atomic.Int32
+	gh := fakeGH(t, nil, &calls)
+	defer gh.Close()
+	api := testServer(gh)
+	defer api.Close()
+	// The fake returns a 341-minute loop whatever we ask, so an 8-hour budget is filled, not starved.
+	code, res := post(t, api.URL+"/v1/plan", `{"mode":"loop","start":[-116.868,33.042],"duration_s":28800}`)
+	if code != 200 {
+		t.Fatalf("plan: %d", code)
+	}
+	b, ok := res["budget"].(map[string]any)
+	if !ok {
+		t.Fatal("no budget block")
+	}
+	used, target := b["total_s"].(float64), b["target_s"].(float64)
+	if used < target*0.6 && b["note"] == nil {
+		t.Errorf("%.0f s against a %.0f s budget needs an explanation", used, target)
+	}
+	if used >= target*0.6 && b["note"] != nil {
+		t.Errorf("a ride that filled the budget shouldn't apologise: %v", b["note"])
+	}
+}

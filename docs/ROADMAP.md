@@ -118,8 +118,9 @@ which the Pi's Caddy is the only thing that proxies.
 - [x] **`/stats.json` and `/stats`** — done 2026-09-20 (verified LAN 200, public 404): the JSON plus a static embedded dashboard (no external
       anything) answering: is it up, is the graph current, rides today, p50/p95, what is failing, are
       the charger sources answering. Add the sentence to `/v1/privacy` when it ships.
-- [ ] **Optional persistence** (~1 h): append the hourly aggregate to `~/serpentine-api/stats.jsonl`,
-      rotate at 90 days, so a restart doesn't erase the week. Aggregates only, never events.
+- [x] **Persistence** — done 2026-09-20 (ADR-027): SQLite at `~/serpentine-api/stats.db` via the
+      `sqlite3` CLI (no Go dependency), hourly upserts every 5 min and on shutdown, 90-day retention,
+      restored into memory at startup. A test asserts the schema can only hold counts.
 
 ## Phase 3 — Ride quality
 

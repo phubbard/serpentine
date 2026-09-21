@@ -20,6 +20,10 @@
              carry no charger reliability data. -->
         <string>-ocm-key-file</string>
         <string>/Users/pfh/serpentine-api/ocm.key</string>
+        <!-- Hourly operational counters, so a deploy doesn't erase the week (ADR-027). Aggregates
+             only; open it with sqlite3 on axiom. -->
+        <string>-stats-db</string>
+        <string>/Users/pfh/serpentine-api/stats.db</string>
         <!-- Map tiles for the /v1/ test page, fetched once from OSM and cached here. -->
         <string>-tile-cache</string>
         <string>/Users/pfh/serpentine-api/tiles</string>
