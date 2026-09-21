@@ -7,6 +7,10 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [0.1.0]
 
+- Rides anywhere in the United States, Alaska and Hawaii included — no app update needed, the
+  planner already knows. Try somewhere you have never ridden.
+- Charge stops are found from a local copy of every public US charger, so planning is quicker and
+  doesn't depend on someone else's API being awake.
 - A garage: keep more than one bike, pick from a catalogue of Zero, LiveWire and Can-Am models, or
   type your own numbers when the spec sheet doesn't match what you ride. Charge stops are planned for
   the bike you picked, at its own charging rate and plugs — including any adapters you carry.
