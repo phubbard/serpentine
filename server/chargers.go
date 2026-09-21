@@ -78,13 +78,13 @@ type energySummary struct {
 }
 
 // sitesFromStations merges co-located pedestals and drops restricted or non-usable ones.
-func sitesFromStations(stations []nrelStation) []charger {
+func sitesFromStations(stations []nrelStation, connectors []string) []charger {
 	var sites []charger
 	for _, s := range stations {
 		if s.Restricted {
 			continue
 		}
-		ports, kw, conns := s.usablePorts()
+		ports, kw, conns := s.usablePorts(connectors)
 		if ports == 0 {
 			continue
 		}

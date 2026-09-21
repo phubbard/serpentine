@@ -304,7 +304,7 @@ func buildResult(id, mode string, p *ghPath, loop *loopInfo, ob *outBackInfo, tu
 		forced = append(forced, forcedWaypoint{idx: turnIdx, pt: lonLat(coords[turnIdx]), label: "Turnaround"})
 	}
 	if co != nil {
-		sites = sitesFromStations(stations)
+		sites = sitesFromStations(stations, acConnectors(v))
 		placeOnRoute(sites, coords, cum)
 		sum := planCharging(v, sites, energyProfile(v, p, cum), float64(p.Time)/1000, *co)
 		sum.ChargersNearby = len(sites)

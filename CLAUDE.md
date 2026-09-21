@@ -64,7 +64,8 @@ Caddy on webserver (Pi 5, .3)          ← the house's only internet-facing host
    ▼
 serpentine-api on axiom (Mac Studio M4 Max, 128 GB, .7)   ← phase 1, Go, :8990
    ├─► GraphHopper 11, :8989, Docker, us-west graph, profile "motorcycle" (LM/hybrid mode)
-   ├─► NREL AFDC API at developer.nlr.gov (J1772 / TESLA L2 along route)  ← key only on axiom, X-Api-Key
+   ├─► NREL AFDC: the whole US fetched once a day into ~/serpentine-api/stations.json (ADR-028);
+   │     corridor search is local. Key only on axiom, X-Api-Key. Per-plan calls are the fallback.
    └─► (later) elevation, HPMS AADT, cached tiles
 ```
 

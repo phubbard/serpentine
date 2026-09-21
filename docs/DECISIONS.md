@@ -632,3 +632,33 @@ Worth keeping in mind for the rest of the scoring: south from UTC *does* route (
 70 minutes, versus 46 mi north-east), it is simply slower going, and southwest is the Pacific and is
 correctly refused. The bias towards the hills is real and mostly right; what was wrong was pretending
 it was the only answer.
+
+## ADR-028 · 2026-09-20 · The country's chargers live here now
+
+Checking readiness for a public post turned up the binding constraint: NREL's key allows **1,000
+requests an hour** (verified from the response headers: `x-ratelimit-limit: 1000`). Every charging
+plan made one `nearby-route` call, so sixteen charging plans a minute would break charging for
+everyone, testers included. That is a low ceiling to discover after telling a few thousand riders to
+try it.
+
+The whole country is **one request**: 81,864 public stations, 260 MB of JSON. So serpentine-api now
+fetches that daily into `~/serpentine-api/stations.json` (121 MB as we store it) and does the corridor
+search itself — grid buckets of ~11 km, then exact distance to the thinned polyline, returning the
+same shape and the same `OffRouteKM` in km that the API returned. Nothing downstream can tell the
+difference: the Ramona loop that used to plan 117 mi with one stop at La Jolla CAINE Village, 110
+minutes of charging, ending at 46 %, plans exactly that from local data.
+
+What this buys beyond the rate limit: a plan no longer fails because someone else's API is down or
+slow, latency drops by a network round trip, and **connector filtering becomes per-bike** — station
+selection now reads the vehicle's own Level 2 plugs (ADR-025) instead of a hardcoded `J1772,TESLA`.
+
+Failure behaviour is deliberately boring. No local copy, or a copy that won't load, falls back to the
+per-plan API call — which is how the first deploy behaved when the bulk URL was wrong (`/v1/.json`
+instead of `/v1.json`), and riders saw nothing. A refresh returning fewer than a thousand stations is
+refused rather than believed, because an API hiccup shouldn't empty the country. The file is written
+to a temp name and renamed, so a torn write can't replace good data. Serving from a copy older than a
+week logs a warning.
+
+Not done: the data is public-station only and inherits NREL's own staleness; Open Charge Map still
+answers "does it actually work" per stop (ADR-022), and that one is still a live call, though its
+24-hour cache makes it far less of a cliff.

@@ -46,7 +46,7 @@ func palomarSites(t *testing.T) (*ghPath, []float64, []charger) {
 		t.Fatal(err)
 	}
 	cum := cumulativeKM(p.Points.Coordinates)
-	sites := sitesFromStations(stations)
+	sites := sitesFromStations(stations, nil)
 	placeOnRoute(sites, p.Points.Coordinates, cum)
 	return p, cum, sites
 }

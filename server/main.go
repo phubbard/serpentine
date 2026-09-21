@@ -71,13 +71,14 @@ var vendorFS embed.FS
 const testPageCSP = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'"
 
 type server struct {
-	tiles *tileProxy // nil when -tile-cache is unset: /v1/tiles 404s
-	gh    *ghClient
-	nrel  *nrelClient // nil when no key is configured: charging requests get 503
-	ocm   *ocmClient  // nil when no key is configured: plans simply carry no reliability data
-	cache *planCache
-	stats *metrics
-	log   *slog.Logger
+	tiles    *tileProxy // nil when -tile-cache is unset: /v1/tiles 404s
+	gh       *ghClient
+	nrel     *nrelClient   // nil when no key is configured: charging requests get 503
+	ocm      *ocmClient    // nil when no key is configured: plans simply carry no reliability data
+	stations *stationStore // local copy of NREL's stations; nil falls back to the per-plan API call
+	cache    *planCache
+	stats    *metrics
+	log      *slog.Logger
 }
 
 func main() {
@@ -88,6 +89,7 @@ func main() {
 	ocmURL := flag.String("ocm", envOr("SERPENTINE_OCM", ocmDefaultBase), "Open Charge Map API base URL")
 	ocmKeyFile := flag.String("ocm-key-file", "", "file holding the Open Charge Map API key (or set OCM_API_KEY)")
 	statsDB := flag.String("stats-db", envOr("SERPENTINE_STATS_DB", ""), "SQLite file for hourly counters (empty: memory only)")
+	stationsFile := flag.String("stations-file", envOr("SERPENTINE_STATIONS", ""), "local copy of NREL's stations, refreshed daily (empty: call the API per plan)")
 	tileCache := flag.String("tile-cache", "", "directory for cached map tiles (enables /v1/tiles)")
 	tileURL := flag.String("tile-upstream", tileDefaultURL, "raster tile URL template")
 	flag.Parse()
@@ -115,6 +117,28 @@ func main() {
 		s.ocm.stats = s.stats
 	} else {
 		log.Warn("no Open Charge Map key: plans carry no charger reliability data")
+	}
+
+	// The whole country's chargers, held locally and refreshed daily (ADR-028). The per-plan API call
+	// is capped at 1,000/hour, which is the limit on how many riders this can serve.
+	syncCtx, stopSync := context.WithCancel(context.Background())
+	defer stopSync()
+	if *stationsFile != "" && s.nrel != nil {
+		store := newStationStore(*stationsFile)
+		if err := store.loadFile(); err != nil {
+			log.Info("stations: no usable cache, fetching", "err", err)
+		}
+		s.stations = store
+		go func() {
+			if ok, age := store.ready(); !ok || age > stationsRefresh {
+				if err := store.refresh(syncCtx, s.nrel); err != nil {
+					log.Warn("stations: first refresh failed; falling back to per-plan API calls", "err", err)
+				} else {
+					log.Info("stations: loaded", "count", store.count)
+				}
+			}
+			store.syncEvery(syncCtx, s.nrel, stationsRefresh, log)
+		}()
 	}
 
 	// Counters survive a restart when a database is configured; without one they are memory-only and
@@ -149,6 +173,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
+	stopSync()
 	stopStats()                                                 // stop the ticker, then write the current hour synchronously — a goroutine would
 	if err := s.stats.flush(context.Background()); err != nil { // lose the race with process exit
 		log.Warn("stats: final flush", "err", err)
@@ -541,8 +566,13 @@ func (s *server) planOnce(ctx context.Context, req *planRequest, cm *customModel
 	}
 	var stations []nrelStation
 	if req.Charging != nil {
-		stations, err = s.nrel.nearbyRoute(ctx, path.Points.Coordinates, chargerCorridorMiles, req.Vehicle.searchConnectors())
-		if err != nil {
+		if ok, age := s.stations.canAnswer(); ok {
+			stations = s.stations.nearbyRoute(path.Points.Coordinates, chargerCorridorMiles)
+			if age > stationsMaxAge {
+				s.log.Warn("stations: serving from a stale local copy", "age_h", age.Hours())
+			}
+		} else if stations, err = s.nrel.nearbyRoute(ctx, path.Points.Coordinates, chargerCorridorMiles,
+			req.Vehicle.searchConnectors()); err != nil {
 			s.log.Error("plan: charger data", "err", err)
 			return nil, errChargerData
 		}

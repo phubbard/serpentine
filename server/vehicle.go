@@ -96,6 +96,20 @@ func (v *vehicle) acConnectors() bool {
 	return false
 }
 
+// acConnectors is the bike's Level 2 plugs, the ones station selection reads today.
+func acConnectors(v *vehicle) []string {
+	if v == nil {
+		return nil
+	}
+	var out []string
+	for _, c := range v.Connectors {
+		if !dcConnector(c) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 // searchConnectors is what goes to NREL. Today only the AC ones, because station parsing reads
 // Level 2 units; DC connectors are carried in the vehicle and ignored here until that changes.
 func (v *vehicle) searchConnectors() string {

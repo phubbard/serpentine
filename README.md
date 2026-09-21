@@ -13,7 +13,8 @@ Apple Maps handoff; try it at
 <https://serpentine.phfactor.net/v1/>.
 
 - `FEASIBILITY.md` — market survey, technical feasibility, costs, risks, sources (Sept 2026)
-- `server/` — serpentine-api (Go, stdlib only): loops, time budgets, per-bike charging with
+- `server/` — serpentine-api (Go, stdlib only): loops, time budgets, per-bike charging against a local
+  daily copy of every US public charger, with
   charger-reliability checks, Apple Maps handoff, the
   vehicle catalog (`vehicles.json`, served at `/v1/vehicles`), browser test page
   with a map (vendored Leaflet, cached OSM tiles)

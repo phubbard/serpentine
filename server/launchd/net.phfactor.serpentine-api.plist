@@ -20,6 +20,9 @@
              carry no charger reliability data. -->
         <string>-ocm-key-file</string>
         <string>/Users/pfh/serpentine-api/ocm.key</string>
+        <!-- The country's public chargers, fetched once a day instead of once a plan (ADR-028). -->
+        <string>-stations-file</string>
+        <string>/Users/pfh/serpentine-api/stations.json</string>
         <!-- Hourly operational counters, so a deploy doesn't erase the week (ADR-027). Aggregates
              only; open it with sqlite3 on axiom. -->
         <string>-stats-db</string>
