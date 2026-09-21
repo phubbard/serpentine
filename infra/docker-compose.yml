@@ -2,13 +2,14 @@
 #
 # Prereqs on axiom:
 #   mkdir -p /Volumes/2TBSSD/serpentine/data
-#   curl -L -o /Volumes/2TBSSD/serpentine/data/us-west-latest.osm.pbf \
-#        https://download.geofabrik.de/north-america/us-west-latest.osm.pbf
+#   curl -L -o /Volumes/2TBSSD/serpentine/data/us-latest.osm.pbf \
+#        https://download.geofabrik.de/north-america/us-latest.osm.pbf   # 11.3 GB
 #   cp graphhopper/config.yml graphhopper/custom_models/* /Volumes/2TBSSD/serpentine/data/   (see README)
 #
-# Docker Desktop: Settings > Resources > Memory must be >= 20 GB or the JVM
-# below gets OOM-killed during import. First run imports (~30-60 min on M4 Max),
-# later runs load the cache in seconds.
+# Docker Desktop: Settings > Resources > Memory must be >= 80 GB for the whole-US import (ADR-029);
+# the JVM gets OOM-killed otherwise. The import took 63 min on the M4 Max and produced a 13 GB graph;
+# later runs load that cache in seconds. Import into a *second* container writing a different
+# graph directory if the service is live — the swap is then a restart, not an outage.
 
 services:
   graphhopper:
@@ -18,12 +19,12 @@ services:
     platform: linux/arm64
     command: >
       -c /data/config.yml
-      -i /data/us-west-latest.osm.pbf
-      -o /data/graph-cache
+      -i /data/us-latest.osm.pbf
+      -o /data/graph-cache-conus
       --host 0.0.0.0
       --port 8989
     environment:
-      JAVA_OPTS: "-Xmx14g -Xms4g -XX:+UseParallelGC"
+      JAVA_OPTS: "-Xmx48g -Xms8g -XX:+UseParallelGC"
     volumes:
       - /Volumes/2TBSSD/serpentine/data:/data
     ports:

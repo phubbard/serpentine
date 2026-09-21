@@ -662,3 +662,34 @@ week logs a warning.
 Not done: the data is public-station only and inherits NREL's own staleness; Open Charge Map still
 answers "does it actually work" per stop (ADR-022), and that one is still a live call, though its
 24-hour cache makes it far less of a cliff.
+
+## ADR-029 · 2026-09-20 · The whole United States, imported without an outage
+
+Coverage was us-west, which makes the app useless to most of the riders a public post would reach.
+With Docker's VM raised to 80 GB, the whole-country extract imports comfortably.
+
+**Measured, not estimated.** The 11.3 GB `us-latest` extract imported in **63 minutes** on the M4 Max
+— pass 2 over 161.7 M ways in 19 min, subnetworks in 46 s, 16 landmarks in 29.5 min — producing a
+13 GB graph of 70.5 M nodes and 87 M edges. Resident size while serving is ~19 GB, against 4.8 GB for
+us-west. My estimate beforehand was two to three hours, so the machine beat it by half.
+
+**No outage.** The import ran in a second container writing `graph-cache-conus`, with its own config
+(identical but for the extract, the graph directory and thread counts raised for 16 cores), while the
+us-west container kept serving on 8989. The swap was a compose edit and a restart: seconds. This is
+now the documented way to re-import, because a base-profile change means a full rebuild (ADR-009) and
+that shouldn't take the service down for an hour.
+
+**It is more than CONUS.** Geofabrik's `us` extract includes Alaska, Hawaii and the territories — one
+of the landmarks landed at Prudhoe Bay — so the bounding box spans 18°N to 71°N. The public pages now
+say "all 50 states" rather than "the western United States".
+
+**Verification was the interesting part.** A bare `round_trip` call against the new graph failed for
+Ramona, Deals Gap and Ouray, which looked like a serious regression — until the same call failed
+identically against the *old* us-west graph. Single round-trip requests are simply flaky; serpentine-api
+already fans out 16 candidates and tolerates failures, which is why riders never see it. Tested
+properly through the planner, the profile finds exactly the roads it should nationwide: **US 129 at
+Deals Gap** (the Tail of the Dragon, 54.9 km of curves in an 88-mile loop), **US 550 and CO 145 out of
+Ouray**, **Seven Lakes Drive** at Bear Mountain, **VT 100** at Stowe. San Diego is unchanged.
+
+The us-west extract and its graph cache are kept on disk for rollback. Worth remembering: Mexico and
+Canada are still outside the extract, so rides near either border still can't cross.

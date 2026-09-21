@@ -18,7 +18,8 @@ Apple Maps handoff; try it at
   charger-reliability checks, Apple Maps handoff, the
   vehicle catalog (`vehicles.json`, served at `/v1/vehicles`), browser test page
   with a map (vendored Leaflet, cached OSM tiles)
-- `infra/` — GraphHopper 11 motorcycle profile, docker-compose, Caddy site block, setup + smoke tests
+- `infra/` — GraphHopper 11 motorcycle profile (whole-US graph), docker-compose, Caddy site block,
+  setup + smoke tests
 - `demo/`, `tools/` — a hardwired demo ride and the script that routes it
 - `ios/AppStore/screenshots/` — App Store screenshots: 6.9" (1320×2868), 6.5" (1284×2778), 13" iPad
   (2064×2752), Mac (2880×1800); `upload/` holds the opaque JPEGs ASC takes

@@ -122,6 +122,14 @@ which the Pi's Caddy is the only thing that proxies.
       `sqlite3` CLI (no Go dependency), hourly upserts every 5 min and on shutdown, 90-day retention,
       restored into memory at startup. A test asserts the schema can only hold counts.
 
+## Coverage
+
+- [x] **Whole-US graph** — done 2026-09-20 (ADR-029): 63-minute import, 13 GB graph, no outage
+      (second container, then a restart). Includes Alaska and Hawaii.
+- [ ] **Rate limiting before any public post**: nothing exists today, and one loop is 16 GraphHopper
+      routes. Per-IP limits in Caddy plus a concurrency cap in serpentine-api, then a load test to
+      find out what saturation actually looks like on axiom.
+
 ## Phase 3 — Ride quality
 
 - [ ] Traffic proxy v2: HPMS AADT for CA state highways conflated onto GraphHopper edges as a

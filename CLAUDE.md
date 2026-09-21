@@ -63,7 +63,7 @@ Caddy on webserver (Pi 5, .3)          ← the house's only internet-facing host
    │  reverse_proxy
    ▼
 serpentine-api on axiom (Mac Studio M4 Max, 128 GB, .7)   ← phase 1, Go, :8990
-   ├─► GraphHopper 11, :8989, Docker, us-west graph, profile "motorcycle" (LM/hybrid mode)
+   ├─► GraphHopper 11, :8989, Docker, whole-US graph (ADR-029), profile "motorcycle" (LM/hybrid)
    ├─► NREL AFDC: the whole US fetched once a day into ~/serpentine-api/stations.json (ADR-028);
    │     corridor search is local. Key only on axiom, X-Api-Key. Per-plan calls are the fallback.
    └─► (later) elevation, HPMS AADT, cached tiles
@@ -148,15 +148,19 @@ Principles that constrain every design choice here:
 
 ### Infra specifics
 
-- Axiom hosts GraphHopper in Docker Desktop. **Docker Desktop's VM memory must be ≥ 24 GB** (default
-  was 7.57 GB and OOM-killed the import). Compose sets `-Xmx14g`.
+- Axiom hosts GraphHopper in Docker Desktop. **Docker Desktop's VM memory must be ≥ 80 GB** for the
+  whole-US graph (7.57 GB OOM-killed the first us-west import; 24 GB was enough for us-west alone).
+  Compose sets `-Xmx48g`. Resident size while serving is ~19 GB.
 - Custom model file **must not be named `motorcycle.json`** — GraphHopper ships a built-in with that
   name and refuses the clash. Ours is `serpentine.json`; the API profile name is still `motorcycle`.
 - Corrupt SRTM tiles from an interrupted run (`Unexpected end of ZLIB input stream` on
   `/data/elevation/demNNNNNN`) → `rm -rf data/elevation data/graph-cache` and restart. Tiles come
   from `srtm.kurviger.de`.
-- Full us-west import is ~25 min on the M4 Max (pass2 10 min, urban density 4.5, LM ~5). Much
-  longer means swapping.
+- Whole-US import is **63 min** on the M4 Max (pass2 19 min over 161.7 M ways, subnetworks 46 s,
+  landmarks 29.5 min), producing a 13 GB graph from an 11.3 GB extract: 70.5 M nodes, 87 M edges.
+  us-west was ~25 min. Much longer than that means swapping — check Docker's VM memory first.
+  **Import into a second container writing a different `graph.location` while the live one serves**
+  (ADR-029): the swap is a compose edit and a restart, not an hours-long outage.
 - `graph.dataaccess.default_type` must be `RAM_STORE`; plain `RAM` never writes `graph-cache/` and
   every restart re-imports.
 - Round trips: POST key is `headings` (plural); `heading` is silently ignored. Downtown SD can't loop

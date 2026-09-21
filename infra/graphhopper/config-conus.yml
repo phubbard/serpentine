@@ -1,3 +1,11 @@
+# CONUS import config (ADR-029). Same profile and encoded values as config.yml — only the extract,
+# the graph directory and the thread counts differ, so the routing a rider gets is unchanged and only
+# the coverage grows.
+#
+# Used to build /data/graph-cache-conus in a second container while the us-west one keeps serving;
+# the swap is then a compose edit and a restart, not hours of downtime. Threads are raised for
+# axiom's 16 cores (12 performance): the import is the long pole, not the serving.
+#
 # Serpentine GraphHopper config — motorcycle "curvy, moderate speed, low traffic" profile.
 # Based on graphhopper 11 config-example.yml; only the parts we need.
 graphhopper:
