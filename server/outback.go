@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"sort"
 )
 
 // Out-and-back (ADR-005, ADR-015): ride out to a turnaround, come home a different way. The return
@@ -11,6 +12,11 @@ import (
 // polyline (GraphHopper "areas"; tighten-only, so valid under LM). 0.3 inside the corridor makes the
 // return prefer a comparable different road without forcing a huge detour: Julian → Ramona came
 // home on Old Julian Hwy at the same 35 km, where 0.1 sent it 105 km round via Alpine.
+
+// outBackVariety: a candidate scoring within this factor of the best is "as good", and the seed may
+// pick it. Wide enough to reach a different direction, tight enough that nobody is sent somewhere
+// materially worse (lower scores are better).
+const outBackVariety = 1.25
 
 const (
 	corridorHalfWidthKM = 0.3
@@ -211,8 +217,10 @@ func (s *server) planOutBack(ctx context.Context, r *planRequest, cm *customMode
 			h := *r.HeadingDeg
 			headings = []float64{h, math.Mod(h+330, 360), math.Mod(h+30, 360)}
 		} else {
-			// The seed rotates the fan so "another one" gives new turnarounds.
-			rot := math.Mod(float64(*r.Seed-1)*22.5, 45)
+			// The seed rotates the fan so "another one" gives new turnarounds. A golden-ratio step
+			// spreads successive seeds across the 45° gap; the old 22.5° step was mod 45, so it only
+			// ever produced two fans and "another one" alternated between the same two rides.
+			rot := 45 * math.Mod(float64(*r.Seed-1)*0.6180339887, 1)
 			for h := 0.0; h < 360; h += 45 {
 				headings = append(headings, h+rot)
 			}
@@ -224,16 +232,33 @@ func (s *server) planOutBack(ctx context.Context, r *planRequest, cm *customMode
 	}
 	s.runOutBack(ctx, *r.Start, tries, cm, targetKM)
 
-	var best *outBackTry
+	// Rank the candidates, then let the seed choose among the ones that are nearly as good as the
+	// best. Taking the single winner every time means "any direction" always answers with the same
+	// direction — from UTC it was northeast every press, because the valley roads fill a distance
+	// target better than city streets ever will. Riders asking for another ride mean another *ride*.
+	var ranked []*outBackTry
 	failed := 0
 	for _, t := range tries {
 		if t.err != nil {
 			failed++
 			continue
 		}
-		if best == nil || t.score < best.score {
-			best = t
+		ranked = append(ranked, t)
+	}
+	sort.SliceStable(ranked, func(a, b int) bool { return ranked[a].score < ranked[b].score })
+	var best *outBackTry
+	if len(ranked) > 0 {
+		pool := ranked[:1]
+		for _, t := range ranked[1:] {
+			if t.score <= ranked[0].score*outBackVariety {
+				pool = append(pool, t)
+			}
 		}
+		seed := int64(0)
+		if r.Seed != nil {
+			seed = *r.Seed - 1
+		}
+		best = pool[((seed%int64(len(pool)))+int64(len(pool)))%int64(len(pool))]
 	}
 	if best == nil {
 		for _, t := range tries {

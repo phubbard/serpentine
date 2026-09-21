@@ -610,3 +610,25 @@ reads 2 again and counting continues on top.
 
 Accepted limits: a `SIGKILL` (or `launchctl kickstart -k`) skips the flush and loses up to five
 minutes of counts, which is the right trade for counters that exist to answer "is it healthy".
+
+### ADR-015 amendment · 2026-09-20 · "Another one" was only ever two rides
+
+Tester report: from UTC with "any direction", out-and-back always went towards Poway, across half a
+dozen presses of "another one". Two causes, both in `planOutBack`.
+
+**The seed rotation had a period of two.** The fan of eight candidate bearings was rotated by
+`mod((seed-1) × 22.5, 45)`, which yields 0, 22.5, 0, 22.5… — so there were exactly two candidate sets
+in existence, and "another one" alternated between the same two rides forever. Measured before the
+fix: seeds 1–6 produced NE, N, NE, N, NE, N, with byte-identical turnarounds. Now the rotation walks
+a golden-ratio sequence across the 45° gap, so successive seeds genuinely differ.
+
+**And the winner was always the single best candidate**, which is deterministic for a given start:
+from UTC the valley roads fill a distance target far better than city streets, so northeast won every
+time. The seed now picks from the candidates scoring within 25 % of the best, so "another one" means
+another *ride*, not the same ride recomputed. Measured after: seeds 1–6 give NE 45°, NE 29°, SE 146°,
+NE 38°, N 339°, NE 46° — six different rides, including one heading southeast.
+
+Worth keeping in mind for the rest of the scoring: south from UTC *does* route (29–33 mi in the same
+70 minutes, versus 46 mi north-east), it is simply slower going, and southwest is the Pacific and is
+correctly refused. The bias towards the hills is real and mostly right; what was wrong was pretending
+it was the only answer.
