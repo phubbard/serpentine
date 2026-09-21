@@ -114,6 +114,7 @@ async function refresh() {
       ["own bike", n(b.custom_bike)],
       ["p50 / p95", `${b.p50_s || 0} / ${b.p95_s || 0} s`],
       ["bad request", n(b.bad_request)],
+      ["throttled / busy", `${n(b.throttled)} / ${n(b.busy)}`],
       ["no ride there", n(b.unroutable)],
       ["upstream failed", n(b.upstream_fail)],
     ]);

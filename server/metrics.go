@@ -25,13 +25,15 @@ const (
 var latencyEdges = []float64{0.1, 0.25, 0.5, 1, 2, 5, 10, 30}
 
 type bucket struct {
-	Plans    int            `json:"plans"`
-	Cached   int            `json:"cached"`
-	Bad      int            `json:"bad_request"`   // 4xx: the rider asked for something impossible
-	Unroute  int            `json:"unroutable"`    // 422: no ride exists there
-	Upstream int            `json:"upstream_fail"` // 5xx: GraphHopper, NREL or us
-	Mode     map[string]int `json:"mode"`
-	Budget   map[string]int `json:"budget"`
+	Plans     int            `json:"plans"`
+	Cached    int            `json:"cached"`
+	Bad       int            `json:"bad_request"`   // 4xx: the rider asked for something impossible
+	Throttled int            `json:"throttled"`     // 429: the caller is over their own budget
+	Busy      int            `json:"busy"`          // 429: every planning slot was taken
+	Unroute   int            `json:"unroutable"`    // 422: no ride exists there
+	Upstream  int            `json:"upstream_fail"` // 5xx: GraphHopper, NREL or us
+	Mode      map[string]int `json:"mode"`
+	Budget    map[string]int `json:"budget"`
 
 	Charging   int `json:"charging"`
 	CustomBike int `json:"custom_bike"` // a bike that isn't the default, never which one
@@ -211,6 +213,10 @@ func (m *metrics) failure(kind string) {
 		switch kind {
 		case "bad":
 			b.Bad++
+		case "throttled":
+			b.Throttled++
+		case "busy":
+			b.Busy++
 		case "unroutable":
 			b.Unroute++
 		case "upstream":
@@ -305,6 +311,8 @@ func addTo(dst, src *bucket) {
 	dst.Plans += src.Plans
 	dst.Cached += src.Cached
 	dst.Bad += src.Bad
+	dst.Throttled += src.Throttled
+	dst.Busy += src.Busy
 	dst.Unroute += src.Unroute
 	dst.Upstream += src.Upstream
 	dst.Charging += src.Charging

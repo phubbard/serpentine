@@ -26,7 +26,11 @@ deploy: test build
 	scp -q launchd/$(LABEL).plist $(AXIOM):Library/LaunchAgents/$(LABEL).plist
 	ssh $(AXIOM) 'mv ~/serpentine-api/serpentine-api.new ~/serpentine-api/serpentine-api && \
 		launchctl bootout gui/$$(id -u)/$(LABEL) 2>/dev/null; \
-		launchctl bootstrap gui/$$(id -u) ~/Library/LaunchAgents/$(LABEL).plist'
+		for i in 1 2 3 4 5; do sleep 1; \
+			launchctl bootstrap gui/$$(id -u) ~/Library/LaunchAgents/$(LABEL).plist 2>/dev/null && break; \
+			echo "launchd still tearing the old job down, retrying ($$i)"; \
+		done; \
+		pgrep -x serpentine-api >/dev/null || { echo "error: service did not come back up"; exit 1; }'
 	@for i in 1 2 3 4 5 6 7 8 9 10; do \
 		curl -sf -m 2 http://$(AXIOM):8990/v1/health && echo && exit 0; sleep 1; \
 	done; echo "health check failed; make logs"; exit 1

@@ -126,9 +126,11 @@ which the Pi's Caddy is the only thing that proxies.
 
 - [x] **Whole-US graph** — done 2026-09-20 (ADR-029): 63-minute import, 13 GB graph, no outage
       (second container, then a restart). Includes Alaska and Hawaii.
-- [ ] **Rate limiting before any public post**: nothing exists today, and one loop is 16 GraphHopper
-      routes. Per-IP limits in Caddy plus a concurrency cap in serpentine-api, then a load test to
-      find out what saturation actually looks like on axiom.
+- [x] **Rate limiting** — done 2026-09-21 (ADR-030), sized by load test: 24 plans in flight, 20/min per
+      caller (burst 8), both shedding with 429 + Retry-After and counted on the dashboard. Measured
+      ceiling: ~16 plans/s at 32 concurrent, p95 2.8 s, GraphHopper at 12.8 of 16 cores.
+- [ ] **Watch the first public traffic**: the dashboard now shows throttled/busy, so the limits can be
+      tuned against real behaviour rather than a load test.
 
 ## Phase 3 — Ride quality
 

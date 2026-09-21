@@ -77,6 +77,7 @@ type server struct {
 	ocm      *ocmClient    // nil when no key is configured: plans simply carry no reliability data
 	stations *stationStore // local copy of NREL's stations; nil falls back to the per-plan API call
 	cache    *planCache
+	limits   *limiter
 	stats    *metrics
 	log      *slog.Logger
 }
@@ -96,7 +97,7 @@ func main() {
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	s := &server{gh: newGHClient(strings.TrimRight(*ghURL, "/")), cache: newPlanCache(500, planCacheTTL),
-		stats: newMetrics(), log: log}
+		stats: newMetrics(), limits: newLimiter(), log: log}
 	if *tileCache != "" {
 		s.tiles = newTileProxy(*tileCache, *tileURL)
 		s.tiles.stats = s.stats
@@ -230,7 +231,7 @@ func (s *server) routes() http.Handler {
 	// password to leak (ADR-026).
 	mux.HandleFunc("GET /stats", servePage(statsPage))
 	mux.HandleFunc("GET /stats.json", s.handleStats)
-	mux.HandleFunc("POST /v1/plan", s.handlePlan)
+	mux.HandleFunc("POST /v1/plan", s.limitPlans(s.handlePlan))
 	mux.HandleFunc("GET /v1/plan/{file}", s.handleGPX)
 	return s.logRequests(mux)
 }

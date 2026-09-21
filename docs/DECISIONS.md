@@ -693,3 +693,44 @@ Ouray**, **Seven Lakes Drive** at Bear Mountain, **VT 100** at Stowe. San Diego 
 
 The us-west extract and its graph cache are kept on disk for rollback. Worth remembering: Mexico and
 Canada are still outside the extract, so rides near either border still can't cross.
+
+## ADR-030 · 2026-09-21 · Rate limits sized by load test, not by guesswork
+
+Before pointing a subreddit at an unauthenticated planner on a home connection, we measured what it
+can actually take. `ab` on the cached path: **164 req/s, p95 76 ms**. Unique 260 km loops — the
+expensive path, 16 GraphHopper routes each — through the public URL:
+
+| concurrency | throughput | median | p95 | errors |
+|---|---|---|---|---|
+| 4 | 6 plans/s | 0.3 s | — | 0 |
+| 16 | 12 plans/s | 1.1 s | 1.5 s | 0 |
+| 32 | 16 plans/s | 1.8 s | 2.8 s | 0 |
+
+At 16 concurrent, GraphHopper sat at **1280 % CPU** — 12.8 of axiom's 16 cores. So a plan costs about
+1.3 core-seconds, the machine saturates near 16 concurrent, and beyond that it degrades linearly
+rather than collapsing. That is a kinder failure mode than expected, and it means limits are about
+keeping latency honest, not about preventing a crash.
+
+Two limits, both shedding with 429 and `Retry-After` rather than queueing:
+
+- **24 plans in flight**, about 1.5× the saturation point, with a 2-second grace period to absorb a
+  burst. Past that, "busy planning other rides".
+- **20 plans per minute per caller, burst 8.** A rider plans a handful of rides in a sitting; a script
+  plans thousands. Verified live: 16 rapid requests → 8 served, 8 refused.
+
+**Callers are identified by a salted hash, never an address.** The salt is generated per process, so
+the keys mean nothing outside a single run and nothing in memory can be turned back into an IP — the
+same instinct as ADR-017. `X-Forwarded-For` is spoofable, so a determined abuser can spread themselves
+across keys; the in-flight cap is what actually protects the machine, and the per-caller budget is
+what stops honest enthusiasm.
+
+Both refusals are counted and shown on the dashboard, because a limit nobody can see is a limit
+nobody will tune.
+
+**Scar tissue from getting here.** Three separate edits in this change were silently skipped when a
+multi-edit script aborted partway, and the third one — never constructing the limiter — meant the
+middleware passed everything through while looking correct in review. Only testing the *behaviour*
+caught it. Related: `make deploy` did `launchctl bootout` immediately followed by `bootstrap`, which
+launchd rejects with "Bootstrap failed: 5: Input/output error" if it is still tearing the old job
+down; that left the service dead until the next deploy. It now retries the bootstrap and fails loudly
+if the process is not running afterwards.

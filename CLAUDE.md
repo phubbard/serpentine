@@ -22,6 +22,9 @@ the reference for competitor and API facts; don't re-research what it already an
   On TestFlight since 2026-09-18 (0.1.0 build 29) as **"Serpentine EV"** (ASC app id 6813768490;
   home-screen name stays "Serpentine"), internal group "Internal" with automatic distribution. `make -C server test|run|deploy|logs`. No app code yet.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.
+- Rate limits (ADR-030): 24 plans in flight, 20/min per caller (burst 8), 429 + Retry-After. Measured
+  ceiling ~16 plans/s at 32 concurrent. `make -C server deploy` retries the launchd bootstrap: doing
+  it immediately after a bootout fails with "Input/output error" and leaves the service down.
 - Ops dashboard: `http://axiom:8990/stats` (LAN only — Caddy proxies `/v1/*` and `/`, so `/stats`
   404s from outside). Counters only, hourly, kept in `~/serpentine-api/stats.db` via the `sqlite3`
   CLI and restored at startup (ADR-026, ADR-027). `SIGKILL` loses up to 5 minutes of counts.
