@@ -66,7 +66,8 @@ Caddy on webserver (Pi 5, .3)          ← the house's only internet-facing host
    │  reverse_proxy
    ▼
 serpentine-api on axiom (Mac Studio M4 Max, 128 GB, .7)   ← phase 1, Go, :8990
-   ├─► GraphHopper 11, :8989, Docker, whole-US graph (ADR-029), profile "motorcycle" (LM/hybrid)
+   ├─► GraphHopper 11, :8989, Docker, whole-US graph (ADR-029), profiles "motorcycle" (the app) and
+   │     "direct" (the errand ride, ADR-031), both LM/hybrid
    ├─► NREL AFDC: the whole US fetched once a day into ~/serpentine-api/stations.json (ADR-028);
    │     corridor search is local. Key only on axiom, X-Api-Key. Per-plan calls are the fallback.
    └─► (later) elevation, HPMS AADT, cached tiles
@@ -82,16 +83,21 @@ Principles that constrain every design choice here:
    hashes every profile into the graph (ADR-009). Tuning lives in the per-request `custom_model`
    (serpentine-api sends it), which in LM mode may only tighten (multipliers ≤ 1). Fold tuned rules
    into the base file only when re-importing anyway (new OSM extract, new encoded value).
-3. **The energy model is conservative.** SR/S: 17.3 kWh max / 15.1 nominal, 116 mi highway / 171 mi
+3. **Two profiles, one graph.** `motorcycle` is the app: curvy, rural, moderate speed. `direct`
+   (ADR-031) is the errand — freeways fine, fastest route — because a per-request model can only
+   tighten the base profile's freeway penalties, never lift them. Measured Ramona → Orange County:
+   123 mi/173 min curvy against 90 mi/101 min direct.
+4. **The energy model is conservative.** SR/S: 17.3 kWh max / 15.1 nominal, 116 mi highway / 171 mi
    city, **J1772 AC only**, 6.6 kW stock (12.6 kW with Rapid Charger — assume 6.6 at public L2).
    No CCS until Zero's 2027 option. A charge stop is 1–2 h. Being wrong here loses trust faster than
    a bad route.
-4. **Voice nav is Apple Maps handoff first.** Unified URL `https://maps.apple.com/directions?…` with
-   repeated `waypoint=`, `mode=driving`, `avoid=tolls,highways`, `start=N`. Apple re-routes between
+5. **Voice nav is Apple Maps handoff first.** Unified URL `https://maps.apple.com/directions?…` with
+   repeated `waypoint=`, `mode=driving`, and `avoid=tolls,highways` **on curvy rides only** — a
+   `direct` ride drops the avoid list, or Apple would dodge the freeway we just routed onto (ADR-031), `start=N`. Apple re-routes between
    waypoints and announces each as a stop; ~13-stop cap observed in UI, unconfirmed for URL. In-app
    turn-by-turn (Ferrostar, BSD) is phase 4 and only if handoff proves inadequate — it would add
    MapLibre, which violates principle 1 unless tiles are self-hosted.
-5. **One-time purchase.** Server cost must stay flat: cache routes, no live traffic, no per-request
+6. **One-time purchase.** Server cost must stay flat: cache routes, no live traffic, no per-request
    third-party billing.
 
 ## Working on this repo
@@ -163,7 +169,11 @@ Principles that constrain every design choice here:
   landmarks 29.5 min), producing a 13 GB graph from an 11.3 GB extract: 70.5 M nodes, 87 M edges.
   us-west was ~25 min. Much longer than that means swapping — check Docker's VM memory first.
   **Import into a second container writing a different `graph.location` while the live one serves**
-  (ADR-029): the swap is a compose edit and a restart, not an hours-long outage.
+  (ADR-029): the swap is a compose edit and a restart, not an hours-long outage. Each import writes a
+  new `graph-cache-*` directory and the old ones stay for rollback — the live one is named in
+  `config.yml`. Two profiles take 64 min and 17 GB (landmarks run in parallel: 36.7 min for `direct`,
+  40 min for `motorcycle`); a second pass over the same extract halves pass 2 because it is still in
+  the page cache.
 - `graph.dataaccess.default_type` must be `RAM_STORE`; plain `RAM` never writes `graph-cache/` and
   every restart re-imports.
 - Round trips: POST key is `headings` (plural); `heading` is silently ignored. Downtown SD can't loop

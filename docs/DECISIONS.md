@@ -763,3 +763,19 @@ A note for later: for a pure errand, Apple Maps knows about traffic and we do no
 trips is the charging plan and staying in one app. If riders start reporting that our errand routes
 are slower than Apple's, believe them — the answer is to hand the destination straight to Apple when
 no charge stop is needed, not to try to out-route a live traffic feed.
+
+### ADR-031 amendment · 2026-09-29 · measured, and one thing riders should know
+
+Live on the whole-US graph, Ramona → Orange County: **123 mi / 173 min** on the motorcycle profile,
+which routes primary and trunk roads and never touches a freeway, against **90 mi / 101 min** direct,
+which takes I-5. Seventy-two minutes and thirty-three miles, exactly the gap that used to send a rider
+to another app.
+
+Import cost for the second profile: 64 minutes and 17 GB, landmarks running in parallel (36.7 min for
+`direct`, 40 for `motorcycle`). Pass 2 took 8m48s rather than 19 because the extract was still in the
+page cache. No outage — parallel container, then a restart.
+
+**The number worth showing a rider:** that errand starting at 50 % charge plans one stop and comes out
+at **222 minutes total** — 101 riding, the rest sitting at a 6.6 kW post. The routing saved 72 minutes
+and the charging gave back two hours. For errands specifically, starting full is worth more than any
+routing we can do, and the app should probably say so when it plans a direct ride with a stop in it.

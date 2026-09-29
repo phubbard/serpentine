@@ -2,7 +2,7 @@
 # Based on graphhopper 11 config-example.yml; only the parts we need.
 graphhopper:
   datareader.file: /data/us-latest.osm.pbf
-  graph.location: /data/graph-cache-conus
+  graph.location: /data/graph-cache-direct
 
   custom_models.directory: /data/custom_models
 
