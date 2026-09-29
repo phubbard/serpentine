@@ -8,6 +8,7 @@ struct PlanView: View {
     @State private var searching = false
     @State private var searchingDestination = false
     @State private var showingGarage = false
+    @State private var showingAbout = false
     @Environment(Garage.self) private var garage
 
     var body: some View {
@@ -104,6 +105,11 @@ struct PlanView: View {
                 if let error = planner.errorMessage {
                     Text(error).foregroundStyle(.red)
                 }
+                #if !targetEnvironment(macCatalyst)
+                // On the Mac this lives in the app menu; everywhere else it needs a way in.
+                Button("About Serpentine") { showingAbout = true }
+                    .font(.footnote)
+                #endif
             }
         }
         .navigationTitle("Serpentine")
@@ -113,6 +119,7 @@ struct PlanView: View {
             PlaceSearchView(title: "Start from", near: location.coordinate) { planner.start = $0 }
         }
         .sheet(isPresented: $showingGarage) { GarageView() }
+        .sheet(isPresented: $showingAbout) { AboutView() }
         .sheet(isPresented: $searchingDestination) {
             PlaceSearchView(title: "Go to", near: planner.start?.coordinate ?? location.coordinate) {
                 planner.destination = $0

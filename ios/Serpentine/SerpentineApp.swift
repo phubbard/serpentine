@@ -6,13 +6,21 @@ struct SerpentineApp: App {
     @State private var planner = Planner()
     @State private var location = LocationProvider()
     @State private var garage = Garage()
+    @State private var showingAbout = false
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RootView(showingAbout: $showingAbout)
                 .environment(planner)
                 .environment(location)
                 .environment(garage)
+        }
+        .commands {
+            // Replace the stock panel: the default one is a version number, and the licences behind
+            // the routing and charging data ask for more than that (ADR-032).
+            CommandGroup(replacing: .appInfo) {
+                Button("About Serpentine") { showingAbout = true }
+            }
         }
     }
 }
@@ -20,6 +28,7 @@ struct SerpentineApp: App {
 /// Plan form beside the ride. On iPad the map gets the big column; on iPhone the split view collapses
 /// to a stack and a new result pushes the ride on top of the form, as before.
 struct RootView: View {
+    @Binding var showingAbout: Bool
     @Environment(Planner.self) private var planner
     @State private var compactColumn = NavigationSplitViewColumn.sidebar
 
@@ -39,6 +48,7 @@ struct RootView: View {
         .onChange(of: planner.result?.id) { _, id in
             if id != nil { compactColumn = .detail }
         }
+        .sheet(isPresented: $showingAbout) { AboutView() }
         #if DEBUG
         // App Store screenshots: `simctl launch <udid> net.phfactor.serpentine -screenshotPlan` plans the
         // Ramona charging loop without driving the UI.

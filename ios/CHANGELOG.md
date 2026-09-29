@@ -5,6 +5,10 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [Unreleased]
 
+- An About panel worth reading: what the app is, where your data goes, and credit to the people whose
+  data makes it work — OpenStreetMap, the Department of Energy and Open Charge Map. On the Mac it's in
+  the Serpentine menu; elsewhere it's at the bottom of the plan screen.
+
 ## [0.1.0]
 
 - "Just get me there": in Go somewhere, take the fastest way including freeways, with charge stops

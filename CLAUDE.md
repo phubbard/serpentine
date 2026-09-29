@@ -140,6 +140,11 @@ Principles that constrain every design choice here:
   net.phfactor.serpentine -screenshotPlan`. Clean status bar: `xcrun simctl status_bar <udid> override
   --time 9:41 --batteryState charged --batteryLevel 100`. Charging plans take ~30 s; wait for map tiles.
   ASC rejects alpha: `sips -s format jpeg` into `upload/`.
+- Spotlight indexes every `Serpentine.app` under `ios/build/` and a search then offers several
+  identical binaries. `ios/build/.metadata_never_index` stops it; `make unindex` recreates the flag
+  because a clean deletes the directory it lives in. Existing index entries survive the flag, so
+  clearing them means deleting the artifacts too. `make -C ios run-mac` launches the dev Mac build
+  from the one canonical path; TestFlight installs the real one into `/Applications` (ADR-032 note).
 - Commit before `make upload-testflight`: a dirty tree makes the scheme stamp build N+1 while the
   Makefile (and `testflight-notes`) expect N.
 

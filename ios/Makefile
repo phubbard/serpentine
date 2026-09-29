@@ -5,6 +5,7 @@
 #   make project                xcodegen → Serpentine.xcodeproj (gitignored)
 #   make build                  simulator debug build
 #   make build-mac              Mac Catalyst debug build
+#   make run-mac                build and launch the Mac app
 #   make test                   unit tests on a simulator
 #   make run                    build, install and launch on the simulator
 #   make upload-testflight      archive → export .ipa → altool upload
@@ -60,7 +61,7 @@ SIM = -destination 'platform=iOS Simulator,name=$(SIM_DEVICE),OS=$(SIM_OS)'
 SIM_UDID = $(shell xcrun simctl list devices available -j | ruby -rjson -e 'd=JSON.parse(STDIN.read)["devices"]; k=d.keys.find{|r| r.end_with?("iOS-"+ARGV[1].tr(".","-"))}; puts((d[k]||[]).find{|x| x["name"]==ARGV[0]}&.fetch("udid"))' "$(SIM_DEVICE)" "$(SIM_OS)")
 XCB = xcodebuild -project $(APP_NAME).xcodeproj -scheme $(SCHEME) -derivedDataPath $(DERIVED)
 
-.PHONY: help version project build build-mac test run verify-testflight archive-testflight upload-testflight \
+.PHONY: help version project unindex build build-mac run-mac test run verify-testflight archive-testflight upload-testflight \
 	archive-testflight-mac upload-testflight-mac \
         testflight-notes testflight-groups icon clean
 
@@ -71,7 +72,13 @@ help:
 version:
 	@echo "$(VERSION)+$(BUILD_NUMBER) ($(GIT_SHA))"
 
-project:
+# Spotlight otherwise indexes every Serpentine.app under build/ and a search offers three or four
+# identical-looking binaries with no way to tell which is real. The flag has to exist inside build/,
+# so it is recreated whenever build/ is.
+unindex:
+	@mkdir -p $(BUILD_DIR) && touch $(BUILD_DIR)/.metadata_never_index
+
+project: unindex
 	@xcodegen generate --quiet
 
 build: project
@@ -127,6 +134,11 @@ upload-testflight: archive-testflight
 build-mac: project
 	@$(XCB) -configuration Debug -destination 'platform=macOS,variant=Mac Catalyst' build \
 	    | grep -E "^(error|warning):|\*\* BUILD" || true
+
+# One obvious way to launch the Mac build, so nobody has to pick between DerivedData paths.
+run-mac: build-mac
+	@open "$(DERIVED)/Build/Products/Debug-maccatalyst/$(APP_NAME).app"
+	@echo "launched the Debug build; the TestFlight one installs into /Applications"
 
 archive-testflight-mac: verify-testflight project
 	@rm -rf $(MAC_ARCHIVE) $(MAC_EXPORT_DIR)

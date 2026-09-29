@@ -779,3 +779,37 @@ page cache. No outage — parallel container, then a restart.
 at **222 minutes total** — 101 riding, the rest sitting at a 6.6 kW post. The routing saved 72 minutes
 and the charging gave back two hours. For errands specifically, starting full is worth more than any
 routing we can do, and the app should probably say so when it plans a direct ride with a stop in it.
+
+## ADR-032 · 2026-09-29 · The About panel is where the attribution lives
+
+Catalyst gave us the stock About panel: an icon and a version string. Replaced with our own, reached
+from the app menu on the Mac and from a row on the plan screen everywhere else (iPhone and iPad have
+no menu bar, and the content isn't Mac-specific).
+
+**The reason it matters beyond polish:** the routing is OpenStreetMap data under ODbL and the charger
+status is Open Charge Map under CC BY-SA 4.0. Both licences ask for attribution, and until now the
+app credited neither — the web pages did, the app didn't. The panel names every source: Apple for
+maps and navigation, OpenStreetMap for roads, NASA SRTM for elevation, the DOE's Alternative Fuels
+Data Center for charger locations, Open Charge Map for whether they work. `NSHumanReadableCopyright`
+in the bundle now carries the OSM credit too, so Finder's Get Info and any stock panel are right.
+
+It also restates the privacy position where a rider will actually look — one host, no account, no
+tracking, start point not kept — with links to the policy and support pages, and repeats the warning
+that charging data can be stale.
+
+## Note · 2026-09-29 · Spotlight offered four Serpentines and no way to choose
+
+Paul searched for the app and got several identical-looking binaries. All were build products:
+`build/DerivedData` (iOS simulator and Catalyst), two `.xcarchive`s, and an orphaned
+`build/DerivedDataMac` left over from the Catalyst experiment, which used an ad-hoc
+`-derivedDataPath` instead of the Makefile's.
+
+`build/.metadata_never_index` tells Spotlight to leave the tree alone, and `make unindex` recreates it
+because it has to live *inside* the directory a clean deletes. The stale artifacts were removed —
+existing index entries survive the flag, so the fix is flag plus delete. `make run-mac` now builds and
+launches the Catalyst app from the one canonical path, so "which one do I run" has an answer:
+`make -C ios run-mac` for a dev build, and TestFlight installs the real one into `/Applications`.
+
+Xcode's own `~/Library/Developer/Xcode/DerivedData` still gets indexed; `touch
+~/Library/Developer/Xcode/DerivedData/.metadata_never_index` fixes that machine-wide, but it is
+outside this repo so it is a suggestion rather than something the Makefile does.

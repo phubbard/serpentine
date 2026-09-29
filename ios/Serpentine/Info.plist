@@ -47,6 +47,8 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<!-- Only system HTTPS (URLSession): exempt under EAR 740.17(b)(2). Pre-answers ASC's prompt. -->
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 Paul Hubbard. Routing data © OpenStreetMap contributors (ODbL).</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>
