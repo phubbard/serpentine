@@ -5,11 +5,11 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [Unreleased]
 
+## [0.1.0]
+
 - "Just get me there": in Go somewhere, take the fastest way including freeways, with charge stops
   still planned. For the helmet shop and the dealer, not the Sunday ride. Measured Ramona to Orange
   County: 90 miles and 101 minutes, against 123 miles and 173 the scenic way.
-
-## [0.1.0]
 
 - Rides anywhere in the United States, Alaska and Hawaii included — no app update needed, the
   planner already knows. Try somewhere you have never ridden.
