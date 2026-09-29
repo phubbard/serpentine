@@ -5,9 +5,13 @@ import SwiftUI
 struct ResultView: View {
     let plan: PlanResult
     @Environment(Planner.self) private var planner
+    @Environment(RideStore.self) private var rides
     @Environment(\.openURL) private var openURL
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var gpxFile: URL?
+    /// The saved entry for the ride on screen, when it has been kept.
+    @State private var saved: SavedRide?
+    @State private var confirmingRemove = false
 
     private var coordinates: [CLLocationCoordinate2D] { plan.polyline.map(\.coordinate) }
     private var stops: [Charger] { (plan.chargers ?? []).filter(\.stop) }
@@ -53,6 +57,10 @@ struct ResultView: View {
                 // used control there is. Keep it in the page as well (⌘R does the same).
                 anotherButton.frame(maxWidth: .infinity)
                 #endif
+            }
+
+            if let saved {
+                SavedRideEditor(ride: saved).id(saved.id)
             }
 
             if let e = plan.energy {
@@ -101,8 +109,39 @@ struct ResultView: View {
                 anotherButton
                     .keyboardShortcut("r", modifiers: .command)
             }
+            ToolbarItem(placement: .primaryAction) { saveButton }
         }
         .task(id: plan.id) { gpxFile = await planner.gpxFile(for: plan) }
+        // Keyed on the plan so opening a saved ride, or planning another, re-reads the entry.
+        .onChange(of: plan.id, initial: true) { _, _ in saved = rides.ride(forPlan: plan.id) }
+        .confirmationDialog("Remove this ride from your saved list?",
+                            isPresented: $confirmingRemove, titleVisibility: .visible) {
+            Button("Remove", role: .destructive) {
+                if let saved { rides.remove(saved) }
+                saved = nil
+            }
+        } message: {
+            Text("The rating and notes go with it. The ride itself stays on screen.")
+        }
+    }
+
+    /// Save, then un-save. A bookmark that can't be undone in the same place it was set is a trap,
+    /// but losing typed notes to a stray tap is worse — hence the confirmation on the way out.
+    @ViewBuilder private var saveButton: some View {
+        if saved == nil {
+            Button {
+                saved = rides.save(plan, from: planner.start?.name, to: planner.destination?.name)
+            } label: {
+                Label("Save", systemImage: "bookmark")
+            }
+            .keyboardShortcut("s", modifiers: .command)
+        } else {
+            Button {
+                confirmingRemove = true
+            } label: {
+                Label("Saved", systemImage: "bookmark.fill")
+            }
+        }
     }
 
     private var anotherButton: some View {

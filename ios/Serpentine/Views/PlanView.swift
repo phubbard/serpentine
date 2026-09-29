@@ -9,6 +9,7 @@ struct PlanView: View {
     @State private var searchingDestination = false
     @State private var showingGarage = false
     @State private var showingAbout = false
+    @State private var showingRides = false
     @Environment(Garage.self) private var garage
 
     var body: some View {
@@ -113,6 +114,13 @@ struct PlanView: View {
             }
         }
         .navigationTitle("Serpentine")
+        .toolbar {
+            // Explicit placement, as in ResultView: Mac Catalyst has no navigation bar to fall back on.
+            ToolbarItem(placement: .primaryAction) {
+                Button("Saved rides", systemImage: "bookmark") { showingRides = true }
+            }
+        }
+        .sheet(isPresented: $showingRides) { RidesView() }
         .onChange(of: garage.selected) { _, bike in planner.bike = bike }
         .task { planner.bike = garage.selected }
         .sheet(isPresented: $searching) {

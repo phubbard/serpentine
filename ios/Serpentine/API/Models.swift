@@ -3,6 +3,8 @@ import Foundation
 
 // Wire types for serpentine-api (docs/API.md is the contract; change both together). The JSON is
 // snake_case; the coders convert, so property names here are the camelCase of the wire names.
+// The result types are Codable rather than Decodable because a saved ride is the server's answer
+// written back out verbatim (ADR-033) — it round-trips through the same snake_case coder pair.
 // Coordinates on the wire are [lon, lat].
 
 enum RideMode: String, Codable, CaseIterable, Identifiable, Sendable {
@@ -72,7 +74,7 @@ struct ChargingOptions: Encodable, Sendable {
     var reserveForBackup: Bool
 }
 
-struct PlanResult: Decodable, Sendable, Identifiable, Hashable {
+struct PlanResult: Codable, Sendable, Identifiable, Hashable {
     let id: String
     let mode: String
     let distanceM: Double
@@ -97,14 +99,14 @@ struct PlanResult: Decodable, Sendable, Identifiable, Hashable {
 
 /// Present when the ride was planned against a time budget: what was asked for, what it costs
 /// (charging included) and whether it fits.
-struct Budget: Decodable, Sendable {
+struct Budget: Codable, Sendable {
     let targetS: Double
     let totalS: Double
     let fits: Bool
 }
 
 /// Present on "go somewhere" plans: what the better roads cost over the quickest way.
-struct Detour: Decodable, Sendable {
+struct Detour: Codable, Sendable {
     let fastestS: Double
     let extraS: Double
     let maxExtraS: Double
@@ -112,12 +114,12 @@ struct Detour: Decodable, Sendable {
     let fits: Bool
 }
 
-struct Road: Decodable, Sendable {
+struct Road: Codable, Sendable {
     let name: String
     let km: Double
 }
 
-struct Instruction: Decodable, Sendable {
+struct Instruction: Codable, Sendable {
     let text: String
     let distanceM: Double
     let timeS: Double
@@ -125,7 +127,7 @@ struct Instruction: Decodable, Sendable {
     let i: Int
 }
 
-struct Stats: Decodable, Sendable {
+struct Stats: Codable, Sendable {
     let km: Double
     let curvyKm: Double
     let repeatedKm: Double?
@@ -134,7 +136,7 @@ struct Stats: Decodable, Sendable {
     let surfaceKm: [String: Double]
 }
 
-struct LoopInfo: Decodable, Sendable {
+struct LoopInfo: Codable, Sendable {
     let targetM: Double
     let headingDeg: Double
     let seed: Int
@@ -143,7 +145,7 @@ struct LoopInfo: Decodable, Sendable {
     let failed: Int
 }
 
-struct OutAndBackInfo: Decodable, Sendable {
+struct OutAndBackInfo: Codable, Sendable {
     let turnaround: [Double]
     let headingDeg: Double
     let outKm: Double
@@ -151,7 +153,7 @@ struct OutAndBackInfo: Decodable, Sendable {
     let sharedKm: Double
 }
 
-struct Energy: Decodable, Sendable {
+struct Energy: Codable, Sendable {
     let usableKwh: Double
     let kwhEst: Double
     let socStart: Double
@@ -164,7 +166,7 @@ struct Energy: Decodable, Sendable {
     let warning: String?
 }
 
-struct Charger: Decodable, Sendable, Identifiable {
+struct Charger: Codable, Sendable, Identifiable {
     let id: String
     let name: String
     let lonlat: [Double]
@@ -185,7 +187,7 @@ struct Charger: Decodable, Sendable, Identifiable {
 
 /// What Open Charge Map knows about a charger: absent means it has no listing there, which is common
 /// in the back country and is not the same as "it's fine".
-struct Reliability: Decodable, Sendable {
+struct Reliability: Codable, Sendable {
     let operational: Bool
     let status: String?
     let lastConfirmed: String?
@@ -194,7 +196,7 @@ struct Reliability: Decodable, Sendable {
     let note: String?
 }
 
-struct Handoff: Decodable, Sendable {
+struct Handoff: Codable, Sendable {
     let appleMapsUrl: String
     let googleMapsUrl: String
     let source: [Double]

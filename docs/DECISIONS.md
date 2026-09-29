@@ -813,3 +813,34 @@ launches the Catalyst app from the one canonical path, so "which one do I run" h
 Xcode's own `~/Library/Developer/Xcode/DerivedData` still gets indexed; `touch
 ~/Library/Developer/Xcode/DerivedData/.metadata_never_index` fixes that machine-wide, but it is
 outside this repo so it is a suggestion rather than something the Makefile does.
+
+## ADR-033 · 2026-09-29 · Saved rides keep the answer, not the question
+
+A ride planner that forgets every ride is a toy. Saved rides (ROADMAP phase 2) give a rider somewhere
+to keep the good ones: a star rating, notes, and when they last rode it. The same list holds rides
+already ridden and rides saved to ride later — the two are distinguished by whether `lastRiddenAt` is
+set, not by living in separate places.
+
+**Store the plan, not the request.** The tempting design is to keep the `PlanRequest` and replan on
+open: a few hundred bytes instead of ~100 KB. Rejected. A saved ride must be the ride that was saved,
+and a replan can return something different after a graph re-import, a scoring change, or a charger
+going dark — silently, with no way for the rider to tell. Storing the server's answer also means the
+list works with no signal, which matters on the kind of road this app sends people down. The cost is
+measured: an 87-mile charging loop is 108 KB on disk, so a hundred saved rides is about 10 MB.
+
+`PlanResult` and everything under it therefore became `Codable` rather than `Decodable`, round-tripping
+through the same snake_case coder pair the API uses. The wire format is now also the storage format,
+which is a constraint worth knowing about: a field removed from the API is a field that stops loading
+from old saved rides.
+
+**Layout:** `Application Support/SavedRides/index.json` holds the summaries and is read at launch;
+`plans/<uuid>.json` holds one plan each and is read only when a ride is opened. A list that loaded a
+polyline per row would get slower with every ride kept. The plan file is written before the index
+entry, so the failure mode is a stray file rather than a row pointing at nothing.
+
+**Saving is explicit.** Auto-saving every plan as history was considered and dropped: "Another" is the
+most-used control in the app, and the list would fill with rejected loops. The rider taps Save.
+
+Local only, no iCloud in v1, and nothing here is ever sent anywhere — consistent with the app having
+no account and one network peer (principle 1). A ride's notes are the most personal thing the app
+holds, so this is not a place to get clever later without a decision.

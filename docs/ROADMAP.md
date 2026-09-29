@@ -69,7 +69,10 @@ Acceptance:
 - [x] Result screen: MapKit polyline, distance / time / climb, energy + charge stops with dwell,
       charge-stop and turnaround pins, "Navigate in Apple Maps" (verified opening Maps with 10 stops
       in the simulator), "Share GPX", "Another" ride. *Still to do: colour segments by curvature.*
-- [ ] Saved rides (local only, `Codable` to Application Support; no iCloud in v1)
+- [x] **Saved rides** — done 2026-09-29 (ADR-033): star rating, notes and "last ridden" on any planned
+      ride; explicit Save keeps the server's whole answer under Application Support (`index.json` plus
+      one plan file each), so a saved ride reopens exactly as planned and needs no signal. One list
+      holds rides already ridden and rides kept for later. Local only, no iCloud in v1.
 - [x] Makefile + `apple-deployment-playbook.md` + `tools/set-testflight-notes.rb` copied from mapbook
       (iOS-only: `make build|test|run|upload-testflight|testflight-notes`, MIN_BUILDS=1)
 - [x] Info.plist: location usage strings, `ITSAppUsesNonExemptEncryption=false`, category
