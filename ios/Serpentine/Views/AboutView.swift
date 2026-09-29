@@ -14,6 +14,25 @@ struct AboutView: View {
         return "Version \(short) (\(build))"
     }
 
+    /// When this build was made and from which commit — stamped at build time, not read from file
+    /// dates, which Apple's re-signing would rewrite. Shown so a tester reporting a bug can say
+    /// exactly what they are running.
+    private var built: String? {
+        let info = Bundle.main.infoDictionary
+        let stamp = info?["SerpentineBuildDate"] as? String ?? ""
+        let sha = info?["SerpentineGitSHA"] as? String ?? ""
+        guard !stamp.isEmpty, stamp != "unknown" else { return nil }
+
+        var when = stamp
+        let iso = DateFormatter()
+        iso.dateFormat = "yyyy-MM-dd'T'HH:mm'Z'"
+        iso.timeZone = TimeZone(identifier: "UTC")
+        if let date = iso.date(from: stamp) {
+            when = date.formatted(date: .abbreviated, time: .shortened) // the rider's own clock
+        }
+        return sha.isEmpty || sha == "unknown" ? "Built \(when)" : "Built \(when) · \(sha)"
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -22,6 +41,10 @@ struct AboutView: View {
                         Text("Serpentine").font(.largeTitle.bold())
                         Text("Curvy rides, planned.").foregroundStyle(.secondary)
                         Text(version).font(.footnote).foregroundStyle(.secondary).monospacedDigit()
+                        if let built {
+                            Text(built).font(.footnote).foregroundStyle(.secondary).monospacedDigit()
+                                .textSelection(.enabled) // so it can be pasted into a bug report
+                        }
                     }
                     .padding(.vertical, 4)
                 }

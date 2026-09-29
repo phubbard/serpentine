@@ -24,6 +24,8 @@ Apple Maps handoff; try it at
 - `demo/`, `tools/` — a hardwired demo ride and the script that routes it
 - `ios/AppStore/screenshots/` — App Store screenshots: 6.9" (1320×2868), 6.5" (1284×2778), 13" iPad
   (2064×2752), Mac (2880×1800); `upload/` holds the opaque JPEGs ASC takes
-- `docs/` — roadmap, decisions (ADR-001..027, including what the charging research found and what it
+- `ios/` — the SwiftUI app: place search showing each match's address and distance from the start, an
+  About panel with the build stamp (date and commit) for bug reports
+- `docs/` — roadmap, decisions (ADR-001..032, including what the charging research found and what it
   rules out), API contract
 - `CLAUDE.md` — orientation for agents and future me: architecture, conventions, gotchas

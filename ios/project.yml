@@ -75,15 +75,26 @@ schemes:
           settingsTarget: Serpentine
           script: |
             cd "$SRCROOT" || exit 0
+            # No "//" anywhere in these values: xcconfig treats it as a comment and would silently
+            # truncate the line. UTC, so a build stamped on the road still sorts.
+            DATE=$(date -u +"%Y-%m-%dT%H:%MZ")
+            SHA=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
+            if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+              SHA="$SHA-dirty"
+            fi
             if BUILD=$(git rev-list --count HEAD 2>/dev/null); then
               # Dirty tree: preview the next commit's number.
               if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
                 BUILD=$((BUILD + 1))
               fi
-              echo "CURRENT_PROJECT_VERSION = $BUILD" > "$SRCROOT/Build.gen.xcconfig"
             else
-              echo "CURRENT_PROJECT_VERSION = 1" > "$SRCROOT/Build.gen.xcconfig"
+              BUILD=1
             fi
+            {
+              echo "CURRENT_PROJECT_VERSION = $BUILD"
+              echo "SERPENTINE_BUILD_DATE = $DATE"
+              echo "SERPENTINE_GIT_SHA = $SHA"
+            } > "$SRCROOT/Build.gen.xcconfig"
       targets:
         Serpentine: all
         SerpentineTests: [test]

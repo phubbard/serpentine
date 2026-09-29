@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import CoreLocation
 @testable import Serpentine
 
 // Fixtures are real serpentine-api responses: a 150 km Ramona loop with charging from 60 %, a 120 km
@@ -146,4 +147,29 @@ private func fixture(_ name: String) throws -> PlanResult {
     // Style belongs to A→B; a loop shouldn't carry it.
     p.mode = .loop
     #expect(p.request(seed: 1)?.style == nil)
+}
+
+// MARK: - Search results
+
+@Test func searchResultCarriesAddressAndDistance() {
+    let ramona = CLLocationCoordinate2D(latitude: 33.042, longitude: -116.868)
+    let shop = StartPoint(name: "Speed Addicts", coordinate: [-117.161, 32.716].coordinate,
+                          address: "1234 Main St, San Diego, CA")
+    // Ramona to downtown SD is ~40 km as the crow flies; the row must not claim riding distance.
+    let km = shop.metres(from: ramona) / 1000
+    #expect(km > 35 && km < 50)
+    #expect(shop.address == "1234 Main St, San Diego, CA")
+    // Two shops of the same name in different towns must be distinct rows.
+    let other = StartPoint(name: "Speed Addicts", coordinate: [-117.86, 33.68].coordinate)
+    #expect(shop.id != other.id)
+}
+
+@Test func nearbyDistanceKeepsADecimalWhenClose() {
+    let us = Locale(identifier: "en_US")
+    // Half a mile must read as a fraction of a mile, not as thousands of feet.
+    #expect(Format.nearby(meters: 640, locale: us) == "0.4 mi")
+    #expect(Format.nearby(meters: 64_000, locale: us) == "40 mi")
+    #expect(Format.nearby(meters: 400_000, locale: us) == "249 mi")
+    #expect(Format.nearby(meters: 80, locale: us) == "< 0.1 mi")
+    #expect(Format.nearby(meters: 5_000, locale: Locale(identifier: "de_DE")) == "5,0 km")
 }

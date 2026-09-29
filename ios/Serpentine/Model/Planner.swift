@@ -3,9 +3,22 @@ import MapKit
 import Observation
 
 /// Where a ride starts: the rider's location or a searched place.
-struct StartPoint: Equatable, Sendable {
+struct StartPoint: Equatable, Sendable, Identifiable {
     var name: String
     var coordinate: CLLocationCoordinate2D
+    /// Street, town and state as MapKit knows them. A search for a chain — or for "Speed Addicts" —
+    /// returns several hits with the same name, and the name alone doesn't say which one is which.
+    var address: String?
+
+    /// Search results aren't unique by name, so identify them by where they are.
+    var id: String { "\(name)|\(coordinate.latitude),\(coordinate.longitude)" }
+
+    /// Straight-line metres to another point. Not the riding distance — that would cost a route per
+    /// result — but enough to tell the shop across town from the one three states away.
+    func metres(from other: CLLocationCoordinate2D) -> CLLocationDistance {
+        CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            .distance(from: CLLocation(latitude: other.latitude, longitude: other.longitude))
+    }
 
     static func == (a: StartPoint, b: StartPoint) -> Bool {
         a.name == b.name && a.coordinate.latitude == b.coordinate.latitude && a.coordinate.longitude == b.coordinate.longitude
@@ -124,7 +137,21 @@ final class Planner {
         req.region = MKCoordinateRegion(center: center, latitudinalMeters: 300_000, longitudinalMeters: 300_000)
         guard let resp = try? await MKLocalSearch(request: req).start() else { return [] }
         return resp.mapItems.prefix(12).map { item in
-            StartPoint(name: item.name ?? "Unnamed place", coordinate: item.placemark.coordinate)
+            let name = item.name ?? "Unnamed place"
+            return StartPoint(name: name, coordinate: item.placemark.coordinate,
+                              address: addressLine(item.placemark, name: name))
         }
+    }
+
+    /// One line of address from a placemark: "1234 Main St, Poway, CA". MapKit names a plain address
+    /// result after its own street, so the street is dropped when it would only repeat the title.
+    private static func addressLine(_ place: MKPlacemark, name: String) -> String? {
+        let street = [place.subThoroughfare, place.thoroughfare].compactMap { $0 }.joined(separator: " ")
+        var parts = [street, place.locality, place.administrativeArea].compactMap { $0 }.filter { !$0.isEmpty }
+        if let first = parts.first, first == name || name.hasPrefix(first) {
+            parts.removeFirst()
+        }
+        let line = parts.joined(separator: ", ")
+        return line.isEmpty ? nil : line
     }
 }

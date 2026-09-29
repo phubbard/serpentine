@@ -193,10 +193,15 @@ struct PlaceSearchView: View {
 
     var body: some View {
         NavigationStack {
-            List(results, id: \.name) { place in
-                Button(place.name) {
-                    choose(place)
-                    dismiss()
+            List {
+                Section {
+                    ForEach(results) { place in
+                        row(place)
+                    }
+                } footer: {
+                    if near != nil && !results.isEmpty {
+                        Text("Distances are straight-line, not riding distance.")
+                    }
                 }
             }
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Town, address or place")
@@ -209,5 +214,29 @@ struct PlaceSearchView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { Button("Cancel") { dismiss() } }
         }
+    }
+
+    @ViewBuilder private func row(_ place: StartPoint) -> some View {
+        Button {
+            choose(place)
+            dismiss()
+        } label: {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(place.name)
+                    if let address = place.address {
+                        Text(address).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer(minLength: 12)
+                if let near {
+                    // As the crow flies, not as the road runs — say so, or a rider will read
+                    // it as the ride length.
+                    Text(Format.nearby(meters: place.metres(from: near)))
+                        .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 }

@@ -8,8 +8,12 @@
 // anything set in Xcode's Signing & Capabilities UI. Settings from xcconfig survive.
 // Comments in xcconfig files are //, never # (a # line breaks every build).
 
-// Build.gen.xcconfig is written by the scheme's pre-build action from `git rev-list --count HEAD`.
+// Build.gen.xcconfig is written by the scheme's pre-build action: the commit count, when the build
+// happened and which commit it came from. These are the fallbacks for a tree with no git (a fresh
+// export), and the include below overrides them.
 CURRENT_PROJECT_VERSION = 1
+SERPENTINE_BUILD_DATE = unknown
+SERPENTINE_GIT_SHA = unknown
 #include? "Build.gen.xcconfig"
 
 #include? "Serpentine.local.xcconfig"

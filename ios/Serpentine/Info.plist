@@ -47,6 +47,12 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<!-- Only system HTTPS (URLSession): exempt under EAR 740.17(b)(2). Pre-answers ASC's prompt. -->
+	<!-- Stamped by the scheme's pre-build action; shown in About so a tester can say exactly which
+	     build they are on (ADR-032). -->
+	<key>SerpentineBuildDate</key>
+	<string>$(SERPENTINE_BUILD_DATE)</string>
+	<key>SerpentineGitSHA</key>
+	<string>$(SERPENTINE_GIT_SHA)</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Paul Hubbard. Routing data © OpenStreetMap contributors (ODbL).</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
