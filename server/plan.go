@@ -24,6 +24,7 @@ type planRequest struct {
 	DistanceM  float64       `json:"distance_m,omitempty"`
 	DurationS  float64       `json:"duration_s,omitempty"`  // loop, out_and_back: ride time instead of distance
 	MaxExtraS  *float64      `json:"max_extra_s,omitempty"` // point_to_point: seconds of detour allowed over the quickest route
+	Style      string        `json:"style,omitempty"`       // point_to_point: "curvy" (default) or "direct" (ADR-031)
 	HeadingDeg *float64      `json:"heading_deg,omitempty"`
 	Seed       *int64        `json:"seed,omitempty"`
 	Twistiness *float64      `json:"twistiness,omitempty"`
@@ -61,6 +62,15 @@ func (r *planRequest) normalize() error {
 		if r.MaxExtraS != nil && (*r.MaxExtraS < 0 || *r.MaxExtraS > 7200) {
 			return badf("max_extra_s must be between 0 and 7200")
 		}
+		switch r.Style {
+		case "", "curvy":
+			r.Style = "curvy"
+		case "direct":
+			// "Get me there" skips the curvy machinery: no detour budget, no twistiness stepping.
+			r.MaxExtraS, r.Twistiness = nil, nil
+		default:
+			return badf(`style must be "curvy" or "direct"`)
+		}
 	case "out_and_back":
 		r.End = nil
 		if r.Turnaround != nil {
@@ -84,7 +94,7 @@ func (r *planRequest) normalize() error {
 		return badf(`mode must be "loop", "out_and_back" or "point_to_point"`)
 	}
 	if r.Mode != "point_to_point" {
-		r.MaxExtraS = nil
+		r.MaxExtraS, r.Style = nil, ""
 	}
 	if err := r.normalizeCharging(); err != nil {
 		return err
@@ -102,6 +112,9 @@ func (r *planRequest) normalize() error {
 	}
 	if r.Twistiness == nil {
 		t := 0.5
+		if r.Style == "direct" {
+			t = 0 // only recorded for the cache key; the direct profile has no curvature rules
+		}
 		r.Twistiness = &t
 	}
 	if *r.Twistiness < 0 || *r.Twistiness > 1 {
@@ -291,7 +304,7 @@ type planResult struct {
 
 // buildResult assembles the response. stations is nil unless charging was requested; turnIdx is
 // the out-and-back turnaround's polyline index, or -1.
-func buildResult(id, mode string, p *ghPath, loop *loopInfo, ob *outBackInfo, turnIdx int, stations []nrelStation, co *chargingOpts, v *vehicle) *planResult {
+func buildResult(id, mode, style string, p *ghPath, loop *loopInfo, ob *outBackInfo, turnIdx int, stations []nrelStation, co *chargingOpts, v *vehicle) *planResult {
 	coords := p.Points.Coordinates
 	cum := cumulativeKM(coords)
 	roads := roadsOf(p, cum)
@@ -334,7 +347,7 @@ func buildResult(id, mode string, p *ghPath, loop *loopInfo, ob *outBackInfo, tu
 		OutAndBack:   ob,
 		Energy:       energy,
 		Chargers:     sites,
-		Handoff:      buildHandoff(p, cum, roads, forced),
+		Handoff:      buildHandoff(p, cum, roads, forced, style == "direct"),
 		GPXURL:       "/v1/plan/" + id + ".gpx",
 	}
 }

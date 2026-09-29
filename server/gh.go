@@ -121,7 +121,9 @@ type ghError struct {
 func (e *ghError) Error() string { return fmt.Sprintf("graphhopper %d: %s", e.Status, e.Message) }
 
 func (c *ghClient) route(ctx context.Context, req ghRequest) (*ghPath, error) {
-	req.Profile = "motorcycle"
+	if req.Profile == "" {
+		req.Profile = "motorcycle"
+	}
 	req.PointsEncoded = false
 	req.Elevation = true
 	req.Instructions = true

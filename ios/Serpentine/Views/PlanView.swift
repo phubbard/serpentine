@@ -36,8 +36,11 @@ struct PlanView: View {
                 if planner.mode == .pointToPoint {
                     destinationRow
                     Button("Choose destination", systemImage: "magnifyingglass") { searchingDestination = true }
-                    LabeledContent("Extra time", value: "+\(Int(planner.maxExtraMin)) min")
-                    Slider(value: $planner.maxExtraMin, in: 0...60, step: 5)
+                    Toggle("Just get me there", isOn: $planner.directRoute).tint(.accentColor)
+                    if !planner.directRoute {
+                        LabeledContent("Extra time", value: "+\(Int(planner.maxExtraMin)) min")
+                        Slider(value: $planner.maxExtraMin, in: 0...60, step: 5)
+                    }
                 } else {
                     Picker("Plan by", selection: $planner.budget) {
                         ForEach(RideBudget.allCases) { Text($0.label).tag($0) }
@@ -64,7 +67,9 @@ struct PlanView: View {
                 Text("Ride")
             } footer: {
                 if planner.mode == .pointToPoint {
-                    Text("The quickest way, plus up to the extra time you allow spent on better roads.")
+                    Text(planner.directRoute
+                         ? "Fastest way, freeways and all — for the errand, not the ride. Charge stops are still planned."
+                         : "The quickest way, plus up to the extra time you allow spent on better roads.")
                 }
             }
 
@@ -157,7 +162,7 @@ struct PlanView: View {
         switch planner.mode {
         case .loop: "Plan loop"
         case .outAndBack: "Plan out and back"
-        case .pointToPoint: "Plan the way there"
+        case .pointToPoint: planner.directRoute ? "Get me there" : "Plan the way there"
         }
     }
 

@@ -111,7 +111,7 @@ func TestLoopScorePenalisesTrackAndDistanceError(t *testing.T) {
 func TestHandoffDemo(t *testing.T) {
 	p := fixturePath(t, "gh_demo.json")
 	cum := cumulativeKM(p.Points.Coordinates)
-	h := buildHandoff(p, cum, roadsOf(p, cum), nil)
+	h := buildHandoff(p, cum, roadsOf(p, cum), nil, false)
 
 	if n := len(h.Waypoints); n == 0 || n > maxHandoffWaypoints {
 		t.Fatalf("%d waypoints, want 1..%d", n, maxHandoffWaypoints)
@@ -159,7 +159,7 @@ func TestHandoffOneWaypointPerRoad(t *testing.T) {
 	}}
 	p.Points.Coordinates = coords
 	cum := cumulativeKM(coords)
-	h := buildHandoff(p, cum, roadsOf(p, cum), nil)
+	h := buildHandoff(p, cum, roadsOf(p, cum), nil, false)
 	// Start Rd's 1 km point is inside endpointClearKM of the source, so it moves to mid-road.
 	if got := strings.Join(h.WaypointRoads, ","); got != "Start Rd,A,End Rd" {
 		t.Errorf("waypoint roads %q, want Start Rd,A,End Rd", got)
@@ -716,5 +716,79 @@ func TestShortRideAgainstABigBudgetExplainsItself(t *testing.T) {
 	}
 	if used >= target*0.6 && b["note"] != nil {
 		t.Errorf("a ride that filled the budget shouldn't apologise: %v", b["note"])
+	}
+}
+
+// The errand ride (ADR-031). The failure that would actually hurt is the handoff: routing onto a
+// freeway and then telling Apple Maps to avoid freeways sends the rider somewhere else entirely.
+func TestDirectStyleDoesNotTellAppleToAvoidHighways(t *testing.T) {
+	src, dst := [2]float64{-117.2116, 32.867}, [2]float64{-117.86, 33.68}
+	wps := [][2]float64{{-117.5, 33.2}}
+
+	curvy := appleMapsURL(src, wps, dst, false)
+	if !strings.Contains(curvy, "avoid=tolls,highways") {
+		t.Error("a ride should still dodge freeways")
+	}
+	direct := appleMapsURL(src, wps, dst, true)
+	if strings.Contains(direct, "avoid") {
+		t.Errorf("an errand must not avoid anything: %s", direct)
+	}
+	if !strings.Contains(direct, "mode=driving") || !strings.Contains(direct, "waypoint=") {
+		t.Errorf("the rest of the handoff should be unchanged: %s", direct)
+	}
+}
+
+func TestDirectStyleValidation(t *testing.T) {
+	base := func() planRequest {
+		return planRequest{Mode: "point_to_point", Start: &[2]float64{-117.2, 32.9}, End: &[2]float64{-117.8, 33.6}}
+	}
+	// A bad style is rejected rather than silently treated as curvy.
+	r := base()
+	r.Style = "quickest"
+	if err := r.normalize(); err == nil {
+		t.Error(`style "quickest" should be refused`)
+	}
+	// Default is the app's whole point: curves.
+	r = base()
+	if err := r.normalize(); err != nil || r.Style != "curvy" {
+		t.Errorf("default style = %q (%v)", r.Style, err)
+	}
+	// "direct" drops the curvy controls: a detour budget makes no sense when not detouring.
+	r = base()
+	r.Style = "direct"
+	extra, twist := 900.0, 0.9
+	r.MaxExtraS, r.Twistiness = &extra, &twist
+	if err := r.normalize(); err != nil {
+		t.Fatal(err)
+	}
+	if r.MaxExtraS != nil {
+		t.Error("a detour budget should be dropped for a direct ride")
+	}
+	if r.Twistiness == nil || *r.Twistiness != 0 {
+		t.Errorf("twistiness should be recorded as 0, got %v", r.Twistiness)
+	}
+	// Style belongs to A→B only; a loop must not carry it into the cache key.
+	loop := planRequest{Mode: "loop", Start: &[2]float64{-117.2, 32.9}, DistanceM: 100000}
+	loop.Style = "direct"
+	if err := loop.normalize(); err != nil {
+		t.Fatal(err)
+	}
+	if loop.Style != "" {
+		t.Errorf("a loop kept style %q", loop.Style)
+	}
+}
+
+// Two styles of the same trip must not collide in the route cache.
+func TestStyleSplitsTheCache(t *testing.T) {
+	mk := func(style string) string {
+		r := planRequest{Mode: "point_to_point", Start: &[2]float64{-117.2, 32.9},
+			End: &[2]float64{-117.8, 33.6}, Style: style}
+		if err := r.normalize(); err != nil {
+			t.Fatal(err)
+		}
+		return r.cacheKey()
+	}
+	if mk("curvy") == mk("direct") {
+		t.Error("a scenic route and an errand are not the same plan")
 	}
 }

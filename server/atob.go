@@ -28,6 +28,12 @@ type detourInfo struct {
 // twistiness, exactly as before.
 func (s *server) planAtoB(ctx context.Context, r *planRequest, cm *customModel) (*ghPath, *detourInfo, error) {
 	points := [][2]float64{*r.Start, *r.End}
+	if r.Style == "direct" {
+		// The errand ride (ADR-031): GraphHopper's own fastest route on the direct profile, which is
+		// the only place freeways aren't punished. No detour budget — the whole point is not detouring.
+		path, err := s.gh.route(ctx, ghRequest{Points: points, Profile: "direct"})
+		return path, nil, err
+	}
 	if r.MaxExtraS == nil {
 		path, err := s.gh.route(ctx, ghRequest{Points: points, CustomModel: cm})
 		return path, nil, err

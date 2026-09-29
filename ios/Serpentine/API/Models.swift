@@ -20,6 +20,7 @@ struct PlanRequest: Encodable, Sendable {
     var distanceM: Double?
     var durationS: Double?
     var maxExtraS: Double?
+    var style: String?
     var headingDeg: Double?
     var seed: Int?
     var twistiness: Double

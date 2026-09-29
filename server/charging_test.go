@@ -135,7 +135,7 @@ func TestChargeStopBecomesHandoffWaypoint(t *testing.T) {
 			forced = append(forced, forcedWaypoint{idx: c.idx, pt: c.LonLat, label: "Charge: " + c.Name})
 		}
 	}
-	h := buildHandoff(p, cum, roadsOf(p, cum), forced)
+	h := buildHandoff(p, cum, roadsOf(p, cum), forced, false)
 	if len(h.Waypoints) > maxHandoffWaypoints {
 		t.Errorf("%d waypoints exceeds the cap", len(h.Waypoints))
 	}

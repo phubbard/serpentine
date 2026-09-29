@@ -124,3 +124,26 @@ private func fixture(_ name: String) throws -> PlanResult {
         #expect(c.reliability?.operational ?? true)
     }
 }
+
+@MainActor @Test func errandRideAsksForTheDirectStyle() throws {
+    let p = Planner()
+    p.start = StartPoint(name: "Ramona", coordinate: [-116.868, 33.042].coordinate)
+    p.destination = StartPoint(name: "Helmet shop", coordinate: [-117.86, 33.68].coordinate)
+    p.mode = .pointToPoint
+
+    // The ride: better roads, with a detour budget.
+    let scenic = try #require(p.request(seed: 1))
+    #expect(scenic.style == "curvy")
+    #expect(scenic.maxExtraS == 900)
+
+    // The errand: fastest, and no detour budget to confuse the server.
+    p.directRoute = true
+    let errand = try #require(p.request(seed: 1))
+    #expect(errand.style == "direct")
+    #expect(errand.maxExtraS == nil)
+    #expect(errand.end == [-117.86, 33.68])
+
+    // Style belongs to A→B; a loop shouldn't carry it.
+    p.mode = .loop
+    #expect(p.request(seed: 1)?.style == nil)
+}

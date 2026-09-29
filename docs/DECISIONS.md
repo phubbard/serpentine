@@ -734,3 +734,32 @@ caught it. Related: `make deploy` did `launchctl bootout` immediately followed b
 launchd rejects with "Bootstrap failed: 5: Input/output error" if it is still tearing the old job
 down; that left the service dead until the next deploy. It now retries the bootstrap and fails loudly
 if the process is not running afterwards.
+
+## ADR-031 · 2026-09-29 · A second profile for the rides that aren't rides
+
+Paul wanted to ride to a helmet shop in Orange County without switching to another app: freeways
+fine, fastest route, charging stops still planned. Reasonable, and it exposed a hard limit.
+
+**Why it needed a second profile.** `serpentine.json` penalises motorways to 0.15, trunk to 0.35,
+over-105 km/h to 0.5 and straight edges to 0.3 — a freeway segment lands near 0.02 of normal priority.
+Per-request custom models may only tighten under LM (ADR-009), so nothing a request can say will lift
+a penalty. The graph now carries a second profile, `direct`: access and surface rules only,
+`distance_influence: 0`, car speeds without the curvy profile's `max_speed * 0.9` conservatism. That
+costs one re-import and a second landmark set, done in a parallel container as ADR-029 established.
+
+**The handoff is the part that would actually have hurt.** The Apple Maps URL has always carried
+`avoid=tolls,highways`, which is right for a ride and catastrophic for an errand: we would route the
+rider onto the freeway, hand Apple a URL telling it to avoid freeways, and Apple would send them
+somewhere else entirely. `direct` drops the avoid list. There is a test for exactly this, because it
+is the kind of bug that looks fine in every unit test of the routing.
+
+**What stays the same:** charging. Stops are planned as ever and `total_time_s` counts them, which is
+what "optimise for time including charging" means for a bike that has to stop for an hour.
+
+In the app it's a toggle on "Go somewhere" — *Just get me there* — which hides the detour budget,
+because a detour budget on an errand is a contradiction.
+
+A note for later: for a pure errand, Apple Maps knows about traffic and we do not. Our value on these
+trips is the charging plan and staying in one app. If riders start reporting that our errand routes
+are slower than Apple's, believe them — the answer is to hand the destination straight to Apple when
+no charge stop is needed, not to try to out-route a live traffic feed.

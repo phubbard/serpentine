@@ -55,6 +55,9 @@ final class Planner {
     var start: StartPoint?
     var destination: StartPoint?
     var maxExtraMin: Double = 15
+    /// "Go somewhere" comes in two flavours: the ride, and the errand (ADR-031). An errand takes
+    /// freeways and asks Apple Maps not to avoid them.
+    var directRoute = false
 
     private(set) var isPlanning = false
     private(set) var errorMessage: String?
@@ -79,7 +82,8 @@ final class Planner {
             end: goingSomewhere ? destination?.coordinate.lonLat : nil,
             distanceM: goingSomewhere || budget == .time ? nil : distanceKm * 1000,
             durationS: goingSomewhere || budget == .distance ? nil : durationMin * 60,
-            maxExtraS: goingSomewhere ? maxExtraMin * 60 : nil,
+            maxExtraS: goingSomewhere && !directRoute ? maxExtraMin * 60 : nil,
+            style: goingSomewhere ? (directRoute ? "direct" : "curvy") : nil,
             headingDeg: goingSomewhere ? nil : heading?.rawValue,
             seed: goingSomewhere ? nil : seed,
             twistiness: twistiness,

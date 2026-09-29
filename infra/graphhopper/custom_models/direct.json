@@ -1,0 +1,36 @@
+// Serpentine "direct" profile — get there, don't enjoy it (ADR-031).
+//
+// The point of this app is the motorcycle profile: curvy, rural, moderate speed. This one is its
+// opposite and exists so a rider doesn't need a second app for the errand ride — the helmet shop in
+// Orange County, the dealer, the airport. Highways are fine. Time is the only goal.
+//
+// Why a second profile rather than a per-request model: the base profile penalises motorways to 0.15,
+// trunk to 0.35, anything over 105 km/h to 0.5 and straight edges to 0.3 — a freeway lands near 0.02.
+// LM preparation only accepts multipliers <= 1, so a request can tighten those penalties but never
+// lift them (ADR-009). Undoing them needs its own profile, baked in at import.
+//
+// What stays: no dirt (street tyres), no private roads, ferries discouraged. Everything else is left
+// to GraphHopper's own car speeds, which is what "fastest" means.
+{
+  "distance_influence": 0,
+
+  "priority": [
+    { "if": "!car_access", "multiply_by": "0" },
+    { "if": "road_access == PRIVATE || road_access == NO", "multiply_by": "0" },
+
+    // Street tyres still don't want gravel, even in a hurry.
+    { "if": "surface == GRAVEL || surface == FINE_GRAVEL || surface == COMPACTED || surface == UNPAVED || surface == DIRT || surface == GROUND || surface == GRASS || surface == SAND", "multiply_by": "0.05" },
+    { "else_if": "road_class == TRACK", "multiply_by": "0.05" },
+
+    // A ferry is a schedule, not a road; take one only when it genuinely wins.
+    { "if": "road_environment == FERRY", "multiply_by": "0.5" }
+  ],
+
+  // GraphHopper requires the speed group to be exhaustive: an unconditional statement, or an else.
+  // No max_speed * 0.9 here — that cap is the curvy profile being conservative, and this one is
+  // meant to estimate an errand honestly.
+  "speed": [
+    { "if": "road_environment == FERRY", "limit_to": "ferry_speed" },
+    { "else": "", "limit_to": "car_average_speed" }
+  ]
+}

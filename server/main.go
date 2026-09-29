@@ -582,7 +582,7 @@ func (s *server) planOnce(ctx context.Context, req *planRequest, cm *customModel
 	// out of service is dropped and the charge plan is made again without it — once, so a run of bad
 	// listings can't loop (ADR-022).
 	for attempt := 0; ; attempt++ {
-		res := buildResult(id, req.Mode, path, loop, ob, turnIdx, stations, req.Charging, req.Vehicle)
+		res := buildResult(id, req.Mode, req.Style, path, loop, ob, turnIdx, stations, req.Charging, req.Vehicle)
 		res.Detour = detour
 		if req.Charging == nil || s.ocm == nil {
 			return res, nil

@@ -17,6 +17,8 @@ built.
   "end": [-116.60, 33.08],          // point_to_point only
   "max_extra_s": 900,               // point_to_point: seconds of detour allowed over the quick way
                                     //   (0 – 7200); see "detour" in the response
+  "style": "curvy",                 // point_to_point: "curvy" (default) or "direct" — the errand
+                                    //   ride: freeways allowed, fastest route, no detour budget
   "turnaround": [-116.60, 33.08],   // out_and_back: optional; else chosen from distance_m
   "distance_m": 150000,             // loop, out_and_back (total, both legs): 20 000 – 500 000
   "duration_s": 7200,               // loop, out_and_back: time budget instead of distance_m
@@ -259,3 +261,20 @@ to posts it cannot use:
 ```json
 {"error": "LiveWire ONE charges too slowly on AC to plan Level 2 stops, and DC fast charging isn't planned yet"}
 ```
+
+## The errand ride (`style: "direct"`)
+
+`point_to_point` has two shapes. The default, `curvy`, is the app: better roads within a detour
+budget. `direct` is for getting somewhere — the helmet shop, the dealer, the airport — so a rider
+doesn't need a second app for the trips that aren't about riding (ADR-031).
+
+`direct` routes on GraphHopper's **`direct` profile** rather than `motorcycle`. That is a separate
+profile baked into the graph, not a per-request tweak, because the motorcycle profile penalises
+motorways to 0.15, trunk roads to 0.35, anything over 105 km/h to 0.5 and straight edges to 0.3 —
+about 0.02 for a freeway — and LM preparation only lets a request *tighten* those (ADR-009). No
+request can lift them.
+
+It ignores `max_extra_s` and `twistiness` (there is no detour to budget for), and the Apple Maps
+handoff drops `avoid=tolls,highways`: routing onto a freeway and then telling Apple to avoid freeways
+would send the rider somewhere else entirely. Charging is unchanged — stops are still planned, and
+`energy.total_time_s` still counts the charging against the trip.

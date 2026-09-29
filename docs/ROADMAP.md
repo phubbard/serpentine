@@ -122,6 +122,14 @@ which the Pi's Caddy is the only thing that proxies.
       `sqlite3` CLI (no Go dependency), hourly upserts every 5 min and on shutdown, 90-day retention,
       restored into memory at startup. A test asserts the schema can only hold counts.
 
+## Utility
+
+- [x] **The errand ride** — done 2026-09-29 (ADR-031): `style: "direct"` on `point_to_point`, its own
+      GraphHopper profile, freeways allowed, handoff no longer tells Apple to avoid them. App toggle
+      "Just get me there".
+- [ ] Watch whether our errand routes match Apple's in practice; if not, hand the destination straight
+      to Apple when no charge stop is needed.
+
 ## Coverage
 
 - [x] **Whole-US graph** — done 2026-09-20 (ADR-029): 63-minute import, 13 GB graph, no outage

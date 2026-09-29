@@ -10,6 +10,10 @@ graphhopper:
     - name: motorcycle
       # Instructions/turn text use the car rules; access uses car_access.
       custom_model_files: [serpentine.json]
+    # The errand profile (ADR-031): highways fine, time only. It has to be its own profile because
+    # LM only lets a request tighten the base model, never lift its freeway penalties (ADR-009).
+    - name: direct
+      custom_model_files: [direct.json]
 
   # No CH: it would freeze the weighting and forbid per-request tuning.
   profiles_ch: []
@@ -19,6 +23,7 @@ graphhopper:
   # start if it changes: editing serpentine.json = full re-import. Tune per request instead (ADR-009).
   profiles_lm:
     - profile: motorcycle
+    - profile: direct
   prepare.lm.landmarks: 16
   prepare.lm.threads: 8
 

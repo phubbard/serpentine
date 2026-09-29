@@ -105,7 +105,7 @@ type forcedWaypoint struct {
 	label string
 }
 
-func buildHandoff(p *ghPath, cum []float64, roads []road, forced []forcedWaypoint) handoff {
+func buildHandoff(p *ghPath, cum []float64, roads []road, forced []forcedWaypoint, direct bool) handoff {
 	coords := p.Points.Coordinates
 	srcIdx, dstIdx := publicEndpoints(p, len(coords))
 	src, dst := coords[srcIdx], coords[dstIdx]
@@ -158,7 +158,7 @@ func buildHandoff(p *ghPath, cum []float64, roads []road, forced []forcedWaypoin
 		}
 		h.WaypointRoads = append(h.WaypointRoads, c.road)
 	}
-	h.AppleMapsURL = appleMapsURL(h.Source, h.Waypoints, h.Destination)
+	h.AppleMapsURL = appleMapsURL(h.Source, h.Waypoints, h.Destination, direct)
 	h.GoogleMapsURL = googleMapsURL(h.Source, h.Waypoints, h.Destination)
 	return h
 }
@@ -167,13 +167,18 @@ func buildHandoff(p *ghPath, cum []float64, roads []road, forced []forcedWaypoin
 func latLon(p [2]float64) string { return fmt.Sprintf("%.5f,%.5f", p[1], p[0]) }
 
 // appleMapsURL builds the iOS 18.4+ unified directions URL (repeated waypoint=).
-func appleMapsURL(src [2]float64, wps [][2]float64, dst [2]float64) string {
+func appleMapsURL(src [2]float64, wps [][2]float64, dst [2]float64, direct bool) string {
 	var b strings.Builder
 	b.WriteString("https://maps.apple.com/directions?source=" + latLon(src))
 	for _, w := range wps {
 		b.WriteString("&waypoint=" + latLon(w))
 	}
-	b.WriteString("&destination=" + latLon(dst) + "&mode=driving&avoid=tolls,highways")
+	b.WriteString("&destination=" + latLon(dst) + "&mode=driving")
+	// Avoiding highways is right for a ride and wrong for an errand: telling Apple to dodge the
+	// freeway we deliberately routed onto would send the rider somewhere else entirely (ADR-031).
+	if !direct {
+		b.WriteString("&avoid=tolls,highways")
+	}
 	return b.String()
 }
 
