@@ -5,11 +5,23 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [Unreleased]
 
+## [0.1.0]
+
+- Keep the rides worth keeping. Tap Save on any ride and it goes to your saved list — the bookmark at
+  the top of the plan screen. Give it stars, write down what you found (gravel on a turn, the charger
+  that was busy), and record when you last rode it. Rides you haven't ridden yet sit in the same list,
+  so it works as a list of roads to try as well as a record of the ones you've done. A saved ride keeps
+  the route exactly as planned, opens the same way every time, and works with no signal. Saved rides
+  stay on your device and are never uploaded.
+
+- Search results tell you which one you want: each match now shows its address and how far away it is,
+  so two shops with the same name are no longer a coin toss. That distance is straight-line, not
+  riding distance.
+
 - An About panel worth reading: what the app is, where your data goes, and credit to the people whose
   data makes it work — OpenStreetMap, the Department of Energy and Open Charge Map. On the Mac it's in
-  the Serpentine menu; elsewhere it's at the bottom of the plan screen.
-
-## [0.1.0]
+  the Serpentine menu; elsewhere it's at the bottom of the plan screen. It also shows when this build
+  was made and which commit it came from — please paste that line into any bug report.
 
 - "Just get me there": in Go somewhere, take the fastest way including freeways, with charge stops
   still planned. For the helmet shop and the dealer, not the Sunday ride. Measured Ramona to Orange
