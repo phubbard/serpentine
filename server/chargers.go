@@ -337,3 +337,42 @@ func planCharging(v *vehicle, sites []charger, energy []float64, rideTimeS float
 	sum.TotalTimeS = math.Round(rideTimeS + extraS)
 	return sum
 }
+
+// energyOnly is the charge summary for a ride that ends at a charger (ADR-034): what the ride costs
+// and whether the pack can cover it, with no stops planned on the way. Planning a stop here would
+// mean telling a rider to charge somewhere in order to reach the charger they just chose, and it
+// turns a twenty-minute ride into an eight-hour headline.
+//
+// Infeasible is left loud on purpose. "You will not make it" is the one thing a rider can act on.
+func energyOnly(v *vehicle, energy []float64, rideTimeS float64, o chargingOpts, sites []charger) energySummary {
+	total := 0.0
+	if len(energy) > 0 {
+		total = energy[len(energy)-1]
+	}
+	socStart := 1.0
+	if o.SocStart != nil {
+		socStart = *o.SocStart
+	}
+	minArrival := 0.0
+	if o.SocMinArrival != nil {
+		minArrival = *o.SocMinArrival
+	}
+	end := socStart - total/v.UsableKWh
+	sum := energySummary{
+		UsableKWh: v.UsableKWh, KWhEst: round2(total),
+		SocStart: round2(socStart), SocMinArrival: minArrival,
+		SocEndEst:      round2(math.Max(0, end)),
+		Feasible:       end >= minArrival,
+		TotalTimeS:     math.Round(rideTimeS),
+		ChargersNearby: len(sites),
+	}
+	if o.ChargeTo != nil {
+		sum.ChargeTo = *o.ChargeTo
+	}
+	if !sum.Feasible {
+		sum.Warning = "This is more than the pack has left. Ride gently and be ready to stop short."
+	} else if end < 0.05 {
+		sum.Warning = "You would arrive nearly empty, with nothing spare if it's out of order."
+	}
+	return sum
+}

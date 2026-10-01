@@ -41,6 +41,9 @@ type ghRequest struct {
 type customModel struct {
 	Priority []cmRule           `json:"priority,omitempty"`
 	Areas    *featureCollection `json:"areas,omitempty"`
+	// DistanceInfluence trades time for distance (seconds per kilometre of detour avoided).
+	// Verified 2026-10-01 that LM accepts it per request, unlike a priority multiplier above 1.
+	DistanceInfluence *float64 `json:"distance_influence,omitempty"`
 }
 
 type cmRule struct {

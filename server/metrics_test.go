@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -120,5 +121,32 @@ func TestEmptyStatsAreStillUsable(t *testing.T) {
 	}
 	if s.Today.Mode == nil || s.Today.Latency == nil {
 		t.Error("the empty buckets still need their maps and histogram")
+	}
+}
+
+// addTo is a hand-written field-by-field sum, so every counter added to the bucket has to be added
+// there too. Forgetting leaves the dashboard quietly reading zero for the day and the week, which
+// looks like "nothing happened" rather than like a bug. This walks the struct instead of trusting
+// anyone to remember.
+func TestAddToSumsEveryCounter(t *testing.T) {
+	var src, dst bucket
+	sv := reflect.ValueOf(&src).Elem()
+	for i := 0; i < sv.NumField(); i++ {
+		if sv.Field(i).Kind() == reflect.Int {
+			sv.Field(i).SetInt(1)
+		}
+	}
+	src.Mode, src.Budget = map[string]int{}, map[string]int{}
+	dst.Mode, dst.Budget = map[string]int{}, map[string]int{}
+	src.Latency = make([]int, len(latencyEdges)+1)
+	dst.Latency = make([]int, len(latencyEdges)+1)
+
+	addTo(&dst, &src)
+
+	dv, tv := reflect.ValueOf(dst), reflect.TypeOf(dst)
+	for i := 0; i < dv.NumField(); i++ {
+		if dv.Field(i).Kind() == reflect.Int && dv.Field(i).Int() != 1 {
+			t.Errorf("addTo does not sum %s: the stats page will show zero for it", tv.Field(i).Name)
+		}
 	}
 }

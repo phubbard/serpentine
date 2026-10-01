@@ -12,3 +12,6 @@ xcuserdata/
 .DS_Store
 demo/out/
 server/bin/
+# `go build ./...` inside server/ writes a 12 MB binary named after the directory. The Makefile
+# builds to server/bin/, so anything here is a stray from running go build by hand.
+server/server

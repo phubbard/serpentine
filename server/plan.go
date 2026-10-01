@@ -24,7 +24,7 @@ type planRequest struct {
 	DistanceM  float64       `json:"distance_m,omitempty"`
 	DurationS  float64       `json:"duration_s,omitempty"`  // loop, out_and_back: ride time instead of distance
 	MaxExtraS  *float64      `json:"max_extra_s,omitempty"` // point_to_point: seconds of detour allowed over the quickest route
-	Style      string        `json:"style,omitempty"`       // point_to_point: "curvy" (default) or "direct" (ADR-031)
+	Style      string        `json:"style,omitempty"`       // point_to_point: "curvy" (default), "direct" (ADR-031) or "efficient" (ADR-034)
 	HeadingDeg *float64      `json:"heading_deg,omitempty"`
 	Seed       *int64        `json:"seed,omitempty"`
 	Twistiness *float64      `json:"twistiness,omitempty"`
@@ -68,8 +68,12 @@ func (r *planRequest) normalize() error {
 		case "direct":
 			// "Get me there" skips the curvy machinery: no detour budget, no twistiness stepping.
 			r.MaxExtraS, r.Twistiness = nil, nil
+		case "efficient":
+			// "Get me to a charger on what's left" (ADR-034): candidates scored by our own energy
+			// model, not by time, so neither budget applies.
+			r.MaxExtraS, r.Twistiness = nil, nil
 		default:
-			return badf(`style must be "curvy" or "direct"`)
+			return badf(`style must be "curvy", "direct" or "efficient"`)
 		}
 	case "out_and_back":
 		r.End = nil
@@ -99,9 +103,10 @@ func (r *planRequest) normalize() error {
 	if err := r.normalizeCharging(); err != nil {
 		return err
 	}
-	if r.Charging == nil {
+	if r.Charging == nil && r.Style != "efficient" {
 		r.Vehicle = nil // nothing to model, and it would only split the cache
 	} else {
+		// An efficient route is chosen by energy, so it needs a bike even with charging off.
 		if r.Vehicle == nil {
 			v := srs()
 			r.Vehicle = &v
@@ -180,6 +185,12 @@ func (r *planRequest) normalizeCharging() error {
 		}
 	}
 	def(&c.SocStart, 1.0)
+	// The reserve a normal ride should finish with — except on the ride to a charger, where
+	// arriving nearly empty is the whole idea and a 15 % floor would refuse to plan at all for
+	// exactly the rider who needs it most (ADR-034).
+	if r.Style == "efficient" {
+		def(&c.SocMinArrival, 0)
+	}
 	def(&c.SocMinArrival, 0.15)
 	def(&c.ChargeTo, 0.9)
 	for _, v := range []float64{*c.SocStart, *c.SocMinArrival, *c.ChargeTo} {
@@ -188,7 +199,9 @@ func (r *planRequest) normalizeCharging() error {
 		}
 	}
 	if *c.SocMinArrival >= *c.SocStart || *c.SocMinArrival >= *c.ChargeTo {
-		return badf("soc_min_arrival must be below soc_start and charge_to")
+		return badf("you're starting at %.0f%% and asking to never drop below %.0f%%; lower soc_min_arrival, "+
+			"or use style \"efficient\" to find a charger you can still reach",
+			*c.SocStart*100, *c.SocMinArrival*100)
 	}
 	return nil
 }
@@ -319,8 +332,14 @@ func buildResult(id, mode, style string, p *ghPath, loop *loopInfo, ob *outBackI
 	if co != nil {
 		sites = sitesFromStations(stations, acConnectors(v))
 		placeOnRoute(sites, coords, cum)
-		sum := planCharging(v, sites, energyProfile(v, p, cum), float64(p.Time)/1000, *co)
-		sum.ChargersNearby = len(sites)
+		var sum energySummary
+		if style == "efficient" {
+			// The ride to a charger already ends at one: cost it, don't plan stops along it.
+			sum = energyOnly(v, energyProfile(v, p, cum), float64(p.Time)/1000, *co, sites)
+		} else {
+			sum = planCharging(v, sites, energyProfile(v, p, cum), float64(p.Time)/1000, *co)
+			sum.ChargersNearby = len(sites)
+		}
 		energy = &sum
 		for _, c := range sites {
 			if c.Stop {

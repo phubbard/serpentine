@@ -49,3 +49,13 @@ func energyProfile(v *vehicle, p *ghPath, cum []float64) []float64 {
 	}
 	return out
 }
+
+// routeKWh is what this route costs the bike, start to finish. The same walk the charge planner
+// does, when only the total is wanted.
+func routeKWh(v *vehicle, p *ghPath) float64 {
+	e := energyProfile(v, p, cumulativeKM(p.Points.Coordinates))
+	if len(e) == 0 {
+		return 0
+	}
+	return e[len(e)-1]
+}

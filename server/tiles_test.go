@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -77,9 +78,7 @@ func TestTileProxyCaches(t *testing.T) {
 			t.Errorf("%s: got %d, want 404", bad, code)
 		}
 	}
-	if strings.Contains(logs.String(), "701") || strings.Contains(logs.String(), "1635") {
-		t.Error("tile coordinates must not appear in the log")
-	}
+	assertNoTileCoordinatesLogged(t, logs.String(), "12", "701", "1635")
 }
 
 func TestTileProxyServesStaleWhenUpstreamFails(t *testing.T) {
@@ -118,5 +117,39 @@ func TestTilesDisabledAndStatic(t *testing.T) {
 	}
 	if code, _ := get(t, api.URL+"/v1/static/leaflet-1.9.4/leaflet.css"); code != 200 {
 		t.Errorf("leaflet.css: %d", code)
+	}
+}
+
+// Where a rider is looking is location data, so the tile z/x/y must never reach the log (ADR-017;
+// logRequests collapses the path to "/v1/tiles"). Checked on the parsed `path` field rather than by
+// searching the whole line: the log carries a timestamp, and fractional seconds beginning "701" made
+// a substring search fail about once in fifty runs — a false alarm on a real guarantee is worse than
+// no alarm, because it teaches you to ignore it.
+func assertNoTileCoordinatesLogged(t *testing.T, logText string, coords ...string) {
+	t.Helper()
+	seen := 0
+	for _, line := range strings.Split(strings.TrimSpace(logText), "\n") {
+		if line == "" {
+			continue
+		}
+		var rec struct {
+			Msg  string `json:"msg"`
+			Path string `json:"path"`
+		}
+		if err := json.Unmarshal([]byte(line), &rec); err != nil {
+			t.Fatalf("log line is not JSON: %q", line)
+		}
+		if rec.Msg != "http" {
+			continue
+		}
+		seen++
+		for _, c := range coords {
+			if strings.Contains(rec.Path, c) {
+				t.Errorf("tile coordinate %q reached the log in path %q", c, rec.Path)
+			}
+		}
+	}
+	if seen == 0 {
+		t.Error("no request was logged at all, so this proves nothing")
 	}
 }

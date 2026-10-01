@@ -44,6 +44,11 @@ type bucket struct {
 	GHFail   int `json:"gh_fail"`
 	NRELFail int `json:"nrel_fail"`
 
+	// "Get me to a charger" (ADR-034): counts only, never where anyone was.
+	Reach       int `json:"reach"`
+	ReachCached int `json:"reach_cached"`
+	ReachEmpty  int `json:"reach_empty"` // nothing routable in range — the case worth watching
+
 	OCMLookups int `json:"ocm_lookups"`
 	OCMHits    int `json:"ocm_cache_hits"`
 	OCMFail    int `json:"ocm_fail"`
@@ -231,6 +236,20 @@ func (m *metrics) failure(kind string) {
 	})
 }
 
+// reach records one "what can I reach" answer: whether it was served from cache, and whether it
+// found anything at all. An empty answer is the one a rider would remember.
+func (m *metrics) reach(cached bool, options int) {
+	m.with(func(b *bucket) {
+		b.Reach++
+		if cached {
+			b.ReachCached++
+		}
+		if options == 0 {
+			b.ReachEmpty++
+		}
+	})
+}
+
 func (m *metrics) ocm(lookups, cacheHits, replans int) {
 	m.with(func(b *bucket) {
 		b.OCMLookups += lookups
@@ -320,6 +339,9 @@ func addTo(dst, src *bucket) {
 	dst.Reserve += src.Reserve
 	dst.GHFail += src.GHFail
 	dst.NRELFail += src.NRELFail
+	dst.Reach += src.Reach
+	dst.ReachCached += src.ReachCached
+	dst.ReachEmpty += src.ReachEmpty
 	dst.OCMLookups += src.OCMLookups
 	dst.OCMHits += src.OCMHits
 	dst.OCMFail += src.OCMFail
