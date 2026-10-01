@@ -142,9 +142,9 @@ Principles that constrain every design choice here:
   - "Unable to log in with account" then "No profiles for 'net.phfactor.serpentine' were found"
   - `exportArchive No signing certificate "iOS Distribution" found` / "No 'iOS Distribution'
     signing certificate matching team ID NSR65JVW9F with a private key was found" / "Add a new
-    account in Accounts settings". `security find-identity -v -p codesigning` shows **no**
-    distribution identity when this happens — the cloud-managed cert is fetched per export, so an
-    empty keychain here is the symptom, not a revoked certificate.
+    account in Accounts settings". Don't read anything into `security find-identity` here: the
+    distribution cert is cloud-managed and **never** sits in the keychain, working or not
+    (`/skills/apple-testflight-signing-auth.md` in Memento), so its absence proves nothing.
   The archive survives the failed export, so after signing in, re-running `make upload-testflight`
   is quick and the build number does not move. `SIGN_WITH_KEY=1` signs with the ASC API key instead, but the App Manager key gets
   "Cloud signing permission error" (cloud-managed distribution certs need an Admin-role key).
