@@ -43,16 +43,25 @@ APP_STORE_KEY_ID    ?= $(shell awk -F'=' '/^APP_STORE_KEY_ID/ {gsub(/[ ;]/,"",$$
 APP_STORE_ISSUER_ID ?= $(shell awk -F'=' '/^APP_STORE_ISSUER_ID/ {gsub(/[ ;]/,"",$$2); print $$2; exit}' $(LOCAL) 2>/dev/null)
 TESTFLIGHT_GROUPS   ?= $(shell awk -F'=' '/^TESTFLIGHT_GROUPS/ {sub(/^[^=]*=/,""); gsub(/^[ \t]+|[ \t;]+$$/,""); print; exit}' $(LOCAL) 2>/dev/null)
 
-# Signing/provisioning for archive + export. Default: Xcode's signed-in Apple ID (Settings →
-# Accounts), which as Account Holder can mint the distribution cert. That session expires silently;
-# the symptom is "Unable to log in with account ... session has expired" then "No profiles for
-# 'net.phfactor.serpentine' were found" — sign in again in Xcode.
-# SIGN_WITH_KEY=1 provisions with the ASC API key instead (headless), but only an Admin-role key
-# may use cloud-managed distribution certs; the App Manager key gets "Cloud signing permission error".
-ASC_KEY_PATH = $(HOME)/.appstoreconnect/private_keys/AuthKey_$(APP_STORE_KEY_ID).p8
+# Signing/provisioning for archive + export (ADR-036).
+#
+# Default since 2026-10-01: the Admin-role ASC key in SIGNING_KEY_ID, which provisions headlessly.
+# The old default was Xcode's signed-in Apple ID, and that session expires silently and mid-session
+# — build 74 signed, build 76 two hours later did not — which made every release depend on a human
+# being free to retype a password. Both faces of that failure are in CLAUDE.md.
+#
+# Only an *Admin* key may use cloud-managed distribution certificates. The App Manager key gets
+# "Cloud signing permission error", which is why signing and uploading use different keys here:
+# uploads and release notes stay on the lower-privilege APP_STORE_KEY_ID, and the Admin key is
+# touched only by the provisioning step below.
+#
+# SIGN_WITH_KEY=0 falls back to the Xcode session, for a machine with no key installed.
+SIGNING_KEY_ID    ?= $(shell awk -F'=' '/^SIGNING_KEY_ID/ {gsub(/[ ;]/,"",$$2); print $$2; exit}' $(LOCAL) 2>/dev/null)
+SIGN_WITH_KEY     ?= $(if $(SIGNING_KEY_ID),1,0)
+ASC_KEY_PATH       = $(HOME)/.appstoreconnect/private_keys/AuthKey_$(SIGNING_KEY_ID).p8
 ifeq ($(SIGN_WITH_KEY),1)
 ASC_AUTH = -allowProvisioningUpdates -authenticationKeyPath $(ASC_KEY_PATH) \
-           -authenticationKeyID $(APP_STORE_KEY_ID) -authenticationKeyIssuerID $(APP_STORE_ISSUER_ID)
+           -authenticationKeyID $(SIGNING_KEY_ID) -authenticationKeyIssuerID $(APP_STORE_ISSUER_ID)
 else
 ASC_AUTH = -allowProvisioningUpdates
 endif
@@ -106,7 +115,13 @@ verify-testflight:
 	@test -n "$(APP_STORE_ISSUER_ID)" || { echo "error: APP_STORE_ISSUER_ID not set in $(LOCAL)"; exit 1; }
 	@test -f "$$HOME/.appstoreconnect/private_keys/AuthKey_$(APP_STORE_KEY_ID).p8" || \
 	    { echo "error: ~/.appstoreconnect/private_keys/AuthKey_$(APP_STORE_KEY_ID).p8 missing"; exit 1; }
-	@echo "✓ ASC key $(APP_STORE_KEY_ID)"
+	@echo "✓ ASC key $(APP_STORE_KEY_ID) (upload, notes)"
+ifeq ($(SIGN_WITH_KEY),1)
+	@test -f "$(ASC_KEY_PATH)" || { echo "error: $(ASC_KEY_PATH) missing (SIGNING_KEY_ID=$(SIGNING_KEY_ID))"; exit 1; }
+	@echo "✓ signing key $(SIGNING_KEY_ID) (provisioning, Admin role)"
+else
+	@echo "! signing falls back to Xcode's Apple ID session; set SIGNING_KEY_ID in $(LOCAL) to go headless"
+endif
 
 archive-testflight: verify-testflight project
 	@rm -rf $(IOS_ARCHIVE) $(IOS_EXPORT_DIR)

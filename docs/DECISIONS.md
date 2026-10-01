@@ -938,3 +938,37 @@ one-tap way to say it is wrong. Fixing this properly needs breadcrumbs, which me
 rider has been, which this app deliberately does not do (ADR-017).
 
 Nothing here goes near the server beyond one more plan request. The paused ride lives on the device.
+
+## ADR-036 · 2026-10-01 · Headless signing with an Admin ASC key
+
+Releases depended on a GUI login. `xcodebuild` provisioned using the Apple ID signed into Xcode →
+Settings → Accounts, and that session expires silently and mid-session: build 74 signed and uploaded,
+build 76 two hours later failed to export. The fix is always "sign in again", which needs a password
+and a 2FA code, which means no release can complete without a human free at that moment. With builds
+increasingly shipped from a session rather than by hand, that is the wrong dependency.
+
+An **Admin-role App Store Connect API key** provisions headlessly. Only Admin may use cloud-managed
+distribution certificates — the existing App Manager key gets "Cloud signing permission error" — so
+this needed a second key rather than a permission change on the first. Verified 2026-10-01 by
+exporting the build-76 archive with it: `EXPORT SUCCEEDED`, no cloud-signing error.
+
+**The two keys do different jobs on purpose.** `SIGNING_KEY_ID` (Admin) is touched only by the
+provisioning step. `APP_STORE_KEY_ID` (App Manager) keeps doing uploads and release notes, which is
+every routine operation. Least privilege for the common path, and revoking the Admin key leaves
+uploads working.
+
+**What this costs.** A `.p8` on disk that grants Admin on the whole developer account to anyone who
+copies it. Admin can manage users, which is a persistence mechanism: someone with the file could add
+an account and keep access after the key is revoked. The alternative — a manually created, non-cloud
+distribution certificate kept in the login keychain — avoids the powerful secret entirely and was
+offered, at the cost of annual certificate and profile renewal and a private key that must be backed
+up or the app cannot be built from a new Mac. Paul chose the key. Revocation is immediate from Users
+and Access → Integrations, and because it is a separate named key, revoking it does not disturb
+uploads.
+
+Two pieces of hygiene found while doing this, both fixed: `*.p8` was not actually in `.gitignore`
+despite CLAUDE.md claiming it since the first build, and the App Manager key was `-rw-r--r--` on
+disk. Nothing was exposed — the keys live outside the repo — but neither should have been true with
+a higher-privilege key about to land beside them.
+
+`SIGN_WITH_KEY=0` still falls back to the Xcode session, for a machine with no key installed.

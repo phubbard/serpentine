@@ -179,6 +179,11 @@ Principles that constrain every design choice here:
   required-reason APIs. Location usage strings are mandatory (CoreLocation for "start from here").
 - TestFlight via `make upload-testflight` + `tools/set-testflight-notes.rb` (copy verbatim from
   mapbook/BMLogger). App Manager-role ASC key or beta-group distribution 403s.
+- **Signing is headless since 2026-10-01 (ADR-036)**: `SIGNING_KEY_ID` in the local xcconfig is an
+  **Admin**-role ASC key used only for provisioning, because only Admin may mint cloud-managed
+  distribution certs. Uploads and notes stay on the App Manager `APP_STORE_KEY_ID`. This replaced the
+  Xcode Apple ID session, whose silent mid-session expiry is still described above — `SIGN_WITH_KEY=0`
+  falls back to it. Keys live in `~/.appstoreconnect/private_keys/`, mode 600, never in the repo.
 - Minimum iOS **18.4** — required for the unified Maps URL with waypoints. Don't support older.
 
 ### Infra specifics
