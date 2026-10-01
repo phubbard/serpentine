@@ -4,6 +4,9 @@ import SwiftUI
 /// The planned ride: map, numbers, charge stops, and the hand-off to Apple Maps for voice guidance.
 struct ResultView: View {
     let plan: PlanResult
+    /// False when the ride wasn't planned from the plan screen — the way to a charger (ADR-034) has
+    /// no "another one like this", and offering it would replan whatever the form happens to say.
+    var canReplan = true
     @Environment(Planner.self) private var planner
     @Environment(RideStore.self) private var rides
     @Environment(\.openURL) private var openURL
@@ -55,7 +58,7 @@ struct ResultView: View {
                 #if targetEnvironment(macCatalyst)
                 // On the Mac the toolbar is easy to miss, and "give me a different ride" is the most
                 // used control there is. Keep it in the page as well (⌘R does the same).
-                anotherButton.frame(maxWidth: .infinity)
+                if canReplan { anotherButton.frame(maxWidth: .infinity) }
                 #endif
             }
 
@@ -105,9 +108,11 @@ struct ResultView: View {
         .toolbar {
             // Explicit placement: a bare toolbar button doesn't reliably reach the window toolbar on
             // Mac Catalyst, where there is no navigation bar to fall back on.
-            ToolbarItem(placement: .primaryAction) {
-                anotherButton
-                    .keyboardShortcut("r", modifiers: .command)
+            if canReplan {
+                ToolbarItem(placement: .primaryAction) {
+                    anotherButton
+                        .keyboardShortcut("r", modifiers: .command)
+                }
             }
             ToolbarItem(placement: .primaryAction) { saveButton }
         }

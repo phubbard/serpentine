@@ -5,8 +5,8 @@ Base: `https://serpentine.phfactor.net/v1` (LAN: `http://axiom:8990/v1`). JSON. 
 Maps URLs, which Apple and Google want as `lat,lon`. Implemented in `server/`; this file is the
 contract the iOS app codes against — change both together.
 
-Status: `point_to_point`, `loop`, `out_and_back` and `charging` implemented; `POST /chargers` not
-built.
+Status: `point_to_point`, `loop`, `out_and_back`, `charging` and `POST /reach` implemented;
+`POST /chargers` not built.
 
 ## POST /plan
 
@@ -17,8 +17,11 @@ built.
   "end": [-116.60, 33.08],          // point_to_point only
   "max_extra_s": 900,               // point_to_point: seconds of detour allowed over the quick way
                                     //   (0 – 7200); see "detour" in the response
-  "style": "curvy",                 // point_to_point: "curvy" (default) or "direct" — the errand
-                                    //   ride: freeways allowed, fastest route, no detour budget
+  "style": "curvy",                 // point_to_point: "curvy" (default), "direct" — the errand ride:
+                                    //   freeways allowed, fastest route, no detour budget — or
+                                    //   "efficient": least energy, for the ride to a charger on a
+                                    //   low battery (ADR-034). "efficient" defaults
+                                    //   soc_min_arrival to 0 and plans no stops on the way.
   "turnaround": [-116.60, 33.08],   // out_and_back: optional; else chosen from distance_m
   "distance_m": 150000,             // loop, out_and_back (total, both legs): 20 000 – 500 000
   "duration_s": 7200,               // loop, out_and_back: time budget instead of distance_m
@@ -30,7 +33,9 @@ built.
   "charging": {                     // optional; omitted or enabled=false → no energy/chargers
     "enabled": true,
     "soc_start": 1.0,                // default 1.0
-    "soc_min_arrival": 0.15,         // default 0.15; never plan below this
+    "soc_min_arrival": 0.15,         // default 0.15 (0 when style is "efficient"); never plan below
+                                     //   this. Must be < soc_start, so a rider at 15 % is refused
+                                     //   unless they lower it or use "efficient".
     "charge_to": 0.9,                // default 0.9
     "reserve_for_backup": true       // default true: arrive able to reach another charger (ADR-023)
   },
@@ -130,6 +135,58 @@ iOS app, which displays with MapKit.
 
 The plan's track as GPX 1.1 with elevation, for Kurviger/Garmin users. Served from an in-memory
 cache (24 h, 500 plans); 404 after that — request the plan again.
+
+## POST /reach
+
+"I'm low — where can I actually get to?" (ADR-034). Public chargers the bike can use, **sorted by the
+share of the pack the ride there would take**, not by distance. Shares the plan rate limiter: one
+call costs several routes.
+
+```json
+{
+  "start": [-116.868, 33.042],
+  "soc": 0.18,                      // required, 0..1 — the rider's own reading
+  "vehicle": { },                   // optional; omitted = the Zero SR/S
+  "limit": 10                       // optional, 1..10
+}
+```
+
+```json
+{
+  "soc_start": 0.18,
+  "usable_kwh": 15.1,
+  "range_km_est": 45.0,             // best case: the whole remaining pack at city consumption, flat.
+                                    //   Also the search radius — road distance is never shorter than
+                                    //   the straight line, so nothing beyond it is reachable.
+  "nearby": 395,                    // usable sites inside that radius; `options` is a shortlist
+  "options": [
+    {
+      "id": "nrel:12345", "name": "Walmart 1700", "lonlat": [-117.04, 33.02],
+      "address": "…", "network": "Electrify America",
+      "ports": 1, "power_kw": 7.0, "connectors": ["J1772"], "hours": "24 hours daily",
+      "straight_km": 18.4,          // as the crow flies, for sanity-checking the route
+      "distance_m": 22100,          // the minimum-energy route we would ride
+      "time_s": 1200, "ascend_m": 228,
+      "kwh_est": 1.81,
+      "soc_needed": 0.12,           // fraction of the whole pack — the sort key
+      "soc_arrival_est": 0.03,
+      "reachable": true,            // soc_needed <= soc
+      "charge_min": 142,            // to 80 %, at this site's power
+      "reliability": { }            // Open Charge Map, best few only (ADR-022)
+    }
+  ],
+  "warning": "…"                    // present when nothing is in range, or the best arrives nearly empty
+}
+```
+
+The shortlist keeps the best site per ~1 km patch (by ports, power and hours), because a downtown
+search otherwise returns ten parking garages in three blocks. When nothing is within `range_km_est`
+the search widens once and every option comes back `reachable: false` — the nearest charger is still
+worth knowing when you are deciding whether to call a trailer.
+
+Tapping one is an ordinary `POST /plan` with `"style": "efficient"`, which returns the minimum-energy
+route with the map, Apple Maps handoff and GPX a plan always carries.
+
 
 ## GET /health
 

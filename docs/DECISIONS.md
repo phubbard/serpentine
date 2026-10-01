@@ -844,3 +844,61 @@ most-used control in the app, and the list would fill with rejected loops. The r
 Local only, no iCloud in v1, and nothing here is ever sent anywhere — consistent with the app having
 no account and one network peer (principle 1). A ride's notes are the most personal thing the app
 holds, so this is not a place to get clever later without a decision.
+
+## ADR-034 · 2026-10-01 · Reach: sorted by battery, not by distance
+
+A rider low on charge has a different question from a rider planning a Sunday. Not "what's nearest"
+but "what can I still get to", and the two give different answers often enough that the distinction
+is the whole feature. Measured from Ramona on a Zero FX at 20 %:
+
+| charger | road distance | climb | energy |
+|---|---|---|---|
+| Poway Unified | 21.6 km | 221 m | 1.42 kWh |
+| Safari Park | 19.3 km | 159 m | 1.45 kWh |
+
+The nearer, flatter one costs more. The FX burns 68.7 Wh/km on fast roads against 38.4 in town, and
+Safari Park is reached on faster roads. Sorted by distance a rider picks the wrong one, and on a
+near-flat battery there is no second attempt.
+
+**`POST /v1/reach`** prices candidates by routing each one for real and walking the same energy model
+that plans charge stops, then sorts by the fraction of the pack the ride would take. Ten routes per
+request, four at a time, behind the plan rate limiter (ADR-030) — it must not be the cheap way around
+it. Cached for three minutes against a start rounded to ~100 m and a charge rounded to 5 %, because a
+wandering GPS fix would otherwise re-route ten chargers a second.
+
+**The search radius is a bound, not a guess.** Road distance is never shorter than the straight line,
+so nothing beyond the pack's best-case range (city consumption, flat, margin included) can be reached.
+When *nothing* is in range the search widens once and marks everything out of range: "the nearest is
+7.6 km away and needs 6 % when you have 5 %" tells a rider to ride gently, and an empty screen tells
+them nothing.
+
+**`style: "efficient"`** on a point-to-point plan returns the minimum-energy route as an ordinary
+plan, so the ride view draws it with no special cases. It routes three candidates on the `direct`
+profile — plain fastest, plus two that penalise motorways, high posted speeds and steep climbs — and
+returns whichever our own energy model says costs least. Three, rather than one heuristic, because
+the heuristics disagree: pushing off the freeway made a San Diego → Ramona route longer (57.0 → 60.2
+km) and higher (971 → 1048 m) and still a fifth cheaper. Verified against the live graph on
+2026-10-01 that LM accepts `distance_influence` and `average_slope` in a per-request model; every
+multiplier is ≤ 1, as ADR-009 requires. The model that prices the list is one of the three, so the
+route a rider gets after tapping is never worse than the percentage the list promised — there is a
+test asserting exactly that, by identity rather than by equality.
+
+Two things only real data showed:
+
+**Density.** Downtown San Diego has 395 usable sites inside the range of a flat battery, and the ten
+nearest were ten parking garages in three blocks, every one reading "needs 0 %". The list now keeps
+the best site per kilometre-wide patch, by the existing `siteQuality`. Out in the country, where this
+feature actually matters, sites are tens of kilometres apart and it changes nothing.
+
+**The reserve rule turned on its owner.** `soc_min_arrival` defaults to 15 % and the check is `>=`,
+so a rider at 15 % was refused outright — exactly the rider this is for. Arriving nearly empty is the
+point of a ride to a charger, so efficient routes default that reserve to zero, and the error text
+for everyone else now says what to do instead of naming a field.
+
+**No charge stops on the way.** The destination is a charger. Planning a stop en route meant telling
+a rider to charge 0.5 km away in order to reach the charger they had just chosen, and turned a
+twenty-minute ride into an eight-hour headline. Efficient routes report energy and feasibility and
+plan no stops; "you will not make it" stays loud, because it is the one thing the rider can act on.
+
+Nothing about this is stored. The charge level is typed by the rider, used for one request, and never
+written down — same position as every other number in this app (ADR-017).

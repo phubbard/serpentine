@@ -10,7 +10,9 @@ struct PlanView: View {
     @State private var showingGarage = false
     @State private var showingAbout = false
     @State private var showingRides = false
+    @State private var showingReach = false
     @Environment(Garage.self) private var garage
+    @Environment(ReachFinder.self) private var reach
 
     var body: some View {
         @Bindable var planner = planner
@@ -119,8 +121,14 @@ struct PlanView: View {
             ToolbarItem(placement: .primaryAction) {
                 Button("Saved rides", systemImage: "bookmark") { showingRides = true }
             }
+            // Wanted in a hurry and usually when something has gone wrong, so it lives in the bar
+            // rather than three taps down in the charging section.
+            ToolbarItem(placement: .primaryAction) {
+                Button("Find a charger", systemImage: "bolt.badge.clock") { openReach() }
+            }
         }
         .sheet(isPresented: $showingRides) { RidesView() }
+        .sheet(isPresented: $showingReach) { ReachView() }
         .onChange(of: garage.selected) { _, bike in planner.bike = bike }
         .task { planner.bike = garage.selected }
         .sheet(isPresented: $searching) {
@@ -179,6 +187,13 @@ struct PlanView: View {
         case .outAndBack: "Plan out and back"
         case .pointToPoint: planner.directRoute ? "Get me there" : "Plan the way there"
         }
+    }
+
+    /// Carries the charge from the plan screen across, so a rider who already set it isn't asked
+    /// twice — but it stays editable there, because this is the number everything else rests on.
+    private func openReach() {
+        reach.socPercent = planner.charging ? planner.socPercent : min(reach.socPercent, 20)
+        showingReach = true
     }
 
     private var twistLabel: String {

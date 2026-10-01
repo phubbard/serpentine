@@ -39,6 +39,13 @@ enum Format {
                 .locale(locale))
     }
 
+    /// A share of the battery, for the reach list. "0 %" for a ride that costs almost nothing reads
+    /// as a broken estimate rather than as "that one's free", so say "<1 %" instead.
+    static func packShare(_ fraction: Double) -> String {
+        if fraction > 0 && fraction < 0.01 { return "<1 %" }
+        return percent(fraction)
+    }
+
     static func percent(_ fraction: Double) -> String {
         "\(Int((fraction * 100).rounded())) %"
     }

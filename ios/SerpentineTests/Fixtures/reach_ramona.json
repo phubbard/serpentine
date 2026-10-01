@@ -1,0 +1,258 @@
+{
+    "soc_start": 0.15,
+    "usable_kwh": 15.1,
+    "range_km_est": 37.5,
+    "nearby": 236,
+    "options": [
+        {
+            "id": "nrel:160476",
+            "name": "Dgs Ramona Library",
+            "lonlat": [
+                -116.873844,
+                33.040302
+            ],
+            "address": "1275 Main St, Ramona",
+            "network": "ChargePoint Network",
+            "ports": 10,
+            "power_kw": 6.5,
+            "connectors": [
+                "J1772"
+            ],
+            "hours": "24 hours daily",
+            "straight_km": 0.6,
+            "distance_m": 749,
+            "time_s": 56,
+            "ascend_m": 2,
+            "kwh_est": 0.05,
+            "soc_needed": 0.003,
+            "soc_arrival_est": 0.147,
+            "reachable": true,
+            "charge_min": 101
+        },
+        {
+            "id": "nrel:177070",
+            "name": "Safari Park Guest",
+            "lonlat": [
+                -117.001576,
+                33.100802
+            ],
+            "address": "15500 San Pasqual Valley Rd, Escondido",
+            "network": "ChargePoint Network",
+            "ports": 4,
+            "power_kw": 6.5,
+            "connectors": [
+                "J1772"
+            ],
+            "hours": "24 hours daily",
+            "straight_km": 14.1,
+            "distance_m": 19259,
+            "time_s": 1140,
+            "ascend_m": 159,
+            "kwh_est": 1.72,
+            "soc_needed": 0.114,
+            "soc_arrival_est": 0.036,
+            "reachable": true,
+            "charge_min": 118
+        },
+        {
+            "id": "nrel:353446",
+            "name": "Poway Unified 47f5",
+            "lonlat": [
+                -117.035123,
+                32.979853
+            ],
+            "address": "13734 Twin Peaks Rd, Poway",
+            "network": "ChargePoint Network",
+            "ports": 1,
+            "power_kw": 12,
+            "connectors": [
+                "J1772"
+            ],
+            "hours": "24 hours daily",
+            "straight_km": 17,
+            "distance_m": 21550,
+            "time_s": 1087,
+            "ascend_m": 221,
+            "kwh_est": 1.75,
+            "soc_needed": 0.116,
+            "soc_arrival_est": 0.034,
+            "reachable": true,
+            "charge_min": 117
+        },
+        {
+            "id": "nrel:139501",
+            "name": "Walmart 1700 (Poway, CA)",
+            "lonlat": [
+                -117.03865,
+                32.9583
+            ],
+            "address": "13425 Community Rd, Poway",
+            "network": "Electrify America",
+            "ports": 1,
+            "power_kw": 7,
+            "connectors": [
+                "J1772"
+            ],
+            "hours": "24 hours daily",
+            "straight_km": 18.4,
+            "distance_m": 22113,
+            "time_s": 1213,
+            "ascend_m": 228,
+            "kwh_est": 1.77,
+            "soc_needed": 0.117,
+            "soc_arrival_est": 0.033,
+            "reachable": true,
+            "charge_min": 117
+        },
+        {
+            "id": "nrel:451354",
+            "name": "Poway Hs Pac A03 &",
+            "lonlat": [
+                -117.025422,
+                32.996913
+            ],
+            "address": "15498 Espola Rd, Poway",
+            "network": "ChargePoint Network",
+            "ports": 3,
+            "power_kw": 6.5,
+            "connectors": [
+                "J1772"
+            ],
+            "hours": "24 hours daily",
+            "straight_km": 15.5,
+            "distance_m": 22639,
+            "time_s": 1119,
+            "ascend_m": 289,
+            "kwh_est": 1.91,
+            "soc_needed": 0.126,
+            "soc_arrival_est": 0.024,
+            "reachable": true,
+            "charge_min": 120
+        },
+        {
+            "id": "nrel:214246",
+            "name": "Walsh Medical Gateway Medical",
+            "lonlat": [
+                -117.057071,
+                32.999687
+            ],
+            "address": "15725 Pomerado Road, Poway",
+            "network": "ChargePoint Network",
+            "ports": 2,
+            "power_kw": 6.5,
+            "connectors": [
+                "J1772"
+            ],
+            "hours": "24 hours daily",
+            "straight_km": 18.2,
+            "distance_m": 26435,
+            "time_s": 1339,
+            "ascend_m": 288,
+            "kwh_est": 2.16,
+            "soc_needed": 0.143,
+            "soc_arrival_est": 0.007,
+            "reachable": true,
+            "charge_min": 123
+        },
+        {
+            "id": "nrel:145638",
+            "name": "Del Lago Park and Ride",
+            "lonlat": [
+                -117.070856,
+                33.0728631
+            ],
+            "address": "3310 Del Lago Blvd, Escondido",
+            "network": "Blink Network",
+            "ports": 4,
+            "power_kw": 13.5,
+            "connectors": [
+                "J1772"
+            ],
+            "hours": "24 hours daily",
+            "pricing": "Free",
+            "straight_km": 19.2,
+            "distance_m": 26586,
+            "time_s": 1451,
+            "ascend_m": 195,
+            "kwh_est": 2.23,
+            "soc_needed": 0.148,
+            "soc_arrival_est": 0.002,
+            "reachable": true,
+            "charge_min": 122
+        },
+        {
+            "id": "nrel:449208",
+            "name": "Efcc Ev",
+            "lonlat": [
+                -117.059779,
+                33.106611
+            ],
+            "address": "639 E 17th Ave, Escondido",
+            "network": "ChargePoint Network",
+            "ports": 6,
+            "power_kw": 6.5,
+            "connectors": [
+                "J1772"
+            ],
+            "hours": "24 hours daily",
+            "straight_km": 19.3,
+            "distance_m": 25217,
+            "time_s": 1379,
+            "ascend_m": 262,
+            "kwh_est": 2.23,
+            "soc_needed": 0.148,
+            "soc_arrival_est": 0.002,
+            "reachable": true,
+            "charge_min": 124
+        },
+        {
+            "id": "nrel:332883",
+            "name": "Rancho Bernardo Inn",
+            "lonlat": [
+                -117.066943,
+                33.0304478
+            ],
+            "address": "17550 Bernardo Oaks Drive, San Diego",
+            "network": "EVCS",
+            "ports": 4,
+            "power_kw": 7.6,
+            "connectors": [
+                "J1772"
+            ],
+            "straight_km": 18.6,
+            "distance_m": 29979,
+            "time_s": 1555,
+            "ascend_m": 303,
+            "kwh_est": 2.42,
+            "soc_needed": 0.16,
+            "soc_arrival_est": 0,
+            "reachable": false,
+            "charge_min": 122
+        },
+        {
+            "id": "nrel:160114",
+            "name": "Ramona Shopping Town & Country",
+            "lonlat": [
+                -116.674964,
+                33.109323
+            ],
+            "address": "30240 CA-78, Santa Ysabel",
+            "network": "ChargePoint Network",
+            "ports": 2,
+            "power_kw": 6.5,
+            "connectors": [
+                "J1772"
+            ],
+            "hours": "24 hours daily",
+            "straight_km": 19.5,
+            "distance_m": 24755,
+            "time_s": 1316,
+            "ascend_m": 644,
+            "kwh_est": 2.76,
+            "soc_needed": 0.183,
+            "soc_arrival_est": 0,
+            "reachable": false,
+            "charge_min": 124
+        }
+    ]
+}

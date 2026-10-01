@@ -214,3 +214,51 @@ extension CLLocationCoordinate2D {
     /// This coordinate as a wire [lon, lat].
     var lonLat: [Double] { [longitude, latitude] }
 }
+
+// MARK: - Reach: what can I still get to (ADR-034)
+
+/// Asks the server which chargers are within what's left in the pack, priced in battery rather than
+/// miles. `soc` is the rider's own reading — the one number the app can't infer.
+struct ReachRequest: Encodable, Sendable {
+    var start: [Double]
+    var soc: Double
+    var vehicle: VehicleWire?
+}
+
+struct ReachResult: Decodable, Sendable {
+    let socStart: Double
+    let usableKwh: Double
+    /// Best case: the whole remaining pack at city consumption, on the flat. Nothing further away
+    /// than this is reachable, so it is also the search radius.
+    let rangeKmEst: Double
+    let nearby: Int
+    let options: [ReachOption]
+    let warning: String?
+}
+
+struct ReachOption: Decodable, Sendable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    let lonlat: [Double]
+    let address: String
+    let network: String
+    let ports: Int
+    let powerKw: Double
+    let connectors: [String]
+    let hours: String?
+    let straightKm: Double
+    let distanceM: Double
+    let timeS: Double
+    let ascendM: Double
+    let kwhEst: Double
+    /// Fraction of the whole pack this ride would take. The list's sort key, and the number the
+    /// rider is actually deciding on.
+    let socNeeded: Double
+    let socArrivalEst: Double
+    let reachable: Bool
+    let chargeMin: Double?
+    let reliability: Reliability?
+
+    static func == (a: ReachOption, b: ReachOption) -> Bool { a.id == b.id }
+    func hash(into h: inout Hasher) { h.combine(id) }
+}

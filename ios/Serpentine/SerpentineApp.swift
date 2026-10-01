@@ -7,6 +7,7 @@ struct SerpentineApp: App {
     @State private var location = LocationProvider()
     @State private var garage = Garage()
     @State private var rides = RideStore()
+    @State private var reach = ReachFinder()
     @State private var showingAbout = false
 
     var body: some Scene {
@@ -16,6 +17,7 @@ struct SerpentineApp: App {
                 .environment(location)
                 .environment(garage)
                 .environment(rides)
+                .environment(reach)
         }
         .commands {
             // Replace the stock panel: the default one is a version number, and the licences behind

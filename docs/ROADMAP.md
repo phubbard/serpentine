@@ -242,6 +242,20 @@ behaves exactly like a catalog one.
 - [ ] App Store listing stays **"Serpentine EV"** for now; revisit if gas bikes become a headline
       feature (name, screenshots and the public pages move together — see CLAUDE.md).
 
+## Phase 3c — Reach: the ride you take when you're nearly out
+
+- [x] **"Find a charger"** — done 2026-10-01 (ADR-034): `POST /v1/reach` lists public chargers sorted
+      by the share of the pack it would take to get to each, not by distance; `style: "efficient"`
+      returns the minimum-energy route to the one tapped, and the ride view draws it unchanged.
+      Reachable/out-of-range marked honestly, and the search widens when nothing is in range rather
+      than showing an empty screen.
+- [ ] Watch whether riders trust the percentage. The energy model has never been checked against a
+      real ride log; this is the first feature where being 3 % optimistic strands someone.
+- [ ] DC fast charging would change which sites are worth listing (a 50 kW stop beats four 6.6 kW
+      ones when you're stuck), and needs the connector work in phase 3b.
+- [ ] Offline: the one time this matters most is the one time there may be no signal. Caching the
+      last answer, or a coarse local station extract, is the obvious next step and is not done.
+
 ## Phase 4 — In-app turn-by-turn  *(only if phase 0's handoff measurement is bad)*
 
 - [ ] Ferrostar (BSD) with `CustomRouteProvider` fed by serpentine-api (OSRM-format adapter)

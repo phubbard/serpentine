@@ -3,15 +3,28 @@ import Foundation
 /// The app's only network peer (CLAUDE.md principle 1). Ephemeral session: no cookies, no disk
 /// cache, so nothing about planned rides persists outside the app.
 struct SerpentineAPI: Sendable {
-    static let production = SerpentineAPI(base: URL(string: "https://serpentine.phfactor.net/v1/")!)
+    static let production: SerpentineAPI = {
+        #if DEBUG
+        // `-apiBase http://127.0.0.1:18990/v1/` points a simulator build at a dev server, so a new
+        // endpoint can be driven through the real UI before it is deployed. Debug builds only.
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "-apiBase"), i + 1 < args.count, let url = URL(string: args[i + 1]) {
+            return SerpentineAPI(base: url)
+        }
+        #endif
+        return SerpentineAPI(base: URL(string: "https://serpentine.phfactor.net/v1/")!)
+    }()
 
     let base: URL
     private let session: URLSession
 
-    init(base: URL) {
+    /// `protocolClasses` is the one seam for tests: it lets a stub answer without a network, and is
+    /// nil everywhere else. Ephemeral config regardless, so nothing about a ride touches disk.
+    init(base: URL, protocolClasses: [AnyClass]? = nil) {
         self.base = base
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 90 // loops fan out 16 routes; charging adds an NREL call
+        if let protocolClasses { config.protocolClasses = protocolClasses }
         session = URLSession(configuration: config)
     }
 
@@ -39,6 +52,16 @@ struct SerpentineAPI: Sendable {
         req.httpBody = try Self.encoder().encode(request)
         let data = try await send(req)
         return try Self.decoder().decode(PlanResult.self, from: data)
+    }
+
+    /// Chargers within what's left in the pack, cheapest to reach first (ADR-034). Several routes
+    /// server-side, so it is slower than a plan and shares the same rate limit.
+    func reach(_ request: ReachRequest) async throws -> ReachResult {
+        var req = URLRequest(url: base.appending(path: "reach"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try Self.encoder().encode(request)
+        return try Self.decoder().decode(ReachResult.self, from: await send(req))
     }
 
     /// The bike catalogue. A convenience the app caches — planning never depends on it.

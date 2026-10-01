@@ -13,13 +13,14 @@ the reference for competitor and API facts; don't re-research what it already an
 
 - Feasibility done. GraphHopper serving on axiom:8989 (first good import 2026-09-18); loops 35–200 ms.
 - serpentine-api (Go, `server/`) running on axiom:8990 via launchd, public at `/v1`: `point_to_point`,
-  `loop` and `out_and_back` plans, loop scoring, charge stops (NREL), Apple Maps handoff, GPX. Browser test page with a
+  `loop` and `out_and_back` plans, loop scoring, charge stops (NREL), Apple Maps handoff, GPX, and
+  `/v1/reach` — chargers ranked by the share of the pack it takes to get to each (ADR-034). Browser test page with a
   map at `https://serpentine.phfactor.net/v1/`, product page `/v1/about` (also `/` via Caddy), support
   `/v1/support`, privacy `/v1/privacy` (`server/web/`, embedded; tiles via a caching proxy in
   `~/serpentine-api/tiles` on axiom — self-hosted vector tiles are the planned replacement).
 - iOS app v0.1.0 in `ios/` (SwiftUI + MapKit, xcodegen; iPhone + iPad split view, Mac Catalyst planned): plan loop / out-and-back from location or
   search, charging, map + stats, Apple Maps handoff, GPX share, saved rides with rating/notes/last-ridden
-  (ADR-033, local files under Application Support). `make -C ios build|test|run`.
+  (ADR-033, local files under Application Support), "find a charger" for a low battery (ADR-034). `make -C ios build|test|run`.
   On TestFlight since 2026-09-18 (0.1.0 build 29) as **"Serpentine EV"** (ASC app id 6813768490;
   home-screen name stays "Serpentine"), internal group "Internal" with automatic distribution. `make -C server test|run|deploy|logs`. No app code yet.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.
@@ -84,6 +85,12 @@ Principles that constrain every design choice here:
    hashes every profile into the graph (ADR-009). Tuning lives in the per-request `custom_model`
    (serpentine-api sends it), which in LM mode may only tighten (multipliers ≤ 1). Fold tuned rules
    into the base file only when re-importing anyway (new OSM extract, new encoded value).
+2b. **Energy is not distance, and not time.** For an EV the dominant term is speed: the SR/S burns
+   80.9 Wh/km on a highway against 54.9 in town, and climbing costs ~1 kWh per 1000 m. A longer,
+   slower route is routinely the cheaper one — measured San Diego → Ramona, 60.2 km off the freeway
+   beat 57.0 km on it by a fifth of the energy. Anything that ranks chargers or picks a frugal route
+   must score candidates with the real energy model (ADR-034); no distance heuristic gets this right.
+
 3. **Two profiles, one graph.** `motorcycle` is the app: curvy, rural, moderate speed. `direct`
    (ADR-031) is the errand — freeways fine, fastest route — because a per-request model can only
    tighten the base profile's freeway penalties, never lift them. Measured Ramona → Orange County:
