@@ -7,6 +7,16 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [0.1.0]
 
+- Low on battery? Tap the bolt at the top of the plan screen, tell it what charge you have left, and
+  Serpentine lists the public chargers it thinks you can still reach — sorted by how much of your
+  battery the ride there would take, not by how close they are. Those are different lists: a charger
+  over a hill can cost more than one twice as far on the flat. Each one shows what it needs and what
+  you'd arrive with; tap it for the route that spends the least getting there. Anything out of reach
+  is marked rather than hidden, and if nothing is in range you still get the nearest.
+
+  The estimates lean cautious and come from a charge figure you type in. They have not yet been
+  checked against a real ride — please tell me how close they land.
+
 - Keep the rides worth keeping. Tap Save on any ride and it goes to your saved list — the bookmark at
   the top of the plan screen. Give it stars, write down what you found (gravel on a turn, the charger
   that was busy), and record when you last rode it. Rides you haven't ridden yet sit in the same list,
