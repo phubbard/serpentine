@@ -73,6 +73,9 @@ final class Planner {
     var directRoute = false
 
     private(set) var isPlanning = false
+    /// True when the ride on screen is the rest of one that was put down earlier (ADR-035). Only
+    /// the title depends on it — "The way there" is true of a resumed loop but reads as a new trip.
+    private(set) var isResumedRide = false
     private(set) var errorMessage: String?
     var result: PlanResult?
     private var seed = 1
@@ -92,6 +95,7 @@ final class Planner {
         return PlanRequest(
             mode: mode,
             start: start.coordinate.lonLat,
+            via: nil,
             end: goingSomewhere ? destination?.coordinate.lonLat : nil,
             distanceM: goingSomewhere || budget == .time ? nil : distanceKm * 1000,
             durationS: goingSomewhere || budget == .distance ? nil : durationMin * 60,
@@ -119,10 +123,29 @@ final class Planner {
         defer { isPlanning = false }
         do {
             result = try await api.plan(req)
+            isResumedRide = false
         } catch {
             errorMessage = error.localizedDescription
         }
     }
+
+    /// Runs a request built elsewhere — carrying on with a paused ride (ADR-035) is planned from
+    /// the rest of its route, not from the plan screen's settings.
+    func run(_ request: PlanRequest) async {
+        isPlanning = true
+        errorMessage = nil
+        defer { isPlanning = false }
+        do {
+            result = try await api.plan(request)
+            // Set with the result, not before it, so the label can never describe a different ride.
+            isResumedRide = !(request.via ?? []).isEmpty
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Surfaces a problem raised outside the planner itself, so one error line serves the screen.
+    func setError(_ message: String) { errorMessage = message }
 
     func gpxFile(for plan: PlanResult) async -> URL? {
         try? await api.downloadGPX(for: plan)

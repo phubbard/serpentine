@@ -13,10 +13,32 @@ struct PlanView: View {
     @State private var showingReach = false
     @Environment(Garage.self) private var garage
     @Environment(ReachFinder.self) private var reach
+    @Environment(RideProgress.self) private var progress
 
     var body: some View {
         @Bindable var planner = planner
         Form {
+            if let paused = progress.paused, paused.isWorthResuming {
+                Section {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(paused.title).font(.headline)
+                        Text("\(Format.distance(km: paused.remainingDistanceM / 1000)) still to ride · "
+                             + "put down \(paused.pausedAt.formatted(.relative(presentation: .named)))")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Button("Carry on with this ride", systemImage: "play.circle") { carryOn() }
+                        .disabled(planner.isPlanning)
+                    Button("Forget it", systemImage: "xmark.circle", role: .destructive) {
+                        progress.discard()
+                    }
+                    .font(.footnote)
+                } header: {
+                    Text("Paused ride")
+                } footer: {
+                    Text("Picks up from wherever you are now, so a detour to a charger isn't ridden twice. Charging settings below apply to the rest of it.")
+                }
+            }
+
             Section("Start") {
                 startRow
                 Button("Use my location", systemImage: "location") {
@@ -186,6 +208,28 @@ struct PlanView: View {
         case .loop: "Plan loop"
         case .outAndBack: "Plan out and back"
         case .pointToPoint: planner.directRoute ? "Get me there" : "Plan the way there"
+        }
+    }
+
+    /// Plans the rest of a ride that was put down earlier (ADR-035), from wherever the rider is now.
+    private func carryOn() {
+        Task {
+            if location.coordinate == nil { await location.locate() }
+            guard let here = location.coordinate else {
+                planner.setError("This needs your location to work out what's left of the ride.")
+                return
+            }
+            guard let req = progress.resumeRequest(
+                from: here,
+                charging: planner.charging ? ChargingOptions(socStart: planner.socPercent / 100,
+                                                             reserveForBackup: planner.reserveForBackup) : nil,
+                vehicle: planner.charging ? garage.selected.wire : nil)
+            else {
+                planner.setError("There's no ride left to carry on with.")
+                return
+            }
+            await planner.run(req)
+            if planner.errorMessage == nil { progress.discard() }
         }
     }
 

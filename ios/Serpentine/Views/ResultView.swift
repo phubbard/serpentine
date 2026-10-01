@@ -9,12 +9,16 @@ struct ResultView: View {
     var canReplan = true
     @Environment(Planner.self) private var planner
     @Environment(RideStore.self) private var rides
+    @Environment(RideProgress.self) private var progress
+    @Environment(LocationProvider.self) private var location
     @Environment(\.openURL) private var openURL
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var gpxFile: URL?
     /// The saved entry for the ride on screen, when it has been kept.
     @State private var saved: SavedRide?
     @State private var confirmingRemove = false
+    @State private var pausedSplit: PausedRide?
+    @State private var pauseProblem: String?
 
     private var coordinates: [CLLocationCoordinate2D] { plan.polyline.map(\.coordinate) }
     private var stops: [Charger] { (plan.chargers ?? []).filter(\.stop) }
@@ -115,6 +119,33 @@ struct ResultView: View {
                 }
             }
             ToolbarItem(placement: .primaryAction) { saveButton }
+            if canReplan {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Pause here", systemImage: "pause.circle") { pauseHere() }
+                }
+            }
+        }
+        // The split is shown rather than assumed: on a loop, the start and the finish are the same
+        // place, so a rider standing near either gets an answer the app cannot verify. Let them see
+        // it and undo it on the spot.
+        .alert("Put the ride down here?", isPresented: .constant(pausedSplit != nil)) {
+            Button("That's right") { pausedSplit = nil }
+            Button("Not right — forget it", role: .destructive) {
+                progress.discard()
+                pausedSplit = nil
+            }
+        } message: {
+            if let p = pausedSplit {
+                Text("\(Format.distance(km: p.riddenDistanceM / 1000)) ridden, "
+                     + "\(Format.distance(km: p.remainingDistanceM / 1000)) to go. "
+                     + "Carry on from the plan screen when you're ready — you'll pick up the rest "
+                     + "from wherever you are then.")
+            }
+        }
+        .alert("Can't pause", isPresented: .constant(pauseProblem != nil)) {
+            Button("OK") { pauseProblem = nil }
+        } message: {
+            Text(pauseProblem ?? "")
         }
         .task(id: plan.id) { gpxFile = await planner.gpxFile(for: plan) }
         // Keyed on the plan so opening a saved ride, or planning another, re-reads the entry.
@@ -149,6 +180,26 @@ struct ResultView: View {
         }
     }
 
+    /// Splits the ride at wherever the rider actually is. Needs a location: the whole idea is "the
+    /// part I haven't ridden", and without a fix there is nothing to split on.
+    private func pauseHere() {
+        Task {
+            if location.coordinate == nil { await location.locate() }
+            guard let here = location.coordinate else {
+                pauseProblem = "This needs your location to know how much of the ride is left."
+                return
+            }
+            let title = RideStore.title(for: plan, from: planner.start?.name, to: planner.destination?.name)
+            guard let ride = progress.pause(plan, at: here, title: title,
+                                            style: plan.style,
+                                            twistiness: planner.twistiness) else {
+                pauseProblem = "There's no ride left to come back to from here."
+                return
+            }
+            pausedSplit = ride
+        }
+    }
+
     private var anotherButton: some View {
         Button {
             Task { await planner.plan(another: true) }
@@ -171,10 +222,11 @@ struct ResultView: View {
     }
 
     private var title: String {
+        if planner.isResumedRide { return "Rest of the ride" }
         switch plan.mode {
-        case "loop": "Loop"
-        case "out_and_back": "Out and back"
-        default: "The way there"
+        case "loop": return "Loop"
+        case "out_and_back": return "Out and back"
+        default: return "The way there"
         }
     }
 

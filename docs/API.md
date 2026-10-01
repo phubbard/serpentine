@@ -15,6 +15,9 @@ Status: `point_to_point`, `loop`, `out_and_back`, `charging` and `POST /reach` i
   "mode": "loop" | "point_to_point" | "out_and_back",
   "start": [-116.868, 33.042],
   "end": [-116.60, 33.08],          // point_to_point only
+  "via": [[-116.7, 33.0]],          // point_to_point: points the route must pass through, in order
+                                    //   (<= 24). Carrying on with a paused ride (ADR-035) is the
+                                    //   reason this exists: the rest of its route, sampled.
   "max_extra_s": 900,               // point_to_point: seconds of detour allowed over the quick way
                                     //   (0 – 7200); see "detour" in the response
   "style": "curvy",                 // point_to_point: "curvy" (default), "direct" — the errand ride:
@@ -103,6 +106,7 @@ Response (200):
     "waypoints": [[lon, lat], ...],  // ≤ 10
     "waypoint_roads": ["Pala Road", "Turnaround", "Charge: <site name>", ...]   // forced stops always included
   },
+  "style": "curvy",                 // point_to_point only: echoed so a client knows what it got
   "gpx_url": "/v1/plan/1f0c….gpx"
 }
 ```
@@ -335,3 +339,17 @@ It ignores `max_extra_s` and `twistiness` (there is no detour to budget for), an
 handoff drops `avoid=tolls,highways`: routing onto a freeway and then telling Apple to avoid freeways
 would send the rider somewhere else entirely. Charging is unchanged — stops are still planned, and
 `energy.total_time_s` still counts the charging against the trip.
+
+## Carrying on with a paused ride (`via`)
+
+A rider who stops part-way — usually to reach a charger (ADR-034) — resumes by planning a
+point-to-point ride from wherever they now are, through the rest of the original route, to its
+finish. The app samples 16 via points from the remainder and sends the original `style` and
+`twistiness` back, so the resumed leg rides like the one it continues.
+
+Via points matter more than they look. Measured 2026-10-01 on a 71 km remainder: 7 via points held 8
+of the original 14 named roads, 16 held 11. With too few, the curvy profile finds its own bends
+between the pins — a good ride, but not the one that was interrupted.
+
+The rejoin point is chosen by the app as the nearest vertex of what is *left*, never the spot the
+ride was put down: routing back there would ride the detour to the charger twice.

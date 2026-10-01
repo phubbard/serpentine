@@ -16,10 +16,19 @@ import (
 // axiom) or the per-request model below changes meaning.
 const profileVersion = "base-v0.2/req-v1"
 
+// maxVia is what a resumed ride may pin the route to. Measured 2026-10-01 on a 71 km remainder:
+// 7 via points let the curvy profile wander off and find its own bends between them, overshooting
+// by 10 km; pinning tighter brings it back to the ride the rider was actually on. The cost is one
+// GraphHopper leg each, which is cheap.
+const maxVia = 24
+
 type planRequest struct {
-	Mode       string        `json:"mode"`
-	Start      *[2]float64   `json:"start"`
-	End        *[2]float64   `json:"end,omitempty"`
+	Mode  string      `json:"mode"`
+	Start *[2]float64 `json:"start"`
+	End   *[2]float64 `json:"end,omitempty"`
+	// Via: points the route must pass through, in order (ADR-035). Carrying on with a ride after a
+	// detour is the reason this exists — the rest of the original route, sampled.
+	Via        [][2]float64  `json:"via,omitempty"`
 	Turnaround *[2]float64   `json:"turnaround,omitempty"`
 	DistanceM  float64       `json:"distance_m,omitempty"`
 	DurationS  float64       `json:"duration_s,omitempty"`  // loop, out_and_back: ride time instead of distance
@@ -59,6 +68,16 @@ func (r *planRequest) normalize() error {
 			return err
 		}
 		r.DistanceM, r.HeadingDeg, r.Seed, r.Turnaround = 0, nil, nil, nil
+		// GraphHopper slows roughly linearly in the number of legs, and a resumed ride only needs
+		// enough points to hold the route to its original roads.
+		if len(r.Via) > maxVia {
+			return badf("at most %d via points", maxVia)
+		}
+		for i, v := range r.Via {
+			if err := checkLonLat(fmt.Sprintf("via[%d]", i), v); err != nil {
+				return err
+			}
+		}
 		if r.MaxExtraS != nil && (*r.MaxExtraS < 0 || *r.MaxExtraS > 7200) {
 			return badf("max_extra_s must be between 0 and 7200")
 		}
@@ -98,7 +117,7 @@ func (r *planRequest) normalize() error {
 		return badf(`mode must be "loop", "out_and_back" or "point_to_point"`)
 	}
 	if r.Mode != "point_to_point" {
-		r.MaxExtraS, r.Style = nil, ""
+		r.MaxExtraS, r.Style, r.Via = nil, "", nil
 	}
 	if err := r.normalizeCharging(); err != nil {
 		return err
@@ -296,8 +315,11 @@ type budgetInfo struct {
 }
 
 type planResult struct {
-	ID           string           `json:"id"`
-	Mode         string           `json:"mode"`
+	ID   string `json:"id"`
+	Mode string `json:"mode"`
+	// Style of a point_to_point ride, echoed so a client can tell what it got back — carrying on
+	// with a paused ride has to ask for the same kind of route it interrupted (ADR-035).
+	Style        string           `json:"style,omitempty"`
 	DistanceM    float64          `json:"distance_m"`
 	TimeS        float64          `json:"time_s"`
 	AscendM      float64          `json:"ascend_m"`
@@ -355,6 +377,7 @@ func buildResult(id, mode, style string, p *ghPath, loop *loopInfo, ob *outBackI
 	return &planResult{
 		ID:           id,
 		Mode:         mode,
+		Style:        style,
 		DistanceM:    math.Round(p.Distance),
 		TimeS:        math.Round(float64(p.Time) / 1000),
 		AscendM:      math.Round(p.Ascend),
@@ -472,4 +495,16 @@ func (s *server) runTries(ctx context.Context, start [2]float64, tries []*loopTr
 		}(t)
 	}
 	wg.Wait()
+}
+
+// points is the sequence GraphHopper routes through: start, any via points in order, then the end.
+// A ride being carried on after a detour is start + the rest of its original route (ADR-035).
+func (r *planRequest) points() [][2]float64 {
+	pts := make([][2]float64, 0, len(r.Via)+2)
+	pts = append(pts, *r.Start)
+	pts = append(pts, r.Via...)
+	if r.End != nil {
+		pts = append(pts, *r.End)
+	}
+	return pts
 }

@@ -18,6 +18,9 @@ enum RideMode: String, Codable, CaseIterable, Identifiable, Sendable {
 struct PlanRequest: Encodable, Sendable {
     var mode: RideMode
     var start: [Double]
+    /// Points the route must pass through, in order (ADR-035). Carrying on with a paused ride is
+    /// what this is for: the rest of the original route, sampled.
+    var via: [[Double]]?
     var end: [Double]?
     var distanceM: Double?
     var durationS: Double?
@@ -77,6 +80,8 @@ struct ChargingOptions: Encodable, Sendable {
 struct PlanResult: Codable, Sendable, Identifiable, Hashable {
     let id: String
     let mode: String
+    /// "curvy", "direct" or "efficient" on a point-to-point ride; absent on loops and out-and-backs.
+    let style: String?
     let distanceM: Double
     let timeS: Double
     let ascendM: Double

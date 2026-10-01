@@ -20,7 +20,8 @@ the reference for competitor and API facts; don't re-research what it already an
   `~/serpentine-api/tiles` on axiom — self-hosted vector tiles are the planned replacement).
 - iOS app v0.1.0 in `ios/` (SwiftUI + MapKit, xcodegen; iPhone + iPad split view, Mac Catalyst planned): plan loop / out-and-back from location or
   search, charging, map + stats, Apple Maps handoff, GPX share, saved rides with rating/notes/last-ridden
-  (ADR-033, local files under Application Support), "find a charger" for a low battery (ADR-034). `make -C ios build|test|run`.
+  (ADR-033, local files under Application Support), "find a charger" for a low battery (ADR-034),
+  pause a ride and carry on with the rest after a detour (ADR-035). `make -C ios build|test|run`.
   On TestFlight since 2026-09-18 (0.1.0 build 29) as **"Serpentine EV"** (ASC app id 6813768490;
   home-screen name stays "Serpentine"), internal group "Internal" with automatic distribution. `make -C server test|run|deploy|logs`. No app code yet.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.

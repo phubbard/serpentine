@@ -55,6 +55,7 @@ final class ReachFinder {
         PlanRequest(
             mode: .pointToPoint,
             start: start.lonLat,
+            via: nil,
             end: option.lonlat,
             distanceM: nil, durationS: nil, maxExtraS: nil,
             style: "efficient",

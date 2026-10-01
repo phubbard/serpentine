@@ -28,10 +28,10 @@ type detourInfo struct {
 // planAtoB routes point_to_point. Without max_extra_s it is a single route at the requested
 // twistiness, exactly as before.
 func (s *server) planAtoB(ctx context.Context, r *planRequest, cm *customModel) (*ghPath, *detourInfo, error) {
-	points := [][2]float64{*r.Start, *r.End}
+	points := r.points()
 	if r.Style == "efficient" {
 		// Lowest energy, not lowest time (ADR-034): the ride to a charger on a nearly flat battery.
-		path, err := s.planEfficient(ctx, r)
+		path, err := s.planEfficient(ctx, r, points)
 		return path, nil, err
 	}
 	if r.Style == "direct" {
@@ -124,8 +124,7 @@ func reachModel() *customModel { return efficientCandidates[1] }
 // planEfficient routes the candidates in parallel and returns the one our energy model says costs
 // least. Three GraphHopper calls, which is what makes this affordable per tapped charger but not
 // per row of a list.
-func (s *server) planEfficient(ctx context.Context, r *planRequest) (*ghPath, error) {
-	points := [][2]float64{*r.Start, *r.End}
+func (s *server) planEfficient(ctx context.Context, r *planRequest, points [][2]float64) (*ghPath, error) {
 	models := efficientModels()
 	paths := make([]*ghPath, len(models))
 	errs := make([]error, len(models))

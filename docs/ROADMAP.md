@@ -249,6 +249,9 @@ behaves exactly like a catalog one.
       returns the minimum-energy route to the one tapped, and the ride view draws it unchanged.
       Reachable/out-of-range marked honestly, and the search widens when nothing is in range rather
       than showing an empty screen.
+- [x] **Pause and carry on** — done 2026-10-01 (ADR-035): put a ride down mid-route, detour to a
+      charger, then resume the remainder from wherever you ended up. `via` on point-to-point plans
+      holds the resumed leg to the original roads.
 - [ ] Watch whether riders trust the percentage. The energy model has never been checked against a
       real ride log; this is the first feature where being 3 % optimistic strands someone.
 - [ ] DC fast charging would change which sites are worth listing (a 50 kW stop beats four 6.6 kW

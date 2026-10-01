@@ -902,3 +902,39 @@ plan no stops; "you will not make it" stays loud, because it is the one thing th
 
 Nothing about this is stored. The charge level is typed by the rider, used for one request, and never
 written down — same position as every other number in this app (ADR-017).
+
+## ADR-035 · 2026-10-01 · Putting a ride down and picking it up again
+
+Paul's observation, and an obvious one once said: a rider half-way round a loop is exactly the rider
+who needs ADR-034. Find a charger, detour to it, charge — and then what? Before this, the ride was
+gone and the only way back was to plan a new one from the charger, which is not the ride they were on.
+
+**Pause stores the geometry, not a plan.** What's kept is the part of the polyline not yet ridden,
+split at the vertex nearest the rider. It can't be kept as a plan because resuming has to be routed
+fresh: a rider who detoured eight miles to a charger is not where they stopped, and a stored plan
+would start in the wrong place.
+
+**Resuming rejoins ahead, not back.** The rejoin point is the nearest vertex of what's *left*, not
+the spot the ride was put down. Routing back to the pause point would ride the detour twice — once
+to the charger and once back — which is the obvious implementation and the wrong one.
+
+**Via points, because the profile wanders.** `POST /plan` now takes `via` on a point-to-point ride
+(≤ 24, ADR-009's tighten-only rules unchanged). Measured 2026-10-01 on a 71 km remainder: seven via
+points held 8 of the original 14 named roads, sixteen held 11. Left looser the curvy profile does its
+job too well and finds its own bends between the pins, which is a nice ride but not the one that was
+interrupted. The app samples 16. The response now echoes `style` too, so a resumed leg can ask for
+the same kind of route it is continuing.
+
+**One paused ride, not a list.** A rider has one bike and is on one ride. It is kept in Application
+Support and survives the app being killed, which is the normal way this ends — the phone dies, which
+is why they are at a charger in the first place.
+
+**The loop ambiguity is real and is surfaced, not hidden.** On a loop the start and the finish are
+the same place, so a rider standing near either gives a split the app cannot decide: it has no
+odometer and does not track where anyone has been. It resolves towards "the whole ride is still
+ahead", because offering a ride already done is a smaller harm than telling someone half-way round
+that they have finished. The split is shown when pausing — *"21 mi ridden, 66 mi to go"* — with a
+one-tap way to say it is wrong. Fixing this properly needs breadcrumbs, which means tracking where a
+rider has been, which this app deliberately does not do (ADR-017).
+
+Nothing here goes near the server beyond one more plan request. The paused ride lives on the device.
