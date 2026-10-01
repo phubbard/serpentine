@@ -136,9 +136,17 @@ Principles that constrain every design choice here:
   `make -C ios test SIM_DEVICE="iPhone 16" SIM_OS=18.4` checks the deployment floor.
 - Driving the simulator: short taps don't flip a `Toggle`; use a ~0.2 s tap.
 - TestFlight signing uses **Xcode's signed-in Apple ID** (Account Holder mints the distribution
-  cert). That session expires silently: export fails with "Unable to log in with account" then
-  "No profiles for 'net.phfactor.serpentine' were found" — sign in again under Xcode → Settings →
-  Accounts. `SIGN_WITH_KEY=1` signs with the ASC API key instead, but the App Manager key gets
+  cert). That session expires silently, and does it mid-session: build 74 signed fine and build 76,
+  two hours later, did not. It has shown two different faces, both meaning "sign in again under
+  Xcode → Settings → Accounts":
+  - "Unable to log in with account" then "No profiles for 'net.phfactor.serpentine' were found"
+  - `exportArchive No signing certificate "iOS Distribution" found` / "No 'iOS Distribution'
+    signing certificate matching team ID NSR65JVW9F with a private key was found" / "Add a new
+    account in Accounts settings". `security find-identity -v -p codesigning` shows **no**
+    distribution identity when this happens — the cloud-managed cert is fetched per export, so an
+    empty keychain here is the symptom, not a revoked certificate.
+  The archive survives the failed export, so after signing in, re-running `make upload-testflight`
+  is quick and the build number does not move. `SIGN_WITH_KEY=1` signs with the ASC API key instead, but the App Manager key gets
   "Cloud signing permission error" (cloud-managed distribution certs need an Admin-role key).
 - Mac screenshots: size the Catalyst window to 1440×900 points (`osascript -e 'tell application
   "System Events" to tell process "Serpentine" to set size of window 1 to {1440, 900}'`) and capture it
@@ -156,6 +164,10 @@ Principles that constrain every design choice here:
   from the one canonical path; TestFlight installs the real one into `/Applications` (ADR-032 note).
 - Commit before `make upload-testflight`: a dirty tree makes the scheme stamp build N+1 while the
   Makefile (and `testflight-notes`) expect N.
+- `ios/CHANGELOG.md`'s `## [0.1.0]` section is what testers read, and ASC truncates What to Test at
+  **4000 characters** (the script warns). It passed that at build 74 and is 4850 by build 76, so the
+  oldest entries are now dropped. Newest first is deliberate — the new feature always survives — but
+  the section wants pruning back to what is still news before it swallows anything that matters.
 
 - Team ID `NSR65JVW9F` (paid individual). Bundle ID: **`net.phfactor.serpentine`** — chosen once,
   never changed ("pick it like a tattoo"). Display name can change; bundle ID cannot.
