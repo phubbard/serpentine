@@ -7,6 +7,15 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [0.1.0]
 
+- Stopped part-way? Tap pause on a ride and Serpentine remembers the part you haven't ridden. Go and
+  charge — or eat, or go home and come back tomorrow — then "Carry on with this ride" appears at the
+  top of the plan screen. It picks up from wherever you are then, not from the spot you stopped at,
+  so the miles you rode to reach a charger aren't ridden a second time. The rest follows the roads of
+  the ride you were on.
+
+  On a loop the start and the finish are the same place, so pausing right next to either leaves
+  Serpentine guessing. It shows you how it split the ride — tap "Not right" if it got it wrong.
+
 - Low on battery? Tap the bolt at the top of the plan screen, tell it what charge you have left, and
   Serpentine lists the public chargers it thinks you can still reach — sorted by how much of your
   battery the ride there would take, not by how close they are. Those are different lists: a charger
