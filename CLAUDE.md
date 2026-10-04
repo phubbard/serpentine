@@ -222,7 +222,9 @@ Principles that constrain every design choice here:
   the published privacy policy promised truncated addresses and 30-day retention. Found and
   fixed 2026-10-03 by reading the deployed file rather than trusting the note. The block is now
   spliced in whole and verified from a live request: `remote_ip`/`client_ip` masked, headers and
-  `remote_port` gone, `/v1/tiles/z/x/y` collapsed to `/v1/tiles`.
+  `remote_port` gone, `/v1/tiles/z/x/y` collapsed to `/v1/tiles`. The 2,459 records collected under
+  the old format (18 Sep – 4 Oct) were deleted on 2026-10-04 rather than left to age out, because
+  they were gathered under a promise that wasn't being kept.
 - GraphHopper request shape (POST `/route`): `points` are `[lon, lat]`, `profile: "motorcycle"`,
   `algorithm: "round_trip"` + `round_trip.distance` (m) + `round_trip.seed` + `headings` for loops,
   `custom_model` for per-request tightening, `details: ["curvature","max_speed","urban_density",
