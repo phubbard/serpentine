@@ -214,8 +214,15 @@ Principles that constrain every design choice here:
   LAN. Fine, but the LAN is a public /24 (`204.128.136.0/24`) — anything that does "is this a
   private network?" checks will be confused (SABnzbd was). `https://serpentine.phfactor.net` is live
   (2026-09-18), **no auth by decision**. The repo's `infra/caddy/serpentine.caddyfile` allowlists
-  `/route /info /health /nearest` (everything else → 404); deployed on the Pi and verified
-  2026-09-18. Keep the Pi's `/etc/caddy/Caddyfile` block identical to the repo file.
+  `/route /info /health /nearest` (everything else → 404). Keep the Pi's `/etc/caddy/Caddyfile`
+  block identical to the repo file — and check *all* of it, not the part you came to look at.
+  "Deployed and verified 2026-09-18" was recorded here for weeks and was only half true: the
+  routing was live, the filtered `log` block above it never was, so the site logged full client
+  IPs, request and response headers and un-collapsed tile paths (which are map locations) while
+  the published privacy policy promised truncated addresses and 30-day retention. Found and
+  fixed 2026-10-03 by reading the deployed file rather than trusting the note. The block is now
+  spliced in whole and verified from a live request: `remote_ip`/`client_ip` masked, headers and
+  `remote_port` gone, `/v1/tiles/z/x/y` collapsed to `/v1/tiles`.
 - GraphHopper request shape (POST `/route`): `points` are `[lon, lat]`, `profile: "motorcycle"`,
   `algorithm: "round_trip"` + `round_trip.distance` (m) + `round_trip.seed` + `headings` for loops,
   `custom_model` for per-request tightening, `details: ["curvature","max_speed","urban_density",
