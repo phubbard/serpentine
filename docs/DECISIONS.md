@@ -972,3 +972,40 @@ disk. Nothing was exposed — the keys live outside the repo — but neither sho
 a higher-privilege key about to land beside them.
 
 `SIGN_WITH_KEY=0` still falls back to the Xcode session, for a machine with no key installed.
+
+## ADR-037 · 2026-10-03 · A watcher that doesn't share fate with what it watches
+
+Planning the public beta turned up the obvious gap: there was no monitoring of any kind. The stats
+dashboard is LAN-only counters, and the first notice of an outage would have been a tester's email.
+At fourteen plans a week that is tolerable; with strangers it is not.
+
+**It runs on the Pi, not on axiom.** Everything serpentine serves lives on axiom — the API,
+GraphHopper, the station data. A health check there would go quiet at exactly the moment it was
+needed. The Pi is a separate machine that is already always-on and already internet-facing.
+
+**It is a systemd timer, not a Prefect automation**, even though Prefect is running on that Pi and
+already drives ntfy for tgn-whisperer. Same reasoning one level up: a monitor hosted by a scheduler
+fails silently when the scheduler wedges, and nothing announces that alerting has stopped. A
+`oneshot` service on a two-minute timer has no shared dependency beyond systemd itself.
+
+**Two checks, because they break separately.** The LAN API (`axiom:8990/v1/health`) says whether the
+service and GraphHopper are alive; the public URL says whether Caddy, TLS, DNS and the WAN are. A
+rider only experiences the second, but the first says which half to look at. It also alerts when
+charger data goes unavailable, which is a silent degradation — plans keep working while charge stops
+quietly stop appearing.
+
+**Three strikes, then state changes only.** One dropped packet should not wake anyone, and a
+six-hour outage should send one message rather than a hundred and eighty. Recovery sends one more,
+so "no alerts" never has to mean "I hope it is fine". Verified end to end before deploying: healthy
+is silent, the third consecutive failure sends one high-priority alert naming which check failed,
+further failures are silent, and recovery sends exactly one message.
+
+ntfy matches what tgn-whisperer already does, and `serpentine-alerts` is Paul's own topic. **The
+topic is public and guessable**, so anyone who tries the name can read the alerts and publish to
+them. Nothing sent carries rider data — status, which check failed, and a version string — but
+treat it as world-readable, and know that a spoofed "Serpentine is back" is possible. A random topic
+name or an ntfy token would fix both if that ever matters.
+
+Still missing: nothing watches the watcher. If the Pi dies, there are no alerts and no notice of
+their absence. A dead-man's-switch service is the usual answer and is not worth adding yet, because
+a Pi that is down also takes the site down, which is noticed another way.

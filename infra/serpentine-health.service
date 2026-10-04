@@ -1,0 +1,13 @@
+# Install on webserver (Pi 5): copy this and the .timer to /etc/systemd/system/, then
+#   sudo systemctl daemon-reload && sudo systemctl enable --now serpentine-health.timer
+# Deliberately a systemd timer rather than a Prefect automation (ADR-037): a watcher that shares
+# its fate with the thing it watches is not a watcher.
+[Unit]
+Description=Serpentine health watch
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pfh
+ExecStart=/home/pfh/bin/serpentine-health.sh

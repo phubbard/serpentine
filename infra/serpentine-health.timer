@@ -1,0 +1,13 @@
+[Unit]
+Description=Check serpentine-api every two minutes
+
+[Timer]
+# Starts a couple of minutes after boot so a Pi restart doesn't alert on a service that is still
+# coming up. Three consecutive failures are needed before anything is sent, so the quietest a real
+# outage can be noticed is about six minutes.
+OnBootSec=2min
+OnUnitActiveSec=2min
+AccuracySec=15s
+
+[Install]
+WantedBy=timers.target
