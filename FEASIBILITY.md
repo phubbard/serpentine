@@ -4,6 +4,10 @@
 
 Research date: 2026-09-16. Prices are US App Store / vendor pages as of that date. Items marked **[unverified]** could not be confirmed from a primary source.
 
+**Amended 2026-10-05** while deciding whether to expand into EV cars: §2 gains a "Car-oriented curvy
+routing" subsection and a note on the EV-car planner landscape. The competitive set moved in under a
+month — treat the dated sections as snapshots, and re-check before positioning against anyone.
+
 ---
 
 ## 1. Verdict
@@ -41,6 +45,28 @@ Two load-bearing claims — Apple's repeated `waypoint=` parameter and GraphHopp
 - **Kurvo**: curvature-scored roads, rally pace-notes voice. $49.99/yr sub. No CarPlay/offline.
 - **Motobit** (€29.99/yr), **Vroom GPS** (free, non-profit), **MotoVault**, **Twisties.ai** (free, undocumented), **TwistyRoad** ("coming soon").
 
+### Car-oriented curvy routing — added 2026-10-05
+
+Checked while asking whether to expand into EV cars. **This category got busy after the original
+survey**: several of these carry 2025–26 App Store IDs. All findings here are from store listings and
+vendor pages via search on 2026-10-05, not hands-on **[unverified]**; pricing and ratings not checked.
+
+- **ApexRoute: Curvy Roads** (`id6760571266`, iOS + Android): curvy road finder and scenic planner,
+  listing says **"for car drivers *and* motorcycle riders"** — the most direct overlap with what we
+  are building. Ships a road book of 50 famous roads in 5 packs (Cat and Fiddle, Bealach na Bà,
+  Stelvio, Transfăgărășan, Tail of the Dragon…). No charge planning mentioned **[absence inferred]**.
+- **DriveGo: Route Planner & Stats** (`id6757678516`): "CURVYNAV" favours curves and small roads,
+  avoids motorways and tolls; CarPlay, drive recording, sharing with other enthusiasts. Car-framed.
+  No charge planning mentioned **[absence inferred]**.
+- **Porsche ROADS** (web + Android): OEM route generator taking "speed, curves and elevation" plus
+  local road conditions. Evidence that a premium car brand believes enthusiasts want this.
+- **RoadDrive** (`id6752423128`): discovering, planning and completing scenic driving routes, iOS.
+- **Curvature**: not an app but a road-geometry scorer — grades segments 0 to 10,000+ by bendiness.
+  The same idea as GraphHopper's `curvature` encoded value, which we use. (Distinct from **Kurvo**.)
+
+**None of them plan charging.** The gap in §2 "Gaps no app fills" item 1 therefore still holds, and
+holds for cars as well as motorcycles.
+
 ### EV / Zero-specific
 
 - **Zero NextGen app**: 2.7★ (84 ratings) on US App Store. Has a charger locator. **Turn-by-turn navigation was removed in v2.10.0**; no route planning. Zero's official guidance is "use PlugShare."
@@ -48,9 +74,25 @@ Two load-bearing claims — Apple's repeated `waypoint=` parameter and GraphHopp
 - **PlugShare**: no motorcycle-specific filter or planner found **[unverified]**.
 - **Furkot** is the only planner combining a curvy preference with range-based charging stops, but it's web-only, car-oriented, and has no navigation.
 
+**EV *car* charge planning is mature and crowded** (checked 2026-10-05): ABRP, PlugShare, Chargemap,
+EVRoutes, ChargeHub, plus every OEM's built-in navigation — Tesla's is commonly called the reference
+implementation, routing through Superchargers with live stall availability and arrival SoC. Elevation
+and weather are table stakes there.
+
+The contrast with the motorcycle side is the whole argument for staying put: Zero's own app *removed*
+navigation and points owners at PlugShare, while car drivers have a dozen good options. **We fill a
+vacuum for bikes and would be a weak entrant for cars.** Range is why — the charging maths decides
+the ride at 15 kWh and 116 highway miles, and largely doesn't at 300 miles. A car version would also
+need the energy model rebuilt rather than tuned: 60–100 kWh packs, CCS/NACS DC where the taper curve
+dominates, preconditioning and HVAC load, against our flat-rate 6.6 kW AC assumption (§ energy model).
+Decision 2026-10-05: **do not expand to cars** before the motorcycle beta shows riders actually using
+and trusting the charging features.
+
 ### Gaps no app fills
 
-1. Charger-aware twisty routing for electric motorcycles.
+1. Charger-aware twisty routing for electric motorcycles. Re-checked 2026-10-05: still unfilled, and
+   unfilled for electric *cars* too — the curvy-car apps don't charge-plan and the EV-car planners
+   don't do curves. Worth less for cars, though; see the note under "EV / Zero-specific".
 2. Live traffic on curvy routes (all dedicated apps lack it; Apple/Google/Waze have traffic but no twisty routing in the US).
 3. A "moderate pace" / speed-profile preference. Calimoto ETAs assume speed-limit riding.
 4. Out-and-back with a different return road; time-boxed loops with a lunch/charge stop.
