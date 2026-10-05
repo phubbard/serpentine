@@ -30,6 +30,8 @@ Apple Maps handoff; try it at
   rest after a charging detour, saved rides (star rating, notes, when you last
   rode it — kept on the device), place search showing each match's address and distance from the
   start, an About panel with the build stamp (date and commit) for bug reports
-- `docs/` — roadmap, decisions (ADR-001..035, including what the charging research found and what it
+- `sync.md`, `android-port-brief.md` — cross-platform parity matrix with the Android port, and the
+  scoping doc the Android session reads first
+- `docs/` — roadmap, decisions (ADR-001..037, including what the charging research found and what it
   rules out), API contract
 - `CLAUDE.md` — orientation for agents and future me: architecture, conventions, gotchas
