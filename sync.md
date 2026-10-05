@@ -1,0 +1,189 @@
+# Serpentine — cross-platform sync
+
+**Purpose:** living state-of-the-world between the Apple build (this repo, `phubbard/serpentine`) and
+the Android port (`phubbard/serpentine-android`, separate repo, not yet created). Anything either side
+ships, fixes, or decides goes here so the other side can mirror or diverge with eyes open.
+
+**Audience:** the two Claude instances actively working on Serpentine — one on Apple platforms
+(iOS / iPadOS / Mac Catalyst), one on Android (Kotlin + Compose).
+
+**The thing that makes this port different from mapbook's:** Serpentine is **client–server**. Every
+hard problem — curvy routing, loop generation and scoring, the energy model, charge-stop selection,
+charger reliability, Apple/Google Maps handoff URL construction, GPX — lives in `serpentine-api` on
+axiom and is already platform-agnostic. `docs/API.md` is the contract both clients code against. The
+Android port is **a second client**, not a reimplementation. Expect the matrix below to be mostly UI
+and local persistence, and expect the server rows to say "n/a — shared".
+
+**Status (2026-10-05):** Apple side is 0.1.0 build 76 on TestFlight (iOS + iPad + Mac Catalyst),
+internal group only, preparing a public beta. Android side **does not exist yet** — this document and
+[`android-port-brief.md`](android-port-brief.md) are the starting point.
+
+**Status conventions:**
+
+- ✅ shipped (and in a release the user can install — Play internal track counts, mirroring TestFlight)
+- 🟡 on `main` but not in a public release yet
+- 🚧 in progress
+- ❌ not yet started
+- ⛔ deliberately won't do on this platform (with reason)
+- ❓ open decision
+- n/a — shared: lives in `serpentine-api`, no per-platform work
+
+**How to update this doc:** when you ship, change the column for *your* platform. Add a one-line `Δ`
+(delta) note at the bottom of the relevant section if the change has UX implications the other
+platform should know about. If a decision needs the other side's input, mark it ❓ and add the
+question to [Open questions](#open-questions).
+
+**Companion docs:**
+- [`android-port-brief.md`](android-port-brief.md) — Android scoping doc. **Read this first if you're the Android instance.**
+- [`docs/API.md`](docs/API.md) — the server contract. The real spec for both clients.
+- [`CLAUDE.md`](CLAUDE.md) — architecture, principles, conventions, scar tissue. Principle 1 is load-bearing and Android complicates it; see Open question #1.
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) — ADR log. ADR-034/035 (reach, pause) are the newest user-facing behaviour.
+
+---
+
+## Feature matrix
+
+### Planning a ride
+
+| Feature | Apple | Android | Notes |
+|---|---|---|---|
+| Loop from a start point | ✅ | ❌ | `POST /v1/plan` mode `loop`. Server generates and scores 16 candidates (ADR-010); the client just asks. |
+| Out-and-back, different return road | ✅ | ❌ | mode `out_and_back` (ADR-015). |
+| Go somewhere (A→B) with a detour budget | ✅ | ❌ | mode `point_to_point`, `max_extra_s`. "Quickest way plus up to N minutes on better roads." |
+| "Just get me there" errand ride | ✅ | ❌ | `style: "direct"` (ADR-031). Freeways allowed, fastest, charging still planned. |
+| Plan by distance | ✅ | ❌ | `distance_m`, 20–500 km. |
+| Plan by time ("two hours on Saturday") | ✅ | ❌ | `duration_s` (ADR-018). Server does the speed guessing and rescaling. |
+| Twistiness slider | ✅ | ❌ | 0..1 → per-request custom model server-side. |
+| Direction ("head north") | ✅ | ❌ | `heading_deg`, or omit for "any". |
+| "Another ride like this" | ✅ | ❌ | Seed stepping; server plans seeds n and n+1, so the client steps by two. |
+| Start from current location | ✅ | ❌ | iOS CoreLocation; Android FusedLocationProvider. |
+| Start/destination place search | ✅ | ❌ | iOS `MKLocalSearch`. Android: Google Places SDK (mapbook already uses it) — **❓ see Open question #1**. Rows show name, address and straight-line distance. |
+
+### The ride
+
+| Feature | Apple | Android | Notes |
+|---|---|---|---|
+| Route drawn on a map | ✅ | ❌ | iOS MapKit `MapPolyline`. Android: `google-maps-compose` `Polyline`. Server returns `polyline` as `[lon, lat]` pairs — note the order. |
+| Distance / time / climb summary | ✅ | ❌ | Straight from the response. Time shows "incl. charging" only when stops exist. |
+| Start, turnaround and charge-stop pins | ✅ | ❌ | |
+| Named roads with distances | ✅ | ❌ | `roads[]`, filtered to ≥ 2 km and non-empty names. |
+| Hand off to voice navigation | ✅ | ❓ | **The biggest unknown on Android.** iOS uses the Apple Maps unified URL with repeated `waypoint=` (iOS 18.4+, ~10 stops, `avoid=tolls,highways` on curvy rides only — ADR-013, ADR-031). Android has no equivalent guarantee; Google Maps intents historically cap waypoints far lower. **Research this before committing to a design** — see brief, "Known gotchas". |
+| Share GPX | ✅ | ❌ | `GET /v1/plan/{id}.gpx`. Android: `FileProvider` + `ACTION_SEND`. |
+| Charge stops with arrival %, dwell, backup | ✅ | ❌ | Rendering only; all computed server-side. |
+| Charger reliability notes (Open Charge Map) | ✅ | ❌ | `reliability` on each charger (ADR-022). Absent means "not listed there", which is not the same as "fine" — say so. |
+
+### Battery features
+
+| Feature | Apple | Android | Notes |
+|---|---|---|---|
+| Plan charge stops along a ride | ✅ | ❌ | `charging` block in the request. Needs `"enabled": true` or it is silently ignored. |
+| Starting charge, arrival reserve toggle | ✅ | ❌ | `soc_start`, `reserve_for_backup` (ADR-023). |
+| The garage: multiple bikes | ✅ | ❌ | Catalogue from `GET /v1/vehicles`, hand-edited numbers, adapters kept per-rider not per-bike (ADR-020, ADR-025). Local storage. |
+| **Find a charger** (low battery) | ✅ | ❌ | `POST /v1/reach` (ADR-034). Sorted by share of pack needed, not distance. Charge slider is the rider's own reading; everything else follows from it. |
+| Minimum-energy route to a charger | ✅ | ❌ | `style: "efficient"`. Comes back as an ordinary plan, so it reuses the ride screen. |
+| Pause a ride / carry on afterwards | ✅ | ❌ | ADR-035. Stores the *remaining polyline* locally, resumes via `via` points from wherever the rider now is. Loop start/finish ambiguity is real — show the split and allow undo. |
+
+### Keeping rides
+
+| Feature | Apple | Android | Notes |
+|---|---|---|---|
+| Save a ride | ✅ | ❌ | Explicit, not automatic history (ADR-033) — "Another" is the most-used control and would otherwise flood the list. |
+| Star rating, notes, last-ridden date | ✅ | ❌ | |
+| Saved ride reopens offline | ✅ | ❌ | iOS stores the whole server answer: `index.json` + one plan file each under Application Support. ~108 KB for an 87-mile charging loop. Android: Room or files — **storing the request and replanning is the wrong answer**, see ADR-033. |
+
+### Shell
+
+| Feature | Apple | Android | Notes |
+|---|---|---|---|
+| About panel with data attributions | ✅ | ❌ | OpenStreetMap ODbL, NASA SRTM, DOE AFDC, Open Charge Map CC BY-SA are **licence conditions, not courtesy** (ADR-032). Apple's own attribution is MapKit-specific; Android will need Google's equivalent instead. |
+| Build stamp (date + commit) in About | ✅ | ❌ | So a tester's bug report says exactly what they are running. |
+| Tablet / large-screen layout | ✅ (iPad) | ❌ | iOS uses `NavigationSplitView`. |
+| Desktop | ✅ (Mac Catalyst) | ⛔ | No Android desktop target planned. |
+
+### Server (shared — no per-platform work)
+
+| Capability | Where | Notes |
+|---|---|---|
+| Curvy routing, loop scoring, out-and-back | `serpentine-api` + GraphHopper on axiom | ADR-009/010/015. Whole-US graph. |
+| Energy model, charge stops, reach | `serpentine-api` | ADR-008/014/025/034. **Never validated against a real bike** — see Open question #3. |
+| Charger data (NREL daily bulk, Open Charge Map) | `serpentine-api` | Keys live only on axiom and must never reach either client. |
+| Rate limits | `serpentine-api` | 24 in flight, 20/min per caller, 429 + `Retry-After`. **Both clients must handle 429 gracefully** and respect `Retry-After`. |
+| Health + ops dashboard | axiom, Pi watch | ADR-037. LAN-only. |
+
+---
+
+## Shared data model
+
+The wire types in [`docs/API.md`](docs/API.md) are the contract. Both clients mirror them; neither
+invents its own. Notes that bit the iOS side and will bite Android:
+
+- **Coordinates are `[lon, lat]` everywhere** except inside Maps URLs, which want `lat,lon`.
+- `PlanResult` carries `style` (point-to-point only), echoed so a client knows what it got back.
+- Charging is opt-in via `charging.enabled`; omitting it means no `energy` and no `chargers`.
+- `soc_min_arrival` defaults to 0.15 and the check is `>=`, so **a rider at 15 % is refused** unless
+  the style is `efficient` (which defaults it to 0). This caught the iOS side in exactly the case the
+  feature exists for.
+- iOS stores saved rides and the paused ride as the server's own JSON, round-tripped through the same
+  snake_case coder pair. That makes the wire format the storage format: **removing an API field stops
+  old saved rides loading.** Android should make the same trade knowingly, or store a translated copy.
+
+---
+
+## Platform-specific bits
+
+### Apple-only (won't port)
+
+- Mac Catalyst build and its menu-bar About panel.
+- Apple Maps unified-URL handoff (Android needs its own answer — see the matrix).
+- `-screenshotPlan` launch argument for App Store screenshots without tapping.
+
+### Android-only (expected, none yet)
+
+- Nothing yet. Add here when the port diverges deliberately.
+
+---
+
+## Open questions
+
+1. **❓ Does the Android port break principle 1?** CLAUDE.md principle 1 says the phone talks to
+   `serpentine.phfactor.net` and nothing else, and that map display is MapKit because it is Apple's,
+   free, and already on the device. Android's equivalent is the Google Maps SDK plus Places — which
+   means the app talks to Google. mapbook-android already does this, so there is precedent, but
+   Serpentine's privacy rule is stated more strictly and is published on `/v1/privacy`. **Paul's call.**
+   Options: accept Google Maps and amend the privacy page for Android; or self-hosted vector tiles
+   (already on the roadmap for the web test page) with MapLibre, which keeps the rule and costs more.
+   Until this is settled the Android instance should not commit to a map stack.
+2. **❓ What is the Android voice-navigation handoff?** The iOS answer (Apple Maps unified URL, ~10
+   waypoints) is load-bearing — it is the whole "voice nav" story and it is why the minimum is iOS
+   18.4. Android needs an equivalent that preserves the *route we chose* rather than letting the nav
+   app pick its own. Candidates: Google Maps `dir` URL (waypoint limits unclear), OsmAnd intents,
+   Calimoto/Kurviger handoff, or a GPX export workflow. **Research first, design second.**
+3. **❓ Does Android wait for energy-model calibration?** The model has never been checked against a
+   real bike; the first real ride is pending (bike due early-to-mid Oct 2026). Reach and charge
+   planning are the features where being optimistic strands someone. Android could build everything
+   else first and gate the battery features, or ship in step once calibration lands.
+4. **❓ Distribution bar.** mapbook-android uses the Play internal testing track as the ✅ bar,
+   mirroring TestFlight. Assume the same here unless Paul says otherwise. His Play Console account is
+   already set up (see `/projects/mapbook-android.md` in Memento).
+5. **❓ Gas bikes and the app name.** An open product question on the Apple side that Android inherits:
+   both current testers ride petrol bikes, the listing is "Serpentine EV", and the server refuses any
+   vehicle that isn't electric. If that changes, it changes both clients.
+
+### Resolved
+
+- *Nothing yet.*
+
+---
+
+## Glossary (shared vocabulary)
+
+- **Reach** — the "I'm low, what can I get to" feature. Chargers ranked by the fraction of the pack
+  the ride there would cost. Not distance (ADR-034).
+- **Efficient style** — minimum-energy routing, used for the ride to a charger. Not fastest, not curvy.
+- **Direct style** — the errand ride. Freeways fine, fastest route (ADR-031).
+- **Paused ride** — a ride put down part-way, stored as the remaining geometry, resumed by rejoining
+  *ahead* of where you stopped so a charging detour isn't ridden twice (ADR-035).
+- **Twistiness** — 0..1 rider preference, mapped server-side to a per-request custom model. Under LM
+  it may only ever *tighten* the baked-in profile (ADR-009).
+- **SoC** — state of charge, 0..1 on the wire, shown as a percentage.
+- **Arrival reserve** — arrive at a charge stop with enough left to reach another one (ADR-023).

@@ -6,7 +6,8 @@ hands off to Apple Maps for voice navigation. **No subscription, no telemetry, n
 dependencies in the app.** Owner: Paul Hubbard (pfh@phfactor.net). Solo project, self-hosted.
 
 Read this file first. Then `docs/ROADMAP.md` for what to build next and `docs/DECISIONS.md` for why
-things are the way they are. `FEASIBILITY.md` is the September 2026 research that started this and is
+things are the way they are. `sync.md` is the living parity matrix with the Android port and
+`android-port-brief.md` scopes it — when this side ships something user-visible, update its column. `FEASIBILITY.md` is the September 2026 research that started this and is
 the reference for competitor and API facts; don't re-research what it already answers.
 
 ## Status (2026-09-18)
