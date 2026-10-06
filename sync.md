@@ -50,15 +50,15 @@ question to [Open questions](#open-questions).
 |---|---|---|---|
 | Loop from a start point | ✅ | 🟡 | `POST /v1/plan` mode `loop`. Server generates and scores 16 candidates (ADR-010); the client just asks. |
 | Out-and-back, different return road | ✅ | 🟡 | mode `out_and_back` (ADR-015). |
-| Go somewhere (A→B) with a detour budget | ✅ | 🚧 | mode `point_to_point`, `max_extra_s`. "Quickest way plus up to N minutes on better roads." Android: built, not yet run end to end — it needs place search to pick a destination. |
-| "Just get me there" errand ride | ✅ | 🚧 | `style: "direct"` (ADR-031). Freeways allowed, fastest, charging still planned. |
+| Go somewhere (A→B) with a detour budget | ✅ | 🟡 | mode `point_to_point`, `max_extra_s`. "Quickest way plus up to N minutes on better roads." |
+| "Just get me there" errand ride | ✅ | 🟡 | `style: "direct"` (ADR-031). Freeways allowed, fastest, charging still planned. |
 | Plan by distance | ✅ | 🟡 | `distance_m`, 20–500 km. |
 | Plan by time ("two hours on Saturday") | ✅ | 🟡 | `duration_s` (ADR-018). Server does the speed guessing and rescaling. |
 | Twistiness slider | ✅ | 🟡 | 0..1 → per-request custom model server-side. |
 | Direction ("head north") | ✅ | 🟡 | `heading_deg`, or omit for "any". |
 | "Another ride like this" | ✅ | 🟡 | Seed stepping; server plans seeds n and n+1, so the client steps by two. |
 | Start from current location | ✅ | 🟡 | iOS CoreLocation; Android the platform `LocationManager` (not Google's fused-location SDK), asking for high accuracy by name. |
-| Start/destination place search | ✅ | 🚧 | iOS `MKLocalSearch`. Android: Google Places SDK (decided 2026-10-05, see Resolved). Rows show name, address and straight-line distance. Android: built; waiting on Places API (New) being enabled for the key's Cloud project. |
+| Start/destination place search | ✅ | 🟡 | iOS `MKLocalSearch`. Android: Google Places SDK (decided 2026-10-05, see Resolved). Rows show name, address and straight-line distance. |
 
 ### The ride
 
