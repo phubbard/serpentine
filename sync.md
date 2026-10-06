@@ -68,10 +68,18 @@ question to [Open questions](#open-questions).
 | Distance / time / climb summary | ✅ | 🟡 | Straight from the response. Time shows "incl. charging" only when stops exist. |
 | Start, turnaround and charge-stop pins | ✅ | 🟡 | Android: start and turnaround seen on a device; charge-stop pins are coded but wait on the battery work. |
 | Named roads with distances | ✅ | 🟡 | `roads[]`, filtered to ≥ 2 km and non-empty names. |
-| Hand off to voice navigation | ✅ | ❓ | **The biggest unknown on Android.** iOS uses the Apple Maps unified URL with repeated `waypoint=` (iOS 18.4+, ~10 stops, `avoid=tolls,highways` on curvy rides only — ADR-013, ADR-031). Android has no equivalent guarantee; Google Maps intents historically cap waypoints far lower. **Research this before committing to a design** — see brief, "Known gotchas". |
-| Share GPX | ✅ | ❌ | `GET /v1/plan/{id}.gpx`. Android: `FileProvider` + `ACTION_SEND`. |
+| Hand off to voice navigation | ✅ | 🟡 | iOS: Apple Maps unified URL, ~10 stops, `avoid=tolls,highways` on curvy rides only (ADR-013, ADR-031). Android: the server's `google_maps_url` (now ≤ 9 waypoints, see Δ below) with the origin removed and `dir_action=navigate` added, which starts guidance from wherever the rider is. Measured 2026-10-05 on Maps 26.39. |
+| Share GPX | ✅ | 🟡 | `GET /v1/plan/{id}.gpx`. Android: `FileProvider` + `ACTION_SEND`. |
 | Charge stops with arrival %, dwell, backup | ✅ | ❌ | Rendering only; all computed server-side. |
 | Charger reliability notes (Open Charge Map) | ✅ | ❌ | `reliability` on each charger (ADR-022). Absent means "not listed there", which is not the same as "fine" — say so. |
+
+Δ **Google Maps handoff, measured 2026-10-05 (server commit `e08bf8a`, not yet deployed as of this note):**
+given ten waypoints the Google Maps app keeps the first nine without a word, so the last road
+loses its pin; `google_maps_url` now carries at most nine, dropping the waypoint for the shortest
+road and never a forced stop. And `avoid=highways` on a ride that uses two miles of I-8 made Google
+ride seven miles round to dodge it (100 mi against our 93), so Google is told to avoid highways only
+when our route touches no motorway or trunk road. **The Apple URL has the same trap and is
+unmeasured** — worth checking the next time a ride with a freeway hop is handed to Apple Maps.
 
 ### Battery features
 
@@ -82,22 +90,22 @@ question to [Open questions](#open-questions).
 | The garage: multiple bikes | ✅ | ❌ | Catalogue from `GET /v1/vehicles`, hand-edited numbers, adapters kept per-rider not per-bike (ADR-020, ADR-025). Local storage. |
 | **Find a charger** (low battery) | ✅ | ❌ | `POST /v1/reach` (ADR-034). Sorted by share of pack needed, not distance. Charge slider is the rider's own reading; everything else follows from it. |
 | Minimum-energy route to a charger | ✅ | ❌ | `style: "efficient"`. Comes back as an ordinary plan, so it reuses the ride screen. |
-| Pause a ride / carry on afterwards | ✅ | ❌ | ADR-035. Stores the *remaining polyline* locally, resumes via `via` points from wherever the rider now is. Loop start/finish ambiguity is real — show the split and allow undo. |
+| Pause a ride / carry on afterwards | ✅ | 🟡 | ADR-035. Stores the *remaining polyline* locally, resumes via `via` points from wherever the rider now is. Loop start/finish ambiguity is real — show the split and allow undo. |
 
 ### Keeping rides
 
 | Feature | Apple | Android | Notes |
 |---|---|---|---|
-| Save a ride | ✅ | ❌ | Explicit, not automatic history (ADR-033) — "Another" is the most-used control and would otherwise flood the list. |
-| Star rating, notes, last-ridden date | ✅ | ❌ | |
-| Saved ride reopens offline | ✅ | ❌ | iOS stores the whole server answer: `index.json` + one plan file each under Application Support. ~108 KB for an 87-mile charging loop. Android: Room or files — **storing the request and replanning is the wrong answer**, see ADR-033. |
+| Save a ride | ✅ | 🟡 | Explicit, not automatic history (ADR-033) — "Another" is the most-used control and would otherwise flood the list. |
+| Star rating, notes, last-ridden date | ✅ | 🟡 | Android: "I rode this today" or not ridden; no picker for an arbitrary date yet. |
+| Saved ride reopens offline | ✅ | 🟡 | iOS stores the whole server answer: `index.json` + one plan file each under Application Support. ~108 KB for an 87-mile charging loop. Android: Room or files — **storing the request and replanning is the wrong answer**, see ADR-033. |
 
 ### Shell
 
 | Feature | Apple | Android | Notes |
 |---|---|---|---|
-| About panel with data attributions | ✅ | ❌ | OpenStreetMap ODbL, NASA SRTM, DOE AFDC, Open Charge Map CC BY-SA are **licence conditions, not courtesy** (ADR-032). Apple's own attribution is MapKit-specific; Android will need Google's equivalent instead. |
-| Build stamp (date + commit) in About | ✅ | ❌ | So a tester's bug report says exactly what they are running. |
+| About panel with data attributions | ✅ | 🟡 | OpenStreetMap ODbL, NASA SRTM, DOE AFDC, Open Charge Map CC BY-SA are **licence conditions, not courtesy** (ADR-032). Apple's own attribution is MapKit-specific; Android will need Google's equivalent instead. |
+| Build stamp (date + commit) in About | ✅ | 🟡 | So a tester's bug report says exactly what they are running. |
 | Tablet / large-screen layout | ✅ (iPad) | ❌ | iOS uses `NavigationSplitView`. |
 | Desktop | ✅ (Mac Catalyst) | ⛔ | No Android desktop target planned. |
 
