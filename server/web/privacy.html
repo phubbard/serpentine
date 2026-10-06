@@ -4,8 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Serpentine — Privacy</title>
-<!-- Served by serpentine-api at /v1/privacy. Keep it true: it describes what the app, the server,
-     Caddy's access log and NREL actually see (ADR-017). Update the date when anything changes. -->
+<!-- Served by serpentine-api at /v1/privacy. Keep it true: it describes what the apps, the server,
+     Caddy's access log and NREL actually see (ADR-017). Update the date when anything changes.
+     The Android paragraphs follow Google's own data disclosures for the Maps and Places SDKs
+     (developers.google.com/maps/documentation/android-sdk/play-data-disclosure and the Places
+     equivalent); re-read those when either SDK is updated. -->
 <style>
   :root { --bg: #f6f5f2; --ink: #1d1d1f; --muted: #6b6b70; --line: #e2e0dc; --accent: #0a6c5a; }
   @media (prefers-color-scheme: dark) {
@@ -26,11 +29,16 @@
 <body>
 <main>
 <h1>Serpentine — Privacy</h1>
-<p class="updated">Last updated: 2026-09-19.</p>
+<p class="updated">Last updated: 2026-10-05.</p>
 
 <p class="lede">Serpentine plans motorcycle rides. To do that it sends your starting point to
 Serpentine's own server, which plans the route and forgets it. No accounts. No analytics. No ads.
 No tracking.</p>
+
+<p>The map and the place search are not Serpentine's own. They come from the company that made your
+phone's software — Apple on iPhone, iPad and Mac, Google on Android — and that company sees what a
+map and a search need to see. On Android, Google's map software also reports on its own use. Both
+are spelled out below.</p>
 
 <h2>What the app sends, and to whom</h2>
 <ul>
@@ -53,10 +61,19 @@ No tracking.</p>
     last confirmed working, and whether anyone recently failed to charge there. It sends only the
     coordinates of those chargers, nothing about you, your device or the rest of your route, and your
     phone never contacts it directly. A stop reported out of service is dropped and replanned.</li>
-  <li><b>Maps, place search and navigation, via Apple.</b> The map, the place search and turn-by-turn
-    guidance are Apple Maps. Search terms go to Apple, not to Serpentine, and when you tap
-    "Navigate in Apple Maps" the planned stops are handed to the Maps app. Apple's privacy policy
-    covers those.</li>
+  <li><b>On iPhone, iPad and Mac: maps, place search and navigation, via Apple.</b> The map, the
+    place search and turn-by-turn guidance are Apple Maps. Search terms go to Apple, not to
+    Serpentine, and when you tap "Navigate in Apple Maps" the planned stops are handed to the Maps
+    app. Apple's privacy policy covers those.</li>
+  <li><b>On Android: maps and place search, via Google.</b> The map and the place search are Google
+    Maps, built into the app as Google's own software. To draw the map it fetches, from Google, the
+    part of the world you are looking at. When you search for a place, your search terms go to
+    Google, not to Serpentine, along with the point to search around: your start point or location
+    if you have set one. Google's software also sends Google some things on its own account — your
+    IP address, the make, model and Android version of your phone, an identifier it makes up to
+    count how many people use its maps inside apps, how the map is moved and zoomed, and crash
+    reports about itself. Serpentine never receives any of that. Google's privacy policy covers
+    it.</li>
 </ul>
 <p>To stop one person or a script taking the whole service, the server counts recent requests per
 caller for a few minutes. It keys that on a scrambled form of your address, not the address itself,
@@ -67,13 +84,16 @@ they took, what failed — to see that it is healthy. They are only counts: no l
 addresses, nothing tied to a person or a device, and they never leave the machine they're on.</p>
 
 <p>Serpentine contacts no other services. It contains no third-party code, SDKs, analytics or crash
-reporting beyond Apple's own.</p>
+reporting beyond the platform's own: Apple's on iPhone, iPad and Mac, and on Android Google's Maps
+and Places software, which does the reporting described above.</p>
 
 <h2>Location</h2>
-<p>Serpentine asks for location "While Using the App" and reads it only when you tap
-<b>Use my location</b>, once, to set the start of the ride. It never tracks you in the background.
-You can revoke it at any time in Settings → Privacy &amp; Security → Location Services → Serpentine,
-and plan from a searched place instead.</p>
+<p>Serpentine asks for location only while you are using the app, and reads it once each time you
+ask for something that needs it: <b>Use my location</b> to set the start of a ride, finding a
+charger, or putting a ride down and carrying on with it. It never tracks you in the background.
+You can revoke it at any time — on iPhone and iPad in Settings → Privacy &amp; Security → Location
+Services → Serpentine, on Android in Settings → Apps → Serpentine → Permissions — and plan from a
+searched place instead.</p>
 
 <h2>Server logs</h2>
 <p>The web server in front of Serpentine keeps an access log to spot abuse: the time, the kind of

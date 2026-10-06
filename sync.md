@@ -57,7 +57,7 @@ question to [Open questions](#open-questions).
 | Direction ("head north") | ✅ | ❌ | `heading_deg`, or omit for "any". |
 | "Another ride like this" | ✅ | ❌ | Seed stepping; server plans seeds n and n+1, so the client steps by two. |
 | Start from current location | ✅ | ❌ | iOS CoreLocation; Android FusedLocationProvider. |
-| Start/destination place search | ✅ | ❌ | iOS `MKLocalSearch`. Android: Google Places SDK (mapbook already uses it) — **❓ see Open question #1**. Rows show name, address and straight-line distance. |
+| Start/destination place search | ✅ | ❌ | iOS `MKLocalSearch`. Android: Google Places SDK (decided 2026-10-05, see Resolved). Rows show name, address and straight-line distance. |
 
 ### The ride
 
@@ -145,14 +145,8 @@ invents its own. Notes that bit the iOS side and will bite Android:
 
 ## Open questions
 
-1. **❓ Does the Android port break principle 1?** CLAUDE.md principle 1 says the phone talks to
-   `serpentine.phfactor.net` and nothing else, and that map display is MapKit because it is Apple's,
-   free, and already on the device. Android's equivalent is the Google Maps SDK plus Places — which
-   means the app talks to Google. mapbook-android already does this, so there is precedent, but
-   Serpentine's privacy rule is stated more strictly and is published on `/v1/privacy`. **Paul's call.**
-   Options: accept Google Maps and amend the privacy page for Android; or self-hosted vector tiles
-   (already on the roadmap for the web test page) with MapLibre, which keeps the rule and costs more.
-   Until this is settled the Android instance should not commit to a map stack.
+1. **Resolved 2026-10-05 — Google Maps + Places on Android.** See [Resolved](#resolved). The number
+   is kept so references to "open question 2" and onward still point at the right thing.
 2. **❓ What is the Android voice-navigation handoff?** The iOS answer (Apple Maps unified URL, ~10
    waypoints) is load-bearing — it is the whole "voice nav" story and it is why the minimum is iOS
    18.4. Android needs an equivalent that preserves the *route we chose* rather than letting the nav
@@ -171,7 +165,23 @@ invents its own. Notes that bit the iOS side and will bite Android:
 
 ### Resolved
 
-- *Nothing yet.*
+- **Map stack on Android (was open question 1) — Paul, 2026-10-05: Google Maps SDK + Places SDK.**
+  Principle 1 now reads, for Android, "one host plus Google's map and search", the way it reads
+  "one host plus Apple MapKit" on iOS. Consequences both sides should know:
+  - `server/web/privacy.html` carries an Android paragraph. It is blunter than the Apple one because
+    Google's SDKs report on their own use (IP address, device model, a pseudonymous SDK identifier,
+    map pan/zoom events, their own crash reports — per Google's Play data disclosures for the two
+    SDKs). Re-read those disclosures when either SDK is updated.
+  - **Play's Data safety form can no longer say "no data collected"** the way mapbook-android's
+    does without checking: the brief's gotcha 8 needs re-deciding against Google's disclosure pages
+    before the first Play upload.
+  - Places text search is billed per request beyond a monthly free allowance, which principle 6
+    ("no per-request third-party billing") did not anticipate. The Android app debounces and needs
+    three characters before searching; a daily quota cap on the key keeps the cost bounded.
+  - Still no analytics, crash SDK, ad network or font CDN. Location stays the platform
+    `LocationManager`, not Google's fused-location SDK.
+  - CLAUDE.md principle 1 and `android-port-brief.md` still describe this as unresolved; the Apple
+    session should fold the decision in when it next touches them.
 
 ---
 
