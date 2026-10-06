@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"net/url"
 	"sort"
 	"strings"
@@ -19,6 +20,11 @@ const (
 	waypointIntoRoadKM  = 1.0 // distance past the turn onto the road
 	endpointClearKM     = 2.0 // no waypoint this close to source/destination
 )
+
+// maxGoogleWaypoints is Google's documented cap, and measured (Maps 26.39 on Android, 2026-10-05):
+// given ten it keeps the first nine without a word, so the last road of the ride loses its pin and
+// Google takes its own way home. Better that we choose which one goes.
+const maxGoogleWaypoints = 9
 
 type road struct {
 	Name    string  `json:"name"`
@@ -150,17 +156,58 @@ func buildHandoff(p *ghPath, cum []float64, roads []road, forced []forcedWaypoin
 	sort.SliceStable(cands, func(i, j int) bool { return cands[i].idx < cands[j].idx })
 
 	h := handoff{Source: lonLat(src), Destination: lonLat(dst), Waypoints: [][2]float64{}, WaypointRoads: []string{}}
+	// km is how much road each waypoint stands for; a forced stop stands for the ride itself.
+	km := make([]float64, 0, len(cands))
 	for _, c := range cands {
 		if c.charge != nil {
 			h.Waypoints = append(h.Waypoints, *c.charge)
+			km = append(km, math.Inf(1))
 		} else {
 			h.Waypoints = append(h.Waypoints, lonLat(coords[c.idx]))
+			km = append(km, c.km)
 		}
 		h.WaypointRoads = append(h.WaypointRoads, c.road)
 	}
 	h.AppleMapsURL = appleMapsURL(h.Source, h.Waypoints, h.Destination, direct)
-	h.GoogleMapsURL = googleMapsURL(h.Source, h.Waypoints, h.Destination)
+	h.GoogleMapsURL = googleMapsURL(h.Source, longestWaypoints(h.Waypoints, km, maxGoogleWaypoints),
+		h.Destination, googleAvoid(p, direct))
 	return h
+}
+
+// longestWaypoints keeps the n waypoints standing for the most road, in their original order.
+func longestWaypoints(wps [][2]float64, km []float64, n int) [][2]float64 {
+	if len(wps) <= n {
+		return wps
+	}
+	order := make([]int, len(wps))
+	for i := range order {
+		order[i] = i
+	}
+	sort.SliceStable(order, func(a, b int) bool { return km[order[a]] > km[order[b]] })
+	keep := order[:n]
+	sort.Ints(keep)
+	out := make([][2]float64, n)
+	for i, k := range keep {
+		out[i] = wps[k]
+	}
+	return out
+}
+
+// googleAvoid is what to ask Google to stay off between our waypoints. Never anything on a
+// direct ride (ADR-031), and never highways when the ride itself uses one: measured 2026-10-05 on
+// a Ramona loop with two miles of I-8, "avoid highways" made Google ride seven miles round to
+// dodge the stretch we had chosen (100 mi against our 93). Trunk roads count, because what Google
+// calls a highway is not written down anywhere.
+func googleAvoid(p *ghPath, direct bool) string {
+	if direct {
+		return ""
+	}
+	for _, d := range p.Details["road_class"] {
+		if d.Str == "motorway" || d.Str == "trunk" {
+			return "tolls"
+		}
+	}
+	return "tolls,highways"
 }
 
 // latLon formats [lon, lat] as Apple/Google want it: "lat,lon".
@@ -182,7 +229,10 @@ func appleMapsURL(src [2]float64, wps [][2]float64, dst [2]float64, direct bool)
 	return b.String()
 }
 
-func googleMapsURL(src [2]float64, wps [][2]float64, dst [2]float64) string {
+// googleMapsURL builds the Maps URLs directions link. It names the origin, which is right for a
+// browser and for looking a ride over; with an origin Google only previews. The Android app drops
+// the origin and adds dir_action=navigate, which starts guidance from wherever the rider is.
+func googleMapsURL(src [2]float64, wps [][2]float64, dst [2]float64, avoid string) string {
 	parts := make([]string, len(wps))
 	for i, w := range wps {
 		parts[i] = latLon(w)
@@ -192,6 +242,9 @@ func googleMapsURL(src [2]float64, wps [][2]float64, dst [2]float64) string {
 	q.Set("origin", latLon(src))
 	q.Set("destination", latLon(dst))
 	q.Set("travelmode", "driving")
+	if avoid != "" {
+		q.Set("avoid", avoid)
+	}
 	if len(parts) > 0 {
 		q.Set("waypoints", strings.Join(parts, "|"))
 	}

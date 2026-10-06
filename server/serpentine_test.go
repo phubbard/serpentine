@@ -166,6 +166,60 @@ func TestHandoffOneWaypointPerRoad(t *testing.T) {
 	}
 }
 
+// Google takes nine waypoints and silently drops the rest from the end, so we choose: the roads
+// that are most of the ride keep their pins, forced stops always do, and the order never changes.
+func TestGoogleGetsTheNineLongestWaypoints(t *testing.T) {
+	var wps [][2]float64
+	var km []float64
+	for i := 0; i < 11; i++ {
+		wps = append(wps, [2]float64{-117 + float64(i)/100, 33})
+		km = append(km, float64(10+i)) // later roads are longer
+	}
+	km[0] = math.Inf(1) // a charge stop: the shortest "road" by position, and not negotiable
+	got := longestWaypoints(wps, km, maxGoogleWaypoints)
+	if len(got) != maxGoogleWaypoints {
+		t.Fatalf("%d waypoints, want %d", len(got), maxGoogleWaypoints)
+	}
+	if got[0] != wps[0] {
+		t.Error("a forced stop must survive the cut")
+	}
+	if got[1] != wps[3] {
+		t.Errorf("the two shortest roads should go, leaving %v second; got %v", wps[3], got[1])
+	}
+	for i := 1; i < len(got); i++ {
+		if got[i][0] <= got[i-1][0] {
+			t.Fatalf("waypoints out of ride order: %v", got)
+		}
+	}
+	if short := longestWaypoints(wps[:4], km[:4], maxGoogleWaypoints); len(short) != 4 {
+		t.Errorf("a ride with four waypoints keeps four, got %d", len(short))
+	}
+}
+
+func TestGoogleIsNotToldToAvoidARoadWeChose(t *testing.T) {
+	quiet := &ghPath{Details: map[string][]ghDetail{"road_class": {{From: 0, To: 9, Str: "secondary"}}}}
+	hop := &ghPath{Details: map[string][]ghDetail{"road_class": {
+		{From: 0, To: 5, Str: "secondary"}, {From: 5, To: 6, Str: "motorway"}, {From: 6, To: 9, Str: "tertiary"}}}}
+	if got := googleAvoid(quiet, false); got != "tolls,highways" {
+		t.Errorf("a ride with no freeway should keep Google off them too, got %q", got)
+	}
+	if got := googleAvoid(hop, false); got != "tolls" {
+		t.Errorf("two miles of freeway on our route must not become a detour round it, got %q", got)
+	}
+	if got := googleAvoid(quiet, true); got != "" {
+		t.Errorf("an errand avoids nothing (ADR-031), got %q", got)
+	}
+	u := googleMapsURL([2]float64{-116.868, 33.042}, [][2]float64{{-116.7, 33.1}}, [2]float64{-116.6, 33.08}, "tolls")
+	for _, want := range []string{"origin=33.04200%2C-116.86800", "waypoints=33.10000%2C-116.70000", "avoid=tolls", "travelmode=driving"} {
+		if !strings.Contains(u, want) {
+			t.Errorf("Google URL lacks %q: %s", want, u)
+		}
+	}
+	if strings.Contains(googleMapsURL([2]float64{}, nil, [2]float64{}, ""), "avoid") {
+		t.Error("no avoid list means no avoid parameter")
+	}
+}
+
 func TestPublicEndpointsSkipServiceRoads(t *testing.T) {
 	p := &ghPath{Details: map[string][]ghDetail{"road_class": {
 		{From: 0, To: 3, Str: "service"}, {From: 3, To: 8, Str: "secondary"}, {From: 8, To: 10, Str: "service"},

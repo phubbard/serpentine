@@ -101,7 +101,8 @@ Response (200):
   ],
   "handoff": {
     "apple_maps_url": "https://maps.apple.com/directions?source=lat,lon&waypoint=…&destination=lat,lon&mode=driving&avoid=tolls,highways",
-    "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=…&waypoints=…|…&destination=…&travelmode=driving",
+    "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=…&waypoints=…|…&destination=…&travelmode=driving&avoid=tolls,highways",
+                                     // ≤ 9 waypoints, a subset of `waypoints` below (see "Google Maps" under Handoff waypoints)
     "source": [lon, lat], "destination": [lon, lat],
     "waypoints": [[lon, lat], ...],  // ≤ 10
     "waypoint_roads": ["Pala Road", "Turnaround", "Charge: <site name>", ...]   // forced stops always included
@@ -228,6 +229,20 @@ an endpoint), one per road, none within 2 km of
 the endpoints, at most 10 (longest roads kept). Apple has to drive that road to reach the stop.
 Source and destination move to the first/last non-service road so Apple never says "walking
 required". Verified by hand on the demo ride (ADR-012); the ≥ 12-waypoint cap is still unmeasured.
+
+**Google Maps** takes nine waypoints, not ten. Measured 2026-10-05 (Maps 26.39 on Android): given
+ten it keeps the first nine and says nothing, so the end of the ride loses its pin. `google_maps_url`
+therefore carries at most nine — when there are ten, the one standing for the shortest road is left
+out, and forced stops (turnaround, charge stops) never are. `waypoints` and `waypoint_roads` still
+list all ten, as Apple gets them.
+
+Its `avoid` is `tolls,highways` on a ride that uses no motorway or trunk road, `tolls` on one that
+does, and absent on a `direct` ride. Asking Google to avoid highways on a ride with two miles of I-8
+in it sent it seven miles round to dodge the stretch we chose (100 mi against our 93).
+
+The URL names an `origin`, which suits a browser; with one, the Google Maps app only previews. The
+Android app removes `origin` and adds `dir_action=navigate`, which starts guidance from wherever
+the rider is.
 
 ## Charge stops (ADR-014)
 
