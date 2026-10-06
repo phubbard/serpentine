@@ -70,8 +70,8 @@ question to [Open questions](#open-questions).
 | Named roads with distances | ✅ | 🟡 | `roads[]`, filtered to ≥ 2 km and non-empty names. |
 | Hand off to voice navigation | ✅ | 🟡 | iOS: Apple Maps unified URL, ~10 stops, `avoid=tolls,highways` on curvy rides only (ADR-013, ADR-031). Android: the server's `google_maps_url` (now ≤ 9 waypoints, see Δ below) with the origin removed and `dir_action=navigate` added, which starts guidance from wherever the rider is. Measured 2026-10-05 on Maps 26.39. |
 | Share GPX | ✅ | 🟡 | `GET /v1/plan/{id}.gpx`. Android: `FileProvider` + `ACTION_SEND`. |
-| Charge stops with arrival %, dwell, backup | ✅ | ❌ | Rendering only; all computed server-side. |
-| Charger reliability notes (Open Charge Map) | ✅ | ❌ | `reliability` on each charger (ADR-022). Absent means "not listed there", which is not the same as "fine" — say so. |
+| Charge stops with arrival %, dwell, backup | ✅ | 🟡 | Rendering only; all computed server-side. |
+| Charger reliability notes (Open Charge Map) | ✅ | 🟡 | `reliability` on each charger (ADR-022). Absent means "not listed there", which is not the same as "fine" — say so. |
 
 Δ **Google Maps handoff, measured 2026-10-05 (server commit `e08bf8a`, not yet deployed as of this note):**
 given ten waypoints the Google Maps app keeps the first nine without a word, so the last road
@@ -85,11 +85,11 @@ unmeasured** — worth checking the next time a ride with a freeway hop is hande
 
 | Feature | Apple | Android | Notes |
 |---|---|---|---|
-| Plan charge stops along a ride | ✅ | ❌ | `charging` block in the request. Needs `"enabled": true` or it is silently ignored. |
-| Starting charge, arrival reserve toggle | ✅ | ❌ | `soc_start`, `reserve_for_backup` (ADR-023). |
-| The garage: multiple bikes | ✅ | ❌ | Catalogue from `GET /v1/vehicles`, hand-edited numbers, adapters kept per-rider not per-bike (ADR-020, ADR-025). Local storage. |
-| **Find a charger** (low battery) | ✅ | ❌ | `POST /v1/reach` (ADR-034). Sorted by share of pack needed, not distance. Charge slider is the rider's own reading; everything else follows from it. |
-| Minimum-energy route to a charger | ✅ | ❌ | `style: "efficient"`. Comes back as an ordinary plan, so it reuses the ride screen. |
+| Plan charge stops along a ride | ✅ | 🟡 | `charging` block in the request. Needs `"enabled": true` or it is silently ignored. |
+| Starting charge, arrival reserve toggle | ✅ | 🟡 | `soc_start`, `reserve_for_backup` (ADR-023). |
+| The garage: multiple bikes | ✅ | 🟡 | Catalogue from `GET /v1/vehicles`, hand-edited numbers, adapters kept per-rider not per-bike (ADR-020, ADR-025). Local storage. |
+| **Find a charger** (low battery) | ✅ | 🟡 | `POST /v1/reach` (ADR-034). Sorted by share of pack needed, not distance. Charge slider is the rider's own reading; everything else follows from it. |
+| Minimum-energy route to a charger | ✅ | 🟡 | `style: "efficient"`. Comes back as an ordinary plan, so it reuses the ride screen. |
 | Pause a ride / carry on afterwards | ✅ | 🟡 | ADR-035. Stores the *remaining polyline* locally, resumes via `via` points from wherever the rider now is. Loop start/finish ambiguity is real — show the split and allow undo. |
 
 ### Keeping rides
@@ -106,7 +106,7 @@ unmeasured** — worth checking the next time a ride with a freeway hop is hande
 |---|---|---|---|
 | About panel with data attributions | ✅ | 🟡 | OpenStreetMap ODbL, NASA SRTM, DOE AFDC, Open Charge Map CC BY-SA are **licence conditions, not courtesy** (ADR-032). Apple's own attribution is MapKit-specific; Android will need Google's equivalent instead. |
 | Build stamp (date + commit) in About | ✅ | 🟡 | So a tester's bug report says exactly what they are running. |
-| Tablet / large-screen layout | ✅ (iPad) | ❌ | iOS uses `NavigationSplitView`. |
+| Tablet / large-screen layout | ✅ (iPad) | 🟡 | iOS uses `NavigationSplitView`. |
 | Desktop | ✅ (Mac Catalyst) | ⛔ | No Android desktop target planned. |
 
 ### Server (shared — no per-platform work)
@@ -152,6 +152,8 @@ invents its own. Notes that bit the iOS side and will bite Android:
   a map, and place search says it isn't set up.
 - The map is fixed at the top of the ride screen and the numbers scroll under it, rather than the
   map scrolling with the list as on iOS.
+- Google's legal notices and Maps terms are linked from About (a condition of its Maps terms).
+- The saved-ride editor has "I rode this today" but no picker for an arbitrary last-ridden date.
 
 ---
 
@@ -164,10 +166,7 @@ invents its own. Notes that bit the iOS side and will bite Android:
    18.4. Android needs an equivalent that preserves the *route we chose* rather than letting the nav
    app pick its own. Candidates: Google Maps `dir` URL (waypoint limits unclear), OsmAnd intents,
    Calimoto/Kurviger handoff, or a GPX export workflow. **Research first, design second.**
-3. **❓ Does Android wait for energy-model calibration?** The model has never been checked against a
-   real bike; the first real ride is pending (bike due early-to-mid Oct 2026). Reach and charge
-   planning are the features where being optimistic strands someone. Android could build everything
-   else first and gate the battery features, or ship in step once calibration lands.
+3. **Resolved 2026-10-05 — Paul: build the battery features now.** See [Resolved](#resolved).
 4. **❓ Distribution bar.** mapbook-android uses the Play internal testing track as the ✅ bar,
    mirroring TestFlight. Assume the same here unless Paul says otherwise. His Play Console account is
    already set up (see `/projects/mapbook-android.md` in Memento).
@@ -177,6 +176,10 @@ invents its own. Notes that bit the iOS side and will bite Android:
 
 ### Resolved
 
+- **Battery features on Android (was open question 3) — Paul, 2026-10-05: built without waiting
+  for the calibration ride.** Garage, charge stops, reserve toggle and find-a-charger are on
+  Android's `main`, rendering the same server answers iOS does. The gate on the public beta is
+  unchanged: nothing ships to riders on either platform until the model has met a bike.
 - **Map stack on Android (was open question 1) — Paul, 2026-10-05: Google Maps SDK + Places SDK.**
   Principle 1 now reads, for Android, "one host plus Google's map and search", the way it reads
   "one host plus Apple MapKit" on iOS. Consequences both sides should know:
