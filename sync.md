@@ -15,8 +15,9 @@ Android port is **a second client**, not a reimplementation. Expect the matrix b
 and local persistence, and expect the server rows to say "n/a — shared".
 
 **Status (2026-10-05):** Apple side is 0.1.0 build 76 on TestFlight (iOS + iPad + Mac Catalyst),
-internal group only, preparing a public beta. Android side **does not exist yet** — this document and
-[`android-port-brief.md`](android-port-brief.md) are the starting point.
+internal group only, preparing a public beta. Android side started 2026-10-05 in
+`phubbard/serpentine-android` (private): planning and the ride screen are on `main`, nothing is on
+Play yet, so the Android column has no ✅.
 
 **Status conventions:**
 
@@ -47,26 +48,26 @@ question to [Open questions](#open-questions).
 
 | Feature | Apple | Android | Notes |
 |---|---|---|---|
-| Loop from a start point | ✅ | ❌ | `POST /v1/plan` mode `loop`. Server generates and scores 16 candidates (ADR-010); the client just asks. |
-| Out-and-back, different return road | ✅ | ❌ | mode `out_and_back` (ADR-015). |
-| Go somewhere (A→B) with a detour budget | ✅ | ❌ | mode `point_to_point`, `max_extra_s`. "Quickest way plus up to N minutes on better roads." |
-| "Just get me there" errand ride | ✅ | ❌ | `style: "direct"` (ADR-031). Freeways allowed, fastest, charging still planned. |
-| Plan by distance | ✅ | ❌ | `distance_m`, 20–500 km. |
-| Plan by time ("two hours on Saturday") | ✅ | ❌ | `duration_s` (ADR-018). Server does the speed guessing and rescaling. |
-| Twistiness slider | ✅ | ❌ | 0..1 → per-request custom model server-side. |
-| Direction ("head north") | ✅ | ❌ | `heading_deg`, or omit for "any". |
-| "Another ride like this" | ✅ | ❌ | Seed stepping; server plans seeds n and n+1, so the client steps by two. |
-| Start from current location | ✅ | ❌ | iOS CoreLocation; Android FusedLocationProvider. |
-| Start/destination place search | ✅ | ❌ | iOS `MKLocalSearch`. Android: Google Places SDK (decided 2026-10-05, see Resolved). Rows show name, address and straight-line distance. |
+| Loop from a start point | ✅ | 🟡 | `POST /v1/plan` mode `loop`. Server generates and scores 16 candidates (ADR-010); the client just asks. |
+| Out-and-back, different return road | ✅ | 🟡 | mode `out_and_back` (ADR-015). |
+| Go somewhere (A→B) with a detour budget | ✅ | 🚧 | mode `point_to_point`, `max_extra_s`. "Quickest way plus up to N minutes on better roads." Android: built, not yet run end to end — it needs place search to pick a destination. |
+| "Just get me there" errand ride | ✅ | 🚧 | `style: "direct"` (ADR-031). Freeways allowed, fastest, charging still planned. |
+| Plan by distance | ✅ | 🟡 | `distance_m`, 20–500 km. |
+| Plan by time ("two hours on Saturday") | ✅ | 🟡 | `duration_s` (ADR-018). Server does the speed guessing and rescaling. |
+| Twistiness slider | ✅ | 🟡 | 0..1 → per-request custom model server-side. |
+| Direction ("head north") | ✅ | 🟡 | `heading_deg`, or omit for "any". |
+| "Another ride like this" | ✅ | 🟡 | Seed stepping; server plans seeds n and n+1, so the client steps by two. |
+| Start from current location | ✅ | 🟡 | iOS CoreLocation; Android the platform `LocationManager` (not Google's fused-location SDK), asking for high accuracy by name. |
+| Start/destination place search | ✅ | 🚧 | iOS `MKLocalSearch`. Android: Google Places SDK (decided 2026-10-05, see Resolved). Rows show name, address and straight-line distance. Android: built; waiting on Places API (New) being enabled for the key's Cloud project. |
 
 ### The ride
 
 | Feature | Apple | Android | Notes |
 |---|---|---|---|
-| Route drawn on a map | ✅ | ❌ | iOS MapKit `MapPolyline`. Android: `google-maps-compose` `Polyline`. Server returns `polyline` as `[lon, lat]` pairs — note the order. |
-| Distance / time / climb summary | ✅ | ❌ | Straight from the response. Time shows "incl. charging" only when stops exist. |
-| Start, turnaround and charge-stop pins | ✅ | ❌ | |
-| Named roads with distances | ✅ | ❌ | `roads[]`, filtered to ≥ 2 km and non-empty names. |
+| Route drawn on a map | ✅ | 🟡 | iOS MapKit `MapPolyline`. Android: `google-maps-compose` `Polyline`. Server returns `polyline` as `[lon, lat]` pairs — note the order. |
+| Distance / time / climb summary | ✅ | 🟡 | Straight from the response. Time shows "incl. charging" only when stops exist. |
+| Start, turnaround and charge-stop pins | ✅ | 🟡 | Android: start and turnaround seen on a device; charge-stop pins are coded but wait on the battery work. |
+| Named roads with distances | ✅ | 🟡 | `roads[]`, filtered to ≥ 2 km and non-empty names. |
 | Hand off to voice navigation | ✅ | ❓ | **The biggest unknown on Android.** iOS uses the Apple Maps unified URL with repeated `waypoint=` (iOS 18.4+, ~10 stops, `avoid=tolls,highways` on curvy rides only — ADR-013, ADR-031). Android has no equivalent guarantee; Google Maps intents historically cap waypoints far lower. **Research this before committing to a design** — see brief, "Known gotchas". |
 | Share GPX | ✅ | ❌ | `GET /v1/plan/{id}.gpx`. Android: `FileProvider` + `ACTION_SEND`. |
 | Charge stops with arrival %, dwell, backup | ✅ | ❌ | Rendering only; all computed server-side. |
@@ -137,9 +138,12 @@ invents its own. Notes that bit the iOS side and will bite Android:
 - Apple Maps unified-URL handoff (Android needs its own answer — see the matrix).
 - `-screenshotPlan` launch argument for App Store screenshots without tapping.
 
-### Android-only (expected, none yet)
+### Android-only
 
-- Nothing yet. Add here when the port diverges deliberately.
+- A build with no Maps key still runs: the ride screen draws a bare sketch of the route instead of
+  a map, and place search says it isn't set up.
+- The map is fixed at the top of the ride screen and the numbers scroll under it, rather than the
+  map scrolling with the list as on iOS.
 
 ---
 
