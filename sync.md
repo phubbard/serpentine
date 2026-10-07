@@ -124,6 +124,7 @@ damage on a genuine ride is bounded by what it can do between consecutive stops.
 | Charger data (NREL daily bulk, Open Charge Map) | `serpentine-api` | Keys live only on axiom and must never reach either client. |
 | Rate limits | `serpentine-api` | 24 in flight, 20/min per caller, 429 + `Retry-After`. **Both clients must handle 429 gracefully** and respect `Retry-After`. |
 | Health + ops dashboard | axiom, Pi watch | ADR-037. LAN-only. |
+| Platform counts | `serpentine-api` | ADR-038, server from 2026-10-07. Tallies which kind of device asked, per hour. |
 
 ---
 
@@ -160,6 +161,17 @@ invents its own. Notes that bit the iOS side and will bite Android:
   map scrolling with the list as on iOS.
 - Google's legal notices and Maps terms are linked from About (a condition of its Maps terms).
 - The saved-ride editor has "I rode this today" but no picker for an arbitrary last-ridden date.
+
+---
+
+## For the Android side
+
+- **Send `X-Serpentine-Platform: android`** on `/v1/plan` and `/v1/reach` (ADR-038, live on the
+  server from 2026-10-07). One header, no body change, no new field — it is a header precisely so it
+  stays out of the plan cache key, which hashes the request body. The server allowlists
+  `ios | ipad | mac | android | web` and counts anything else as `other`, so until Android sends it
+  the Android rides are tallied as `other` rather than counted wrongly. Apple sends `ios`, `ipad` or
+  `mac`, resolved once at launch.
 
 ---
 
