@@ -4,8 +4,10 @@ import (
 	"context"
 	"log/slog"
 	"maps"
+	"net/http"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -34,6 +36,9 @@ type bucket struct {
 	Upstream  int            `json:"upstream_fail"` // 5xx: GraphHopper, NREL or us
 	Mode      map[string]int `json:"mode"`
 	Budget    map[string]int `json:"budget"`
+	// Which kind of device asked. A count per platform, never per device and never tied to a
+	// person (ADR-026) — the same rule as Mode and CustomBike.
+	Platform map[string]int `json:"platform"`
 
 	Charging   int `json:"charging"`
 	CustomBike int `json:"custom_bike"` // a bike that isn't the default, never which one
@@ -63,7 +68,8 @@ type bucket struct {
 }
 
 func newBucket() *bucket {
-	return &bucket{Mode: map[string]int{}, Budget: map[string]int{}, Latency: make([]int, len(latencyEdges)+1)}
+	return &bucket{Mode: map[string]int{}, Budget: map[string]int{}, Platform: map[string]int{},
+		Latency: make([]int, len(latencyEdges)+1)}
 }
 
 type metrics struct {
@@ -176,6 +182,24 @@ type planShape struct {
 	Reserve  bool
 	Cached   bool
 	Seconds  float64
+	Platform string
+}
+
+// knownPlatforms is an allowlist, not a sanity check. The platform arrives in a client header, so
+// without it a bored stranger could mint a new map key per request and grow the bucket without
+// bound. Anything unrecognised is counted as "other".
+var knownPlatforms = map[string]bool{
+	"ios": true, "ipad": true, "mac": true, "android": true, "web": true, "other": true,
+}
+
+// platformOf reads the client header. Lower-cased, allowlisted, and never logged next to anything
+// that could identify who sent it.
+func platformOf(r *http.Request) string {
+	p := strings.ToLower(strings.TrimSpace(r.Header.Get("X-Serpentine-Platform")))
+	if knownPlatforms[p] {
+		return p
+	}
+	return "other"
 }
 
 func (m *metrics) plan(p planShape) {
@@ -183,6 +207,9 @@ func (m *metrics) plan(p planShape) {
 		b.Plans++
 		b.Mode[p.Mode]++
 		b.Budget[p.Budget]++
+		if p.Platform != "" {
+			b.Platform[p.Platform]++
+		}
 		if p.Cached {
 			b.Cached++
 		}
@@ -238,9 +265,12 @@ func (m *metrics) failure(kind string) {
 
 // reach records one "what can I reach" answer: whether it was served from cache, and whether it
 // found anything at all. An empty answer is the one a rider would remember.
-func (m *metrics) reach(cached bool, options int) {
+func (m *metrics) reach(cached bool, options int, platform string) {
 	m.with(func(b *bucket) {
 		b.Reach++
+		if platform != "" {
+			b.Platform[platform]++
+		}
 		if cached {
 			b.ReachCached++
 		}
@@ -356,6 +386,9 @@ func addTo(dst, src *bucket) {
 	}
 	for k, v := range src.Budget {
 		dst.Budget[k] += v
+	}
+	for k, v := range src.Platform {
+		dst.Platform[k] += v
 	}
 	for i, v := range src.Latency {
 		dst.Latency[i] += v

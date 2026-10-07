@@ -1009,3 +1009,33 @@ name or an ntfy token would fix both if that ever matters.
 Still missing: nothing watches the watcher. If the Pi dies, there are no alerts and no notice of
 their absence. A dead-man's-switch service is the usual answer and is not worth adding yet, because
 a Pi that is down also takes the site down, which is noticed another way.
+
+## ADR-038 · 2026-10-07 · Counting platforms without counting devices
+
+With two clients now — Apple and Android — "which app is this worth building for" became a question
+the dashboard could not answer. Clients send `X-Serpentine-Platform: ios | ipad | mac | android | web`
+and the server keeps a tally per hour alongside the existing mode and budget counters.
+
+**A header, not a request field.** The plan cache key is a SHA of the marshalled request, so a
+`platform` field in the body would split the cache four ways for rides that are otherwise identical —
+four GraphHopper fan-outs where one would do. The header never reaches the cache key.
+
+**Allowlisted, because the value comes from a stranger.** The header is client-supplied, so without a
+fixed set of accepted values anyone could mint a new map key per request and grow the bucket without
+bound. Unrecognised values are counted as `other`, which is also where `curl` and anything that
+doesn't send the header lands.
+
+**It stays a count, not a fingerprint** (ADR-026): one word in, one increment out. No device
+identifier, no OS version, no model. The privacy page says so in the same words it uses for the
+existing counters, because the rule hasn't changed — only the number of categories.
+
+**The migration is the interesting part.** `CREATE TABLE IF NOT EXISTS` does nothing to the database
+that already exists on axiom, so columns added to the schema would never have appeared there and
+every flush would have failed on "no such column". `addColumns` runs one `ALTER TABLE ... ADD COLUMN`
+per column, each in its own `sqlite3` invocation because the CLI abandons the rest of a batch after
+the first error, and after the first run every one of them fails with "duplicate column name", which
+is the expected and ignored outcome. There is a test that builds a pre-platform database, opens it
+with the current code, and checks the counts round-trip — verified to fail without the migration.
+
+The `addTo` guard now walks maps as well as ints, because `Platform` is a map and the previous
+reflective test would have let a missing merge through silently.

@@ -118,7 +118,7 @@ func (s *server) handleReach(w http.ResponseWriter, r *http.Request) {
 	}
 	key := req.cacheKey()
 	if res, ok := s.reach.get(key); ok {
-		s.stats.reach(true, len(res.Options))
+		s.stats.reach(true, len(res.Options), platformOf(r))
 		writeJSON(w, http.StatusOK, res)
 		return
 	}
@@ -141,7 +141,7 @@ func (s *server) handleReach(w http.ResponseWriter, r *http.Request) {
 		res.Warning = "Charger data is more than a week old; check before you depend on it."
 	}
 	s.reach.put(key, res)
-	s.stats.reach(false, len(res.Options))
+	s.stats.reach(false, len(res.Options), platformOf(r))
 	s.log.Info("reach", "soc", *req.Soc, "nearby", res.Nearby, "options", len(res.Options))
 	writeJSON(w, http.StatusOK, res)
 }

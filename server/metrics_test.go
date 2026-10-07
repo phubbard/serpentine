@@ -136,8 +136,16 @@ func TestAddToSumsEveryCounter(t *testing.T) {
 			sv.Field(i).SetInt(1)
 		}
 	}
-	src.Mode, src.Budget = map[string]int{}, map[string]int{}
-	dst.Mode, dst.Budget = map[string]int{}, map[string]int{}
+	// Every map gets one key too, so a counter added as a map rather than an int is covered by the
+	// same guard — Platform was added that way and would otherwise have slipped through.
+	sv2 := reflect.ValueOf(&src).Elem()
+	dv2 := reflect.ValueOf(&dst).Elem()
+	for i := 0; i < sv2.NumField(); i++ {
+		if sv2.Field(i).Kind() == reflect.Map {
+			sv2.Field(i).Set(reflect.ValueOf(map[string]int{"x": 1}))
+			dv2.Field(i).Set(reflect.ValueOf(map[string]int{}))
+		}
+	}
 	src.Latency = make([]int, len(latencyEdges)+1)
 	dst.Latency = make([]int, len(latencyEdges)+1)
 
@@ -145,8 +153,16 @@ func TestAddToSumsEveryCounter(t *testing.T) {
 
 	dv, tv := reflect.ValueOf(dst), reflect.TypeOf(dst)
 	for i := 0; i < dv.NumField(); i++ {
-		if dv.Field(i).Kind() == reflect.Int && dv.Field(i).Int() != 1 {
-			t.Errorf("addTo does not sum %s: the stats page will show zero for it", tv.Field(i).Name)
+		switch dv.Field(i).Kind() {
+		case reflect.Int:
+			if dv.Field(i).Int() != 1 {
+				t.Errorf("addTo does not sum %s: the stats page will show zero for it", tv.Field(i).Name)
+			}
+		case reflect.Map:
+			m, _ := dv.Field(i).Interface().(map[string]int)
+			if m["x"] != 1 {
+				t.Errorf("addTo does not merge %s: the stats page will show zero for it", tv.Field(i).Name)
+			}
 		}
 	}
 }

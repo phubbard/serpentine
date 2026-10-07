@@ -301,7 +301,7 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request) {
 	}
 	id := req.cacheKey()
 	if res, ok := s.cache.get(id); ok {
-		s.stats.plan(req.shape(true, 0))
+		s.stats.plan(req.shape(true, 0, platformOf(r)))
 		s.log.Info("plan", "mode", req.Mode, "cached", true, "km", res.DistanceM/1000)
 		writeJSON(w, http.StatusOK, res)
 		return
@@ -335,7 +335,7 @@ func (s *server) handlePlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.cache.put(id, res)
-	s.stats.plan(req.shape(false, time.Since(start).Seconds()))
+	s.stats.plan(req.shape(false, time.Since(start).Seconds(), platformOf(r)))
 	if e := res.Energy; e != nil {
 		s.stats.chargeOutcome(e.Feasible, strings.Contains(e.Warning, "no other charger"))
 	}

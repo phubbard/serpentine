@@ -37,7 +37,27 @@ func newStatsStore(path string) (*statsStore, error) {
 		return nil, fmt.Errorf("sqlite3 not found: %w", err)
 	}
 	s := &statsStore{bin: bin, path: path}
-	return s, s.exec(context.Background(), schemaSQL)
+	if err := s.exec(context.Background(), schemaSQL); err != nil {
+		return nil, err
+	}
+	s.addColumns(context.Background())
+	return s, nil
+}
+
+// addColumns is the whole migration story: `CREATE TABLE IF NOT EXISTS` does nothing to a database
+// that already exists, so a column added to the schema above never reaches the live stats.db on
+// axiom. Each ALTER runs on its own because sqlite3 aborts the rest of a batch on the first error,
+// and "duplicate column name" is the expected result on every run after the first.
+//
+// Add new columns here *and* to schemaSQL, so a fresh database and an upgraded one end up the same.
+func (s *statsStore) addColumns(ctx context.Context) {
+	for _, col := range []string{
+		"platform_ios", "platform_ipad", "platform_mac",
+		"platform_android", "platform_web", "platform_other",
+	} {
+		_ = s.exec(ctx, fmt.Sprintf(
+			"ALTER TABLE hourly ADD COLUMN %s INTEGER NOT NULL DEFAULT 0;", col))
+	}
 }
 
 const schemaSQL = `
@@ -65,6 +85,12 @@ CREATE TABLE IF NOT EXISTS hourly (
   charge_feasible    INTEGER NOT NULL DEFAULT 0,
   charge_infeasible  INTEGER NOT NULL DEFAULT 0,
   charge_no_backup   INTEGER NOT NULL DEFAULT 0,
+  platform_ios       INTEGER NOT NULL DEFAULT 0,
+  platform_ipad      INTEGER NOT NULL DEFAULT 0,
+  platform_mac       INTEGER NOT NULL DEFAULT 0,
+  platform_android   INTEGER NOT NULL DEFAULT 0,
+  platform_web       INTEGER NOT NULL DEFAULT 0,
+  platform_other     INTEGER NOT NULL DEFAULT 0,
   tiles              INTEGER NOT NULL DEFAULT 0,
   tile_hits          INTEGER NOT NULL DEFAULT 0,
   latency            TEXT    NOT NULL DEFAULT '[]'  -- histogram, one count per latencyEdges bucket
@@ -121,6 +147,12 @@ type row struct {
 	OCMHits          int    `json:"ocm_cache_hits"`
 	OCMFail          int    `json:"ocm_fail"`
 	OCMReplans       int    `json:"ocm_replans"`
+	PlatformIOS      int    `json:"platform_ios"`
+	PlatformIPad     int    `json:"platform_ipad"`
+	PlatformMac      int    `json:"platform_mac"`
+	PlatformAndroid  int    `json:"platform_android"`
+	PlatformWeb      int    `json:"platform_web"`
+	PlatformOther    int    `json:"platform_other"`
 	ChargeFeasible   int    `json:"charge_feasible"`
 	ChargeInfeasible int    `json:"charge_infeasible"`
 	ChargeNoBackup   int    `json:"charge_no_backup"`
@@ -137,6 +169,9 @@ func rowOf(hour int64, b *bucket) row {
 		ModeLoop: b.Mode["loop"], ModeOutAndBack: b.Mode["out_and_back"],
 		ModePointToPoint: b.Mode["point_to_point"],
 		BudgetDistance:   b.Budget["distance"], BudgetTime: b.Budget["time"],
+		PlatformIOS: b.Platform["ios"], PlatformIPad: b.Platform["ipad"],
+		PlatformMac: b.Platform["mac"], PlatformAndroid: b.Platform["android"],
+		PlatformWeb: b.Platform["web"], PlatformOther: b.Platform["other"],
 		Charging: b.Charging, CustomBike: b.CustomBike, Reserve: b.Reserve,
 		GHFail: b.GHFail, NRELFail: b.NRELFail,
 		OCMLookups: b.OCMLookups, OCMHits: b.OCMHits, OCMFail: b.OCMFail, OCMReplans: b.OCMReplans,
@@ -150,6 +185,8 @@ func (r row) bucket() *bucket {
 	b.Plans, b.Cached, b.Bad, b.Unroute, b.Upstream = r.Plans, r.Cached, r.Bad, r.Unroutable, r.Upstream
 	b.Mode["loop"], b.Mode["out_and_back"], b.Mode["point_to_point"] = r.ModeLoop, r.ModeOutAndBack, r.ModePointToPoint
 	b.Budget["distance"], b.Budget["time"] = r.BudgetDistance, r.BudgetTime
+	b.Platform["ios"], b.Platform["ipad"], b.Platform["mac"] = r.PlatformIOS, r.PlatformIPad, r.PlatformMac
+	b.Platform["android"], b.Platform["web"], b.Platform["other"] = r.PlatformAndroid, r.PlatformWeb, r.PlatformOther
 	b.Charging, b.CustomBike, b.Reserve = r.Charging, r.CustomBike, r.Reserve
 	b.GHFail, b.NRELFail = r.GHFail, r.NRELFail
 	b.OCMLookups, b.OCMHits, b.OCMFail, b.OCMReplans = r.OCMLookups, r.OCMHits, r.OCMFail, r.OCMReplans
@@ -175,8 +212,9 @@ func (s *statsStore) save(ctx context.Context, hours map[int64]*bucket) error {
 		fmt.Fprintf(&sb, `INSERT INTO hourly (hour,plans,cached,bad_request,unroutable,upstream_fail,
 mode_loop,mode_out_and_back,mode_point_to_point,budget_distance,budget_time,charging,custom_bike,
 reserve,gh_fail,nrel_fail,ocm_lookups,ocm_cache_hits,ocm_fail,ocm_replans,charge_feasible,
-charge_infeasible,charge_no_backup,tiles,tile_hits,latency) VALUES
-(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,'%s')
+charge_infeasible,charge_no_backup,tiles,tile_hits,
+platform_ios,platform_ipad,platform_mac,platform_android,platform_web,platform_other,latency) VALUES
+(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,'%s')
 ON CONFLICT(hour) DO UPDATE SET plans=excluded.plans,cached=excluded.cached,
 bad_request=excluded.bad_request,unroutable=excluded.unroutable,upstream_fail=excluded.upstream_fail,
 mode_loop=excluded.mode_loop,mode_out_and_back=excluded.mode_out_and_back,
@@ -186,12 +224,18 @@ reserve=excluded.reserve,gh_fail=excluded.gh_fail,nrel_fail=excluded.nrel_fail,
 ocm_lookups=excluded.ocm_lookups,ocm_cache_hits=excluded.ocm_cache_hits,ocm_fail=excluded.ocm_fail,
 ocm_replans=excluded.ocm_replans,charge_feasible=excluded.charge_feasible,
 charge_infeasible=excluded.charge_infeasible,charge_no_backup=excluded.charge_no_backup,
-tiles=excluded.tiles,tile_hits=excluded.tile_hits,latency=excluded.latency;`+"\n",
+tiles=excluded.tiles,tile_hits=excluded.tile_hits,
+platform_ios=excluded.platform_ios,platform_ipad=excluded.platform_ipad,
+platform_mac=excluded.platform_mac,platform_android=excluded.platform_android,
+platform_web=excluded.platform_web,platform_other=excluded.platform_other,
+latency=excluded.latency;`+"\n",
 			r.Hour, r.Plans, r.Cached, r.Bad, r.Unroutable, r.Upstream,
 			r.ModeLoop, r.ModeOutAndBack, r.ModePointToPoint, r.BudgetDistance, r.BudgetTime,
 			r.Charging, r.CustomBike, r.Reserve, r.GHFail, r.NRELFail,
 			r.OCMLookups, r.OCMHits, r.OCMFail, r.OCMReplans,
-			r.ChargeFeasible, r.ChargeInfeasible, r.ChargeNoBackup, r.Tiles, r.TileHits, r.Latency)
+			r.ChargeFeasible, r.ChargeInfeasible, r.ChargeNoBackup, r.Tiles, r.TileHits,
+			r.PlatformIOS, r.PlatformIPad, r.PlatformMac, r.PlatformAndroid, r.PlatformWeb,
+			r.PlatformOther, r.Latency)
 	}
 	fmt.Fprintf(&sb, "DELETE FROM hourly WHERE hour < %d;\nCOMMIT;\n",
 		time.Now().Add(-statsRetentionDays*24*time.Hour).Unix())

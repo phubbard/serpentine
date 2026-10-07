@@ -233,12 +233,12 @@ func checkLonLat(field string, p [2]float64) error {
 }
 
 // shape is what a request tells the operational counters: what kind of ride, never where (ADR-026).
-func (r *planRequest) shape(cached bool, seconds float64) planShape {
+func (r *planRequest) shape(cached bool, seconds float64, platform string) planShape {
 	budget := "distance"
 	if r.DurationS > 0 {
 		budget = "time"
 	}
-	p := planShape{Mode: r.Mode, Budget: budget, Cached: cached, Seconds: seconds}
+	p := planShape{Mode: r.Mode, Budget: budget, Cached: cached, Seconds: seconds, Platform: platform}
 	if r.Charging != nil {
 		p.Charging = true
 		p.Reserve = r.Charging.ReserveForBackup == nil || *r.Charging.ReserveForBackup

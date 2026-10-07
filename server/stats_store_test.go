@@ -146,3 +146,88 @@ func TestOldHoursArePruned(t *testing.T) {
 		t.Errorf("an hour older than %d days is still there", statsRetentionDays)
 	}
 }
+
+// Platform counts have to survive a restart like everything else, or the day and week totals read
+// as "nobody used an iPad since the last deploy".
+func TestPlatformCountsSurviveARestart(t *testing.T) {
+	store := testStore(t)
+	ctx := context.Background()
+
+	before := newMetrics()
+	if err := before.restore(ctx, store); err != nil {
+		t.Fatal(err)
+	}
+	before.plan(planShape{Mode: "loop", Budget: "distance", Platform: "ios"})
+	before.plan(planShape{Mode: "loop", Budget: "distance", Platform: "ios"})
+	before.plan(planShape{Mode: "loop", Budget: "distance", Platform: "android"})
+	before.reach(false, 3, "ipad")
+	if err := before.flush(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	after := newMetrics()
+	if err := after.restore(ctx, store); err != nil {
+		t.Fatal(err)
+	}
+	got := after.snapshot("test", true, true, true, "", "").Today.Platform
+	for platform, want := range map[string]int{"ios": 2, "android": 1, "ipad": 1} {
+		if got[platform] != want {
+			t.Errorf("%s: got %d, want %d (all: %v)", platform, got[platform], want, got)
+		}
+	}
+}
+
+// The case that actually breaks in production: axiom's stats.db already exists with the old schema,
+// and `CREATE TABLE IF NOT EXISTS` will not add a column to it. Build a database the old way, then
+// open it with the current code and check the new columns both appear and round-trip.
+func TestNewColumnsReachAnExistingDatabase(t *testing.T) {
+	ctx := context.Background()
+	path := t.TempDir() + "/old.db"
+	bin, err := exec.LookPath("sqlite3")
+	if err != nil {
+		t.Skip("sqlite3 not installed")
+	}
+	old := &statsStore{bin: bin, path: path}
+	// A deliberately pre-platform schema: the columns this version expects are missing.
+	if err := old.exec(ctx, `CREATE TABLE hourly (
+  hour INTEGER PRIMARY KEY, plans INTEGER NOT NULL DEFAULT 0, cached INTEGER NOT NULL DEFAULT 0,
+  bad_request INTEGER NOT NULL DEFAULT 0, unroutable INTEGER NOT NULL DEFAULT 0,
+  upstream_fail INTEGER NOT NULL DEFAULT 0, mode_loop INTEGER NOT NULL DEFAULT 0,
+  mode_out_and_back INTEGER NOT NULL DEFAULT 0, mode_point_to_point INTEGER NOT NULL DEFAULT 0,
+  budget_distance INTEGER NOT NULL DEFAULT 0, budget_time INTEGER NOT NULL DEFAULT 0,
+  charging INTEGER NOT NULL DEFAULT 0, custom_bike INTEGER NOT NULL DEFAULT 0,
+  reserve INTEGER NOT NULL DEFAULT 0, gh_fail INTEGER NOT NULL DEFAULT 0,
+  nrel_fail INTEGER NOT NULL DEFAULT 0, ocm_lookups INTEGER NOT NULL DEFAULT 0,
+  ocm_cache_hits INTEGER NOT NULL DEFAULT 0, ocm_fail INTEGER NOT NULL DEFAULT 0,
+  ocm_replans INTEGER NOT NULL DEFAULT 0, charge_feasible INTEGER NOT NULL DEFAULT 0,
+  charge_infeasible INTEGER NOT NULL DEFAULT 0, charge_no_backup INTEGER NOT NULL DEFAULT 0,
+  tiles INTEGER NOT NULL DEFAULT 0, tile_hits INTEGER NOT NULL DEFAULT 0, latency TEXT);`); err != nil {
+		t.Fatal(err)
+	}
+
+	// Opening it the normal way must migrate rather than fail.
+	store, err := newStatsStore(path)
+	if err != nil {
+		t.Fatalf("opening an existing pre-platform database failed: %v", err)
+	}
+	// And a second open must be harmless — every ALTER fails with "duplicate column" from now on.
+	if _, err := newStatsStore(path); err != nil {
+		t.Fatalf("re-opening a migrated database failed: %v", err)
+	}
+
+	m := newMetrics()
+	if err := m.restore(ctx, store); err != nil {
+		t.Fatal(err)
+	}
+	m.plan(planShape{Mode: "loop", Budget: "distance", Platform: "android"})
+	if err := m.flush(ctx); err != nil {
+		t.Fatalf("writing platform counts to a migrated database failed: %v", err)
+	}
+	back := newMetrics()
+	if err := back.restore(ctx, store); err != nil {
+		t.Fatal(err)
+	}
+	if got := back.snapshot("test", true, true, true, "", "").Today.Platform["android"]; got != 1 {
+		t.Errorf("platform count did not survive the migration: got %d, want 1", got)
+	}
+}

@@ -49,6 +49,7 @@ struct SerpentineAPI: Sendable {
         var req = URLRequest(url: base.appending(path: "plan"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(ClientPlatform.name, forHTTPHeaderField: "X-Serpentine-Platform")
         req.httpBody = try Self.encoder().encode(request)
         let data = try await send(req)
         return try Self.decoder().decode(PlanResult.self, from: data)
@@ -60,6 +61,7 @@ struct SerpentineAPI: Sendable {
         var req = URLRequest(url: base.appending(path: "reach"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(ClientPlatform.name, forHTTPHeaderField: "X-Serpentine-Platform")
         req.httpBody = try Self.encoder().encode(request)
         return try Self.decoder().decode(ReachResult.self, from: await send(req))
     }

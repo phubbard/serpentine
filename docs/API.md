@@ -1,5 +1,10 @@
 # serpentine-api contract (phase 1)
 
+All requests may send `X-Serpentine-Platform: ios | ipad | mac | android | web`. It is counted for
+operations only (ADR-026) and anything unrecognised is tallied as `other`. A header rather than a
+request field deliberately: the plan cache key hashes the request body, so a field there would split
+the cache per platform for identical rides.
+
 Base: `https://serpentine.phfactor.net/v1` (LAN: `http://axiom:8990/v1`). JSON. **No auth**
 (ADR-011). Coordinates are `[lon, lat]` everywhere (GraphHopper convention) **except** inside the
 Maps URLs, which Apple and Google want as `lat,lon`. Implemented in `server/`; this file is the

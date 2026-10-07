@@ -11,6 +11,11 @@ struct SerpentineApp: App {
     @State private var progress = RideProgress()
     @State private var showingAbout = false
 
+    init() {
+        // Resolve the platform once, on the main actor, before anything can make a request.
+        ClientPlatform.name = ClientPlatform.detect()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView(showingAbout: $showingAbout)

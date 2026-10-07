@@ -259,7 +259,7 @@ async function plan() {
       }
     }
     const t0 = performance.now();
-    const r = await fetch("plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const r = await fetch("plan", { method: "POST", headers: { "Content-Type": "application/json", "X-Serpentine-Platform": "web" }, body: JSON.stringify(body) });
     const res = await r.json();
     if (!r.ok) throw new Error(res.error || r.statusText);
     show(res);

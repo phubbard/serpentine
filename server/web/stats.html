@@ -104,12 +104,19 @@ async function refresh() {
     `<i class="${h.fails ? "f" : ""}" style="height:${h.plans ? Math.max(4, (h.plans / peak) * 100) : 1}%" title="${new Date(h.hour * 1000).toLocaleString()}: ${h.plans} plans, ${h.fails} failed"></i>`
   ).join("");
 
+  // Hours written before platform tracking have no map; treat them as all-zero rather than NaN.
+  const p = (b) => b.platform || {};
+
   for (const [el, b] of [["today", s.today], ["week", s.week]]) {
     rows($(el), [
       ["plans", n(b.plans)],
       ["from cache", n(b.cached)],
       ["loop / o&b / A→B", `${n(b.mode.loop)}/${n(b.mode.out_and_back)}/${n(b.mode.point_to_point)}`],
       ["by time budget", n(b.budget.time)],
+      // Which kind of device, never which device (ADR-026). "other" covers anything that didn't
+      // send the header, including curl and the browser test page before it was taught to.
+      ["iOS / iPad / Mac", `${n(p(b).ios)}/${n(p(b).ipad)}/${n(p(b).mac)}`],
+      ["Android / web / other", `${n(p(b).android)}/${n(p(b).web)}/${n(p(b).other)}`],
       ["with charging", n(b.charging)],
       ["own bike", n(b.custom_bike)],
       ["p50 / p95", `${b.p50_s || 0} / ${b.p95_s || 0} s`],
