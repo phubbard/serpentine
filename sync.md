@@ -78,8 +78,14 @@ given ten waypoints the Google Maps app keeps the first nine without a word, so 
 loses its pin; `google_maps_url` now carries at most nine, dropping the waypoint for the shortest
 road and never a forced stop. And `avoid=highways` on a ride that uses two miles of I-8 made Google
 ride seven miles round to dodge it (100 mi against our 93), so Google is told to avoid highways only
-when our route touches no motorway or trunk road. **The Apple URL has the same trap and is
-unmeasured** — worth checking the next time a ride with a freeway hop is handed to Apple Maps.
+when our route touches no motorway or trunk road. **Measured on Apple 2026-10-06 and fixed.** Alpine →
+El Cajon on I-8: 16 min / 15 mi became 26 min / 14 mi with `avoid=tolls,highways`, a 63 % longer
+ride. Apple is the gentler of the two — it keeps the fast route as a second option and warns "a
+faster route is available with highways" — but the detour is the one it selects, so it is the ride a
+rider would start. Both URLs now share one `avoidList`, so neither asks a maps app to dodge a road we
+chose on purpose. Caveat on the measurement: it was a bare A→B with no waypoints, which gives the
+avoid parameter maximum freedom; our real handoff pins the route with up to ten waypoints, so the
+damage on a genuine ride is bounded by what it can do between consecutive stops.
 
 ### Battery features
 

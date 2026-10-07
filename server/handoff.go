@@ -168,9 +168,10 @@ func buildHandoff(p *ghPath, cum []float64, roads []road, forced []forcedWaypoin
 		}
 		h.WaypointRoads = append(h.WaypointRoads, c.road)
 	}
-	h.AppleMapsURL = appleMapsURL(h.Source, h.Waypoints, h.Destination, direct)
+	avoid := avoidList(p, direct)
+	h.AppleMapsURL = appleMapsURL(h.Source, h.Waypoints, h.Destination, avoid)
 	h.GoogleMapsURL = googleMapsURL(h.Source, longestWaypoints(h.Waypoints, km, maxGoogleWaypoints),
-		h.Destination, googleAvoid(p, direct))
+		h.Destination, avoid)
 	return h
 }
 
@@ -193,12 +194,17 @@ func longestWaypoints(wps [][2]float64, km []float64, n int) [][2]float64 {
 	return out
 }
 
-// googleAvoid is what to ask Google to stay off between our waypoints. Never anything on a
-// direct ride (ADR-031), and never highways when the ride itself uses one: measured 2026-10-05 on
-// a Ramona loop with two miles of I-8, "avoid highways" made Google ride seven miles round to
-// dodge the stretch we had chosen (100 mi against our 93). Trunk roads count, because what Google
-// calls a highway is not written down anywhere.
-func googleAvoid(p *ghPath, direct bool) string {
+// avoidList is what to ask a maps app to stay off between our waypoints. Never anything on a
+// direct ride (ADR-031), and never highways when the ride itself uses one.
+//
+// Measured on Google 2026-10-05: a Ramona loop with two miles of I-8 rode seven miles round to
+// dodge the stretch we had chosen (100 mi against our 93). Measured on Apple 2026-10-06, Alpine →
+// El Cajon on I-8: 16 min / 15 mi became 26 min / 14 mi, a 63 % longer ride. Apple is the gentler
+// of the two — it keeps the fast route as a second option and says "a faster route is available
+// with highways" — but the detour is the one it selects, so it is still the ride the rider starts.
+//
+// Trunk roads count, because what either app calls a highway is not written down anywhere.
+func avoidList(p *ghPath, direct bool) string {
 	if direct {
 		return ""
 	}
@@ -214,17 +220,17 @@ func googleAvoid(p *ghPath, direct bool) string {
 func latLon(p [2]float64) string { return fmt.Sprintf("%.5f,%.5f", p[1], p[0]) }
 
 // appleMapsURL builds the iOS 18.4+ unified directions URL (repeated waypoint=).
-func appleMapsURL(src [2]float64, wps [][2]float64, dst [2]float64, direct bool) string {
+func appleMapsURL(src [2]float64, wps [][2]float64, dst [2]float64, avoid string) string {
 	var b strings.Builder
 	b.WriteString("https://maps.apple.com/directions?source=" + latLon(src))
 	for _, w := range wps {
 		b.WriteString("&waypoint=" + latLon(w))
 	}
 	b.WriteString("&destination=" + latLon(dst) + "&mode=driving")
-	// Avoiding highways is right for a ride and wrong for an errand: telling Apple to dodge the
-	// freeway we deliberately routed onto would send the rider somewhere else entirely (ADR-031).
-	if !direct {
-		b.WriteString("&avoid=tolls,highways")
+	// Avoiding highways is right for a ride, wrong for an errand (ADR-031), and wrong for a ride
+	// that uses a freeway on purpose — see avoidList.
+	if avoid != "" {
+		b.WriteString("&avoid=" + avoid)
 	}
 	return b.String()
 }

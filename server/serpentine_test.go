@@ -200,13 +200,13 @@ func TestGoogleIsNotToldToAvoidARoadWeChose(t *testing.T) {
 	quiet := &ghPath{Details: map[string][]ghDetail{"road_class": {{From: 0, To: 9, Str: "secondary"}}}}
 	hop := &ghPath{Details: map[string][]ghDetail{"road_class": {
 		{From: 0, To: 5, Str: "secondary"}, {From: 5, To: 6, Str: "motorway"}, {From: 6, To: 9, Str: "tertiary"}}}}
-	if got := googleAvoid(quiet, false); got != "tolls,highways" {
-		t.Errorf("a ride with no freeway should keep Google off them too, got %q", got)
+	if got := avoidList(quiet, false); got != "tolls,highways" {
+		t.Errorf("a ride with no freeway should keep both apps off them too, got %q", got)
 	}
-	if got := googleAvoid(hop, false); got != "tolls" {
+	if got := avoidList(hop, false); got != "tolls" {
 		t.Errorf("two miles of freeway on our route must not become a detour round it, got %q", got)
 	}
-	if got := googleAvoid(quiet, true); got != "" {
+	if got := avoidList(quiet, true); got != "" {
 		t.Errorf("an errand avoids nothing (ADR-031), got %q", got)
 	}
 	u := googleMapsURL([2]float64{-116.868, 33.042}, [][2]float64{{-116.7, 33.1}}, [2]float64{-116.6, 33.08}, "tolls")
@@ -773,17 +773,23 @@ func TestShortRideAgainstABigBudgetExplainsItself(t *testing.T) {
 	}
 }
 
-// The errand ride (ADR-031). The failure that would actually hurt is the handoff: routing onto a
-// freeway and then telling Apple Maps to avoid freeways sends the rider somewhere else entirely.
-func TestDirectStyleDoesNotTellAppleToAvoidHighways(t *testing.T) {
+// The errand ride (ADR-031), and the freeway-hop trap measured on Apple 2026-10-06: Alpine to
+// El Cajon on I-8 went from 16 min / 15 mi to 26 min / 14 mi once "avoid highways" was passed.
+// Apple shows the faster route as a second option and says so, but the detour is the one selected,
+// so a ride that deliberately uses a freeway must not ask for it.
+func TestAppleHandoffAvoidsHighwaysOnlyWhenTheRideHasNone(t *testing.T) {
 	src, dst := [2]float64{-117.2116, 32.867}, [2]float64{-117.86, 33.68}
 	wps := [][2]float64{{-117.5, 33.2}}
 
-	curvy := appleMapsURL(src, wps, dst, false)
+	curvy := appleMapsURL(src, wps, dst, "tolls,highways")
 	if !strings.Contains(curvy, "avoid=tolls,highways") {
-		t.Error("a ride should still dodge freeways")
+		t.Error("a ride with no freeway should still dodge them")
 	}
-	direct := appleMapsURL(src, wps, dst, true)
+	hop := appleMapsURL(src, wps, dst, "tolls")
+	if strings.Contains(hop, "highways") {
+		t.Errorf("a ride that uses a freeway must not ask Apple to dodge it: %s", hop)
+	}
+	direct := appleMapsURL(src, wps, dst, "")
 	if strings.Contains(direct, "avoid") {
 		t.Errorf("an errand must not avoid anything: %s", direct)
 	}
