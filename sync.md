@@ -70,6 +70,7 @@ question to [Open questions](#open-questions).
 | Named roads with distances | ✅ | 🟡 | `roads[]`, filtered to ≥ 2 km and non-empty names. |
 | Hand off to voice navigation | ✅ | 🟡 | iOS: Apple Maps unified URL, ~10 stops, `avoid=tolls,highways` on curvy rides only (ADR-013, ADR-031). Android: the server's `google_maps_url` (now ≤ 9 waypoints, see Δ below) with the origin removed and `dir_action=navigate` added, which starts guidance from wherever the rider is. Measured 2026-10-05 on Maps 26.39. |
 | Share GPX | ✅ | 🟡 | `GET /v1/plan/{id}.gpx`. Android: `FileProvider` + `ACTION_SEND`. |
+| Pick what the GPX means | ✅ | ❌ | Three downloads, one import mode each, plus a help sheet (ADR-039). See Δ below. |
 | Charge stops with arrival %, dwell, backup | ✅ | 🟡 | Rendering only; all computed server-side. |
 | Charger reliability notes (Open Charge Map) | ✅ | 🟡 | `reliability` on each charger (ADR-022). Absent means "not listed there", which is not the same as "fine" — say so. |
 
@@ -166,11 +167,26 @@ invents its own. Notes that bit the iOS side and will bite Android:
 
 ## For the Android side
 
-- **GPX now takes `?for=waypoints|route|track`** (ADR-039, server-side, so Android gets it free).
-  Three files, one import mode each, for the Beeline Moto II. Omitting `for` still returns the track
-  exactly as before, so the existing Share GPX keeps working untouched. The app-side half — a mode
-  picker, the ~25-waypoint warning, and saying plainly that a device reroute discards the charge
-  plan — is unbuilt on both clients.
+- **GPX now takes `?for=waypoints|route|track`** (ADR-039, server-side, so Android gets it free;
+  deployed 2026-10-14). Three files, one import mode each, for the Beeline Moto II. Omitting `for`
+  still returns the track exactly as before, so the existing Share GPX keeps working untouched.
+
+  The app-side half shipped on iOS the same day and is worth copying rather than redesigning:
+
+  - **Share GPX is a menu, not a button**: Charge stops / Route outline / Exact path, then a
+    separator and "Which one do I want?". Charge stops leads because it is the right answer for a
+    Beeline; Exact path is the old behaviour and the one Kurviger or a Garmin wants.
+  - **All three are fetched when the ride appears**, not on tap. A real charging loop measured
+    413 B of waypoints and 1.5 KB of route against 136 KB of track we were fetching anyway, so the
+    extra two are free, and a share sheet that stalls on a download is worse than a slower plan.
+  - **Three distinct filenames** (`serpentine-<id>-<kind>.gpx`), because all three can end up in the
+    same folder and the name is what the rider reads while importing.
+  - **The help sheet carries two warnings** that only matter once the rider has left: a Beeline's
+    arrival time excludes charging and so always reads earlier than ours, and a device reroute
+    silently discards the charge plan — pause the ride and carry on to get a fresh one. Above 25
+    charge stops it says the count is untested territory rather than implying it works.
+
+  None of this is confirmed against hardware yet; the acceptance checklist lives in ADR-039.
 
 - **Send `X-Serpentine-Platform: android`** on `/v1/plan` and `/v1/reach` (ADR-038, live on the
   server from 2026-10-07). One header, no body change, no new field — it is a header precisely so it
