@@ -1039,3 +1039,54 @@ with the current code, and checks the counts round-trip — verified to fail wit
 
 The `addTo` guard now walks maps as well as ints, because `Platform` is a map and the previous
 reflective test would have let a missing merge through silently.
+
+## ADR-039 · 2026-10-14 · GPX shaped for a device that cannot search
+
+Paul is considering a Beeline Moto II. It is a 53 mm display with four buttons, no GPS of its own,
+and — the fact that drives everything here — **no POI search of any kind**. It cannot find a charger,
+and when it reroutes it re-plans with its own EV-unaware engine. Of our three export paths, only GPX
+reaches it: Apple and Google handoff open a phone app. So the GPX exporter stops being a convenience
+and becomes the whole contract with that device.
+
+**This app owns the plan; the Beeline displays it.** Every choice below follows from that.
+
+**One intent per file.** Beeline picks its import mode from what a file contains, in the order
+track → route → waypoints — a file holding a `<trk>` is treated as a track whatever else is in it.
+So `?for=` emits three separate files rather than one rich one. Note that GPX 1.1's schema order
+(`metadata?`, `wpt*`, `rte*`, `trk*`) is a different thing from that precedence, and reordering XML
+to steer the mode would be both invalid and futile.
+
+**Charge stops are the only `<wpt>`.** In waypoints-only mode every waypoint becomes a routing
+via-point, so a shaping point would bend the route and clutter the device's editor. Backups appear in
+the `route` file only, where they are markers rather than via-points: the device cannot add a charger
+mid-ride but a waypoint can be skipped with the side buttons, so a thin margin is worth a skippable
+marker — and is worth *not* having in the file where it would route the rider through it.
+
+**The waypoint name is the one channel onto the device's screen**, so it leads with what decides a
+rider's next move and the numbers never give way:
+
+    El Capitan — 8x 6.5kW — 112 min — arrive 18%
+
+43 characters against a ~45 budget. When a site name is too long the name truncates and the facts
+survive, because "Ramona Shopping Sun…" is still recognisable and "25 mi" cut in half is not. The
+`<cmt>` carries arrival and departure charge plus what the next leg costs; `<desc>` always carries
+the address, because Beeline reads addresses into its editor and keeps them on re-export.
+
+**Defaults are unchanged.** A bare `.gpx` is still a track. Changing that would silently alter every
+existing Share GPX on both clients — and a track remains the right lingua franca for Kurviger,
+Garmin and Calimoto, which are not going away.
+
+**Sizes, measured rather than assumed.** Beeline's 4 MB limit is hard, so the writer refuses an
+oversize file rather than shipping one that cannot be opened. A real 107.8 km loop has 1,714 polyline
+points — about 16 per km — so the 500 km ceiling is roughly 8,000 points, which lands near half a
+megabyte. A real charging loop exported at 413 B / 1.5 KB / 154 KB for the three variants. The limit
+is nowhere near binding; the refusal exists for the case that is not a real ride.
+
+Still to build on the app side, from the same contract: a mode picker in the share sheet, help text
+naming the Beeline app versions that offer the mode picker at all (iOS 3.4.2295+, Android 4.2.5277+),
+a warning over ~25 waypoints, and plain words that a device reroute throws our charge plan away —
+the re-plan-from-here half of that already exists as pause and carry on (ADR-035).
+
+These are device facts from Paul's research, not from a Beeline we have tested against. The exporter
+is written to the contract; nothing here is confirmed on hardware, and the checklist in that contract
+is the acceptance test when a device arrives.

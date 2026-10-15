@@ -166,6 +166,12 @@ invents its own. Notes that bit the iOS side and will bite Android:
 
 ## For the Android side
 
+- **GPX now takes `?for=waypoints|route|track`** (ADR-039, server-side, so Android gets it free).
+  Three files, one import mode each, for the Beeline Moto II. Omitting `for` still returns the track
+  exactly as before, so the existing Share GPX keeps working untouched. The app-side half — a mode
+  picker, the ~25-waypoint warning, and saying plainly that a device reroute discards the charge
+  plan — is unbuilt on both clients.
+
 - **Send `X-Serpentine-Platform: android`** on `/v1/plan` and `/v1/reach` (ADR-038, live on the
   server from 2026-10-07). One header, no body change, no new field — it is a header precisely so it
   stays out of the plan cache key, which hashes the request body. The server allowlists

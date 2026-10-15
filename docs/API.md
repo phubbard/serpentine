@@ -141,7 +141,22 @@ Map support for the test page (ADR-016): OSM raster tiles through a caching prox
 404 when the server runs without `-tile-cache`), and vendored Leaflet under `/static/`. Not for the
 iOS app, which displays with MapKit.
 
-## GET /plan/{id}.gpx
+## GET /plan/{id}.gpx[?for=waypoints|route|track]
+
+`for` picks which Beeline Moto II import mode the file is meant for (ADR-039). Omitted means
+`track`, which is what a bare `.gpx` has always been, so existing clients are unaffected.
+
+| `for` | Contents | Beeline mode | Behaviour |
+|---|---|---|---|
+| `waypoints` | `<wpt>` (charge stops only) | Waypoints only | Beeline routes between our stops with full turn-by-turn. **The one to prefer.** |
+| `route` | `<wpt>` (stops + backups) + `<rte>` | Turn-by-turn | Map-matched to Beeline's own network; our road choices may be altered. |
+| `track` | `<trk>`, decimated to ~30 m | Breadcrumb | Exact path, no re-routing — and no turn prompts at all. |
+
+One intent per file, never combined: Beeline picks its mode from what a file holds, in the order
+track → route → waypoints, so a `<trk>` wins outright over anything beside it. 422 if `waypoints` is
+asked for on a ride with no charge stops, since that file would import as an empty ride.
+
+
 
 The plan's track as GPX 1.1 with elevation, for Kurviger/Garmin users. Served from an in-memory
 cache (24 h, 500 plans); 404 after that — request the plan again.

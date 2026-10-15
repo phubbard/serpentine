@@ -370,9 +370,29 @@ func (s *server) handleGPX(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "plan expired; request it again")
 		return
 	}
+	// ?for=waypoints|route|track picks the Beeline import mode (ADR-039). Absent means track, which
+	// is what a bare .gpx has always been, so existing clients are unaffected.
+	kind, ok := gpxKindOf(r.URL.Query().Get("for"))
+	if !ok {
+		writeError(w, http.StatusBadRequest, `for must be "waypoints", "route" or "track"`)
+		return
+	}
+	if kind == gpxWaypoints && len(chargeStops(res)) == 0 {
+		// Waypoints-only with nothing in it imports as an empty ride. Say why rather than hand
+		// over a file that silently does nothing.
+		writeError(w, http.StatusUnprocessableEntity,
+			"this ride has no charge stops, so a waypoints file would be empty; use track or route")
+		return
+	}
+	var body strings.Builder
+	if err := writePlanGPX(&body, res, kind); err != nil {
+		s.log.Error("gpx", "kind", kind, "err", err)
+		writeError(w, http.StatusInsufficientStorage, err.Error())
+		return
+	}
 	w.Header().Set("Content-Type", "application/gpx+xml")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="serpentine-%s.gpx"`, id))
-	writeGPX(w, "serpentine "+res.Mode, res.Polyline)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, gpxName(id, kind)))
+	_, _ = io.WriteString(w, body.String())
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -455,18 +475,6 @@ func (c *planCache) put(id string, res *planResult) {
 		delete(c.items, oldest)
 	}
 	c.items[id] = cacheItem{res: res, at: time.Now()}
-}
-
-func writeGPX(w io.Writer, name string, coords [][]float64) {
-	fmt.Fprintf(w, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<gpx version=\"1.1\" creator=\"serpentine\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n  <trk>\n    <name>%s</name>\n    <trkseg>\n", name)
-	for _, c := range coords {
-		if len(c) > 2 {
-			fmt.Fprintf(w, "      <trkpt lat=\"%.6f\" lon=\"%.6f\"><ele>%.0f</ele></trkpt>\n", c[1], c[0], c[2])
-		} else {
-			fmt.Fprintf(w, "      <trkpt lat=\"%.6f\" lon=\"%.6f\"></trkpt>\n", c[1], c[0])
-		}
-	}
-	fmt.Fprint(w, "    </trkseg>\n  </trk>\n</gpx>\n")
 }
 
 // planForBudget plans the ride, and when the request gave a time budget rather than a distance,
