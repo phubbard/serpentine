@@ -72,13 +72,20 @@ struct SerpentineAPI: Sendable {
         return try Self.decoder().decode(CatalogResponse.self, from: data).vehicles
     }
 
-    /// Downloads the plan's GPX to a temporary file, for the share sheet.
-    func downloadGPX(for plan: PlanResult) async throws -> URL {
-        guard let url = URL(string: plan.gpxUrl, relativeTo: base) else {
+    /// Downloads one GPX variant to a temporary file, for the share sheet (ADR-039).
+    ///
+    /// The file is named for its kind because the name is what a rider reads when picking it in the
+    /// Beeline app, and because all three can sit in the share destination at once.
+    func downloadGPX(for plan: PlanResult, kind: GPXKind) async throws -> URL {
+        guard var url = URL(string: plan.gpxUrl, relativeTo: base) else {
             throw Failure(message: "bad GPX link")
         }
+        if kind != .track { // a bare .gpx is the track, and has been since the first build
+            url.append(queryItems: [URLQueryItem(name: "for", value: kind.rawValue)])
+        }
         let data = try await send(URLRequest(url: url))
-        let file = FileManager.default.temporaryDirectory.appending(path: "serpentine-\(plan.id).gpx")
+        let file = FileManager.default.temporaryDirectory
+            .appending(path: "serpentine-\(plan.id)-\(kind.rawValue).gpx")
         try data.write(to: file, options: .atomic)
         return file
     }

@@ -173,3 +173,50 @@ private func fixture(_ name: String) throws -> PlanResult {
     #expect(Format.nearby(meters: 80, locale: us) == "< 0.1 mi")
     #expect(Format.nearby(meters: 5_000, locale: Locale(identifier: "de_DE")) == "5,0 km")
 }
+
+/// Records what was asked for, and answers with a stub body. The three GPX exports differ only in
+/// the query, so the URL is the whole behaviour under test.
+final class RecordingProtocol: URLProtocol, @unchecked Sendable {
+    nonisolated(unsafe) static var urls: [URL] = []
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        Self.urls.append(request.url!)
+        let resp = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil,
+                                   headerFields: ["Content-Type": "application/gpx+xml"])!
+        client?.urlProtocol(self, didReceive: resp, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data("<gpx/>".utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
+}
+
+// A Beeline picks its import mode from what the file holds, so each kind must be a separate ask of
+// the server and a separate file on disk (ADR-039).
+@Test func eachGPXKindIsItsOwnRequestAndItsOwnFile() async throws {
+    let plan = try fixture("plan_loop_ev")
+    RecordingProtocol.urls = []
+    let api = SerpentineAPI(base: URL(string: "https://example.invalid/v1/")!,
+                            protocolClasses: [RecordingProtocol.self])
+
+    var files: [URL] = []
+    for kind in GPXKind.allCases {
+        files.append(try await api.downloadGPX(for: plan, kind: kind))
+    }
+
+    let asked = RecordingProtocol.urls.map(\.absoluteString)
+    #expect(asked.count == 3)
+    // The bare .gpx has been the track since the first build; adding ?for=track would change what
+    // every existing share button fetches.
+    #expect(asked.contains { $0.hasSuffix("/plan/\(plan.id).gpx") })
+    #expect(asked.contains { $0.hasSuffix("?for=waypoints") })
+    #expect(asked.contains { $0.hasSuffix("?for=route") })
+
+    #expect(Set(files).count == 3, "all three must be able to sit in the share destination at once")
+    for file in files {
+        #expect(file.lastPathComponent.hasSuffix(".gpx"), "the name is what a rider picks in the Beeline app")
+        #expect(FileManager.default.fileExists(atPath: file.path))
+        try? FileManager.default.removeItem(at: file)
+    }
+}

@@ -147,8 +147,20 @@ final class Planner {
     /// Surfaces a problem raised outside the planner itself, so one error line serves the screen.
     func setError(_ message: String) { errorMessage = message }
 
-    func gpxFile(for plan: PlanResult) async -> URL? {
-        try? await api.downloadGPX(for: plan)
+    /// Downloads every export shape at once (ADR-039). Eager because it is nearly free — a real
+    /// charging loop is 413 B of waypoints and 1.5 KB of route beside the 154 KB track we already
+    /// fetched — and because a share sheet needs the file in hand before it can offer it.
+    ///
+    /// A ride with no charge stops has no waypoints file; the server says so with a 422 and that
+    /// kind is simply absent from the picker.
+    func gpxFiles(for plan: PlanResult) async -> [GPXKind: URL] {
+        var out: [GPXKind: URL] = [:]
+        for kind in GPXKind.allCases {
+            if let url = try? await api.downloadGPX(for: plan, kind: kind) {
+                out[kind] = url
+            }
+        }
+        return out
     }
 
     /// Place search through MapKit (Apple's service, like the map itself), biased to near `near`.
