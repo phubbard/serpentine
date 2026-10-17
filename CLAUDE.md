@@ -23,7 +23,7 @@ the reference for competitor and API facts; don't re-research what it already an
   search, charging, map + stats, Apple Maps handoff, GPX share, saved rides with rating/notes/last-ridden
   (ADR-033, local files under Application Support), "find a charger" for a low battery (ADR-034),
   pause a ride and carry on with the rest after a detour (ADR-035). `make -C ios build|test|run`.
-  On TestFlight since 2026-09-18 (0.1.0 build 29) as **"Serpentine EV"** (ASC app id 6813768490;
+  On TestFlight since 2026-09-18 (0.1.0 build 99, 2026-10-17) as **"Serpentine EV"** (ASC app id 6813768490;
   home-screen name stays "Serpentine"), internal group "Internal" with automatic distribution. `make -C server test|run|deploy|logs`. No app code yet.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.
 - Rate limits (ADR-030): 24 plans in flight, 20/min per caller (burst 8), 429 + Retry-After. Measured
@@ -136,6 +136,16 @@ Principles that constrain every design choice here:
 - Simulator names repeat across runtimes (two "iPhone 16"s); the Makefile pins `SIM_OS` too.
   `make -C ios test SIM_DEVICE="iPhone 16" SIM_OS=18.4` checks the deployment floor.
 - Driving the simulator: short taps don't flip a `Toggle`; use a ~0.2 s tap.
+- **After an Xcode update, `xcrun simctl` hangs rather than failing**, and `make test` dies with
+  "Unable to find a device matching the provided destination specifier". The real cause is one line
+  further up the log: `CoreSimulator is out of date. Current version (1171.7.0) is older than build
+  version (1174.9.2)` — Xcode updated but its system components did not, so
+  `/Library/Developer/PrivateFrameworks/CoreSimulator.framework` is stale. Fix is
+  `sudo xcodebuild -runFirstLaunch` (needs a password, so an agent cannot do it); the next `simctl`
+  prints "detected version change … removing the stale service" and works. Seen 2026-10-17 on Xcode
+  27.1. Note what this does *not* break: a device archive never loads the simulator, so
+  `make upload-testflight` succeeds throughout — it just prints "Simulator device support disabled"
+  and carries on. A green TestFlight upload is therefore no evidence the test run still works.
 - TestFlight signing uses **Xcode's signed-in Apple ID** (Account Holder mints the distribution
   cert). That session expires silently, and does it mid-session: build 74 signed fine and build 76,
   two hours later, did not. It has shown two different faces, both meaning "sign in again under
@@ -166,9 +176,13 @@ Principles that constrain every design choice here:
 - Commit before `make upload-testflight`: a dirty tree makes the scheme stamp build N+1 while the
   Makefile (and `testflight-notes`) expect N.
 - `ios/CHANGELOG.md`'s `## [0.1.0]` section is what testers read, and ASC truncates What to Test at
-  **4000 characters** (the script warns). It passed that at build 74 and is 4850 by build 76, so the
-  oldest entries are now dropped. Newest first is deliberate — the new feature always survives — but
-  the section wants pruning back to what is still news before it swallows anything that matters.
+  **4000 characters** (the script warns). It crossed that between builds 74 and 76 and reached 4874
+  by build 97, so for twenty-odd builds the oldest entries were being dropped silently. Pruned back
+  to 3979 at build 99 (the original launch list went: all of it is on the product page and none of
+  it was still news). Newest first is deliberate — the new feature always survives — but 3979 leaves
+  21 characters of headroom, so **prune at every release**, not when it next overflows. Measure what
+  actually ships by stripping markdown the way `tools/set-testflight-notes.rb` does, not by `wc -c`
+  on the section.
 
 - Team ID `NSR65JVW9F` (paid individual). Bundle ID: **`net.phfactor.serpentine`** — chosen once,
   never changed ("pick it like a tattoo"). Display name can change; bundle ID cannot.
