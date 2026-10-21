@@ -1090,3 +1090,48 @@ the re-plan-from-here half of that already exists as pause and carry on (ADR-035
 These are device facts from Paul's research, not from a Beeline we have tested against. The exporter
 is written to the contract; nothing here is confirmed on hardware, and the checklist in that contract
 is the acceptance test when a device arrives.
+
+## ADR-040 · 2026-10-21 · A waypoints file has to be a ride, not a list of stops
+
+First contact with real hardware. Paul has a Beeline Moto II (the motorcycle is still to come, which
+turns out not to matter: the device contract is a file-format question and nothing in it needs a
+bike). Three findings, in rising order of how wrong we were.
+
+**A one-stop ride imported as "0.0 miles".** ADR-039 decided that charge stops are the only `<wpt>`,
+reasoning that in waypoints-only mode every waypoint is a routing via-point, so a shaping point
+would bend the route. That is true and it missed the obvious: a route needs endpoints before there
+is anything to bend. A loop with one charge stop exported as a single `<wpt>`, and one point has no
+length and no direction. The device was right.
+
+The waypoints file now carries **start, then the stops in route order, then finish**. Both ends come
+from the handoff, which has already moved them onto public road via `publicEndpoints` — a charger
+car park or a driveway is a bad place to ask a device to begin. The middle is read back out of the
+handoff's *forced* waypoints, which are by construction exactly the charge stops and an
+out-and-back's turnaround, already sorted into route order; the labels they carry (`chargeLabel`,
+`turnaroundLabel`) are now shared constants, because a literal in two places would drift and
+silently empty the file again. On a loop the finish repeats the start, which is what closes it.
+
+Road-shaping waypoints still stay out, for ADR-039's original reason, which was never wrong — each
+is a via-point the rider has to press past, and pinning roads is the route file's job. The turnaround
+is in because an out-and-back without it is a different ride.
+
+**The explainer described a menu that wasn't there.** A ride the battery covers outright has no
+charge stops, so the server refuses a waypoints export (correctly — the file would be empty) and the
+menu shows two items. The help sheet went on listing three and recommending the missing one. Reported
+from TestFlight build 99 as two separate pieces of feedback, which is the system working. `GPXHelpView`
+now takes the kinds the menu is actually offering, so the two cannot disagree, and says plainly why
+the third is absent.
+
+**Route mode re-routes harder than expected, and that is still open.** A 43 mi / 1h13 curvy
+out-and-back imported as 41.7 mi / 1h 3m and **31 % highways** — on a route built to avoid them,
+with straight chords drawn across terrain where our `<rte>` points are sparse. Consistent with what
+ADR-039 predicted qualitatively, much worse quantitatively. If it holds up, "start with Charge
+stops" is the wrong advice for a curvy-road app, because that mode gives the device even less to go
+on and it will route its own way between stops; Exact path may be the only mode that preserves the
+product, at the cost of turn prompts. One observation, and the import mode was inferred rather than
+recorded, so nothing is changed on that basis yet. The test that settles it is importing all three
+exports of *one* ride with at least one charge stop and comparing distance, time and highway share
+against ours.
+
+The lesson worth keeping: ADR-039 was written from research and reasoned carefully to a conclusion
+that one import disproved in ten seconds. Device contracts are cheap to test and expensive to assume.

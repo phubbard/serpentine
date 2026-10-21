@@ -349,7 +349,7 @@ func buildResult(id, mode, style string, p *ghPath, loop *loopInfo, ob *outBackI
 		forced []forcedWaypoint
 	)
 	if turnIdx >= 0 {
-		forced = append(forced, forcedWaypoint{idx: turnIdx, pt: lonLat(coords[turnIdx]), label: "Turnaround"})
+		forced = append(forced, forcedWaypoint{idx: turnIdx, pt: lonLat(coords[turnIdx]), label: turnaroundLabel})
 	}
 	if co != nil {
 		sites = sitesFromStations(stations, acConnectors(v))
@@ -365,7 +365,7 @@ func buildResult(id, mode, style string, p *ghPath, loop *loopInfo, ob *outBackI
 		energy = &sum
 		for _, c := range sites {
 			if c.Stop {
-				forced = append(forced, forcedWaypoint{idx: c.idx, pt: c.LonLat, label: "Charge: " + c.Name})
+				forced = append(forced, forcedWaypoint{idx: c.idx, pt: c.LonLat, label: chargeLabel(c)})
 			}
 		}
 		sites = selectChargers(sites)

@@ -103,6 +103,16 @@ func publicEndpoints(p *ghPath, n int) (int, int) {
 	return first, last
 }
 
+// Labels for the two kinds of forced waypoint. They are shared because the GPX exporter reads them
+// back out of the handoff to find the stops a ride must visit (ADR-039); a literal in two places
+// would drift and silently empty the waypoints file.
+const (
+	chargePrefix    = "Charge: "
+	turnaroundLabel = "Turnaround"
+)
+
+func chargeLabel(c charger) string { return chargePrefix + c.Name }
+
 // forcedWaypoint must be in the handoff whatever the road heuristic picks: a charge stop (at the
 // charger itself, off the polyline) or an out-and-back turnaround.
 type forcedWaypoint struct {

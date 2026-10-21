@@ -145,7 +145,10 @@ struct ResultView: View {
             Text(pauseProblem ?? "")
         }
         .task(id: plan.id) { gpxFiles = await planner.gpxFiles(for: plan) }
-        .sheet(isPresented: $showingExportHelp) { GPXHelpView(stops: chargeStopCount) }
+        .sheet(isPresented: $showingExportHelp) {
+            // The same order the menu uses, and only what the menu is actually offering.
+            GPXHelpView(kinds: GPXKind.allCases.filter { gpxFiles[$0] != nil }, stops: chargeStopCount)
+        }
         // Keyed on the plan so opening a saved ride, or planning another, re-reads the entry.
         .onChange(of: plan.id, initial: true) { _, _ in saved = rides.ride(forPlan: plan.id) }
         .confirmationDialog("Remove this ride from your saved list?",

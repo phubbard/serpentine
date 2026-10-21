@@ -3,6 +3,11 @@ import SwiftUI
 /// What the three GPX exports do, and the two things about a Beeline that will otherwise surprise
 /// a rider mid-ride (ADR-039).
 struct GPXHelpView: View {
+    /// Exactly what the share menu is offering, in menu order. Passed in rather than assumed,
+    /// because a ride the battery covers outright has no charge stops and so no waypoints file —
+    /// an explainer listing three choices beside a menu of two reads as a bug, and was reported as
+    /// one from TestFlight build 99.
+    let kinds: [GPXKind]
     /// How many charge stops this ride has, for the untested-territory warning.
     let stops: Int
 
@@ -12,23 +17,52 @@ struct GPXHelpView: View {
     /// than imply we know it works.
     private let untestedAbove = 25
 
+    /// Small counts read better as words in a heading, and the count is whatever the menu offers.
+    private var sectionTitle: String {
+        guard kinds.count != 1 else { return "One file" }
+        let words = ["no", "one", "two", "three"]
+        let n: String = kinds.count < words.count ? words[kinds.count] : String(kinds.count)
+        return n + " files, " + n + " behaviours"
+    }
+
+    /// Charge stops is the pick when the ride has any; otherwise it isn't on screen to recommend.
+    private var recommended: GPXKind { kinds.contains(.waypoints) ? .waypoints : .track }
+
+    private var pickingAdvice: String {
+        "A device picks what to do from what the file contains, not from what you meant, so each "
+            + "one holds a single kind of thing. If you have a Beeline, start with "
+            + recommended.title + "."
+    }
+
+    private var noWaypointsReason: String {
+        "There's no " + GPXKind.waypoints.title + " file for this ride: the battery covers it "
+            + "without stopping, so there would be nothing in it."
+    }
+
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(GPXKind.allCases) { kind in
+                    ForEach(kinds) { kind in
                         VStack(alignment: .leading, spacing: 3) {
                             Label(kind.title, systemImage: kind.icon).font(.headline)
                             Text(kind.effect).font(.subheadline).foregroundStyle(.secondary)
                         }
                         .padding(.vertical, 2)
                     }
+                    if !kinds.contains(.waypoints) {
+                        Label {
+                            Text(noWaypointsReason)
+                        } icon: {
+                            Image(systemName: GPXKind.waypoints.icon).foregroundStyle(.secondary)
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    }
                 } header: {
-                    Text("Three files, three behaviours")
+                    Text(sectionTitle)
                 } footer: {
-                    Text("A device picks what to do from what the file contains, not from what you "
-                         + "meant, so each one holds a single kind of thing. If you have a Beeline, "
-                         + "start with Charge stops.")
+                    Text(pickingAdvice)
                 }
 
                 if stops > 0 {

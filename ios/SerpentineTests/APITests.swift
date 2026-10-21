@@ -220,3 +220,44 @@ final class RecordingProtocol: URLProtocol, @unchecked Sendable {
         try? FileManager.default.removeItem(at: file)
     }
 }
+
+/// Answers like the server does: a waypoints export of a ride with no charge stops is a 400, since
+/// the file would be empty. Everything else is a stub body.
+final class NoStopsGPXProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let url = request.url!
+        let refused = url.query?.contains("for=waypoints") == true
+        let resp = HTTPURLResponse(url: url, statusCode: refused ? 400 : 200, httpVersion: nil,
+                                   headerFields: nil)!
+        client?.urlProtocol(self, didReceive: resp, cacheStoragePolicy: .notAllowed)
+        let body = refused
+            ? Data(#"{"error":"this ride has no charge stops, so a waypoints file would be empty"}"#.utf8)
+            : Data("<gpx/>".utf8)
+        client?.urlProtocol(self, didLoad: body)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
+}
+
+// A ride the battery covers outright has no charge stops, so there is no waypoints file to share.
+// The menu is built from what downloaded, and the help sheet is built from the same list — they
+// disagreed in build 99, which read as a bug and was reported as one from TestFlight.
+@MainActor
+@Test func aRideWithNoChargeStopsOffersNoChargeStopsFile() async throws {
+    let plan = try fixture("plan_loop_ev")
+    let api = SerpentineAPI(base: URL(string: "https://example.invalid/v1/")!,
+                            protocolClasses: [NoStopsGPXProtocol.self])
+    let files = await Planner(api: api).gpxFiles(for: plan)
+
+    #expect(files[.waypoints] == nil, "the server refuses it, so nothing should offer it")
+    #expect(files[.track] != nil, "the ride itself is still shareable")
+    #expect(files[.route] != nil)
+
+    // What the help sheet is handed: the same list, in menu order, and never a fourth thing.
+    let offered = GPXKind.allCases.filter { files[$0] != nil }
+    #expect(offered == [.waypoints, .route, .track].filter { $0 != .waypoints })
+
+    for file in files.values { try? FileManager.default.removeItem(at: file) }
+}

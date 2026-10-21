@@ -78,10 +78,10 @@ func writePlanGPX(w io.Writer, res *planResult, kind gpxKind) error {
 
 	switch kind {
 	case gpxWaypoints:
-		writeWpts(&b, chargeStops(res), res)
+		writePoints(&b, rideStops(res))
 	case gpxRoute:
 		// Waypoints first: GPX 1.1 fixes the order as wpt*, then rte*, then trk*.
-		writeWpts(&b, append(chargeStops(res), backups(res)...), res)
+		writePoints(&b, chargerPoints(append(chargeStops(res), backups(res)...), res))
 		writeRte(&b, res)
 	case gpxTrack:
 		writeTrk(&b, res)
@@ -133,18 +133,76 @@ func backups(res *planResult) []charger {
 	return out
 }
 
-func writeWpts(b *strings.Builder, cs []charger, res *planResult) {
-	for _, c := range cs {
-		fmt.Fprintf(b, "  <wpt lat=\"%.5f\" lon=\"%.5f\">\n", c.LonLat[1], c.LonLat[0])
-		// Schema order inside wptType: ele, time, …, name, cmt, desc, …
-		fmt.Fprintf(b, "    <name>%s</name>\n", esc(wptName(c)))
-		if cmt := wptComment(c, res); cmt != "" {
-			fmt.Fprintf(b, "    <cmt>%s</cmt>\n", esc(cmt))
+// wptPoint is one <wpt> to emit: somewhere to be, what to call it, and whatever we can say about it.
+type wptPoint struct {
+	lonLat [2]float64
+	name   string
+	cmt    string
+	desc   string
+}
+
+// rideStops is what a waypoints-only file must hold for the device to have a ride at all: where it
+// begins, what it must visit in order, and where it ends.
+//
+// Charge stops alone are not a route. A one-stop ride exported as a single <wpt>, and a Beeline
+// read it as 0.0 miles on the first hardware test (2026-10-21) — correctly, because one point has
+// no length and no direction. ADR-039 reasoned that a shaping point would bend the route, which is
+// true, and missed that a route needs endpoints before it can be bent.
+//
+// Both ends come from the handoff, which has already moved them onto public road (`publicEndpoints`)
+// — a charger car park or a driveway is a bad place to ask a device to start. The middle comes from
+// the handoff's forced waypoints, which are by construction exactly the charge stops and an
+// out-and-back turnaround, already sorted into route order. Road-shaping waypoints stay out: each
+// one is a via-point the rider would have to skip past, and holding the roads is what the route
+// file is for.
+func rideStops(res *planResult) []wptPoint {
+	byLabel := make(map[string]charger, len(res.Chargers))
+	for _, c := range res.Chargers {
+		byLabel[chargeLabel(c)] = c
+	}
+	out := []wptPoint{{lonLat: res.Handoff.Source, name: "Start"}}
+	for i, label := range res.Handoff.WaypointRoads {
+		if i >= len(res.Handoff.Waypoints) {
+			break // defensive: the two are built together and should never diverge
 		}
-		if c.Address != "" {
+		switch {
+		case label == turnaroundLabel:
+			out = append(out, wptPoint{lonLat: res.Handoff.Waypoints[i], name: turnaroundLabel})
+		case strings.HasPrefix(label, chargePrefix):
+			if c, ok := byLabel[label]; ok {
+				out = append(out, chargerPoint(c, res))
+			}
+		}
+	}
+	// On a loop this repeats the start, which is what closes it; drop it and the device rides to
+	// the last stop and stops there.
+	return append(out, wptPoint{lonLat: res.Handoff.Destination, name: "Finish"})
+}
+
+func chargerPoint(c charger, res *planResult) wptPoint {
+	return wptPoint{lonLat: c.LonLat, name: wptName(c), cmt: wptComment(c, res), desc: c.Address}
+}
+
+func chargerPoints(cs []charger, res *planResult) []wptPoint {
+	out := make([]wptPoint, 0, len(cs))
+	for _, c := range cs {
+		out = append(out, chargerPoint(c, res))
+	}
+	return out
+}
+
+func writePoints(b *strings.Builder, pts []wptPoint) {
+	for _, p := range pts {
+		fmt.Fprintf(b, "  <wpt lat=\"%.5f\" lon=\"%.5f\">\n", p.lonLat[1], p.lonLat[0])
+		// Schema order inside wptType: ele, time, …, name, cmt, desc, …
+		fmt.Fprintf(b, "    <name>%s</name>\n", esc(p.name))
+		if p.cmt != "" {
+			fmt.Fprintf(b, "    <cmt>%s</cmt>\n", esc(p.cmt))
+		}
+		if p.desc != "" {
 			// Beeline reads the address into its editor and keeps it on re-export, so this is
 			// never left empty when we have one.
-			fmt.Fprintf(b, "    <desc>%s</desc>\n", esc(c.Address))
+			fmt.Fprintf(b, "    <desc>%s</desc>\n", esc(p.desc))
 		}
 		b.WriteString("  </wpt>\n")
 	}

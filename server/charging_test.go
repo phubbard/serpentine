@@ -132,7 +132,7 @@ func TestChargeStopBecomesHandoffWaypoint(t *testing.T) {
 	for _, c := range sites {
 		if c.Stop {
 			stops = append(stops, c)
-			forced = append(forced, forcedWaypoint{idx: c.idx, pt: c.LonLat, label: "Charge: " + c.Name})
+			forced = append(forced, forcedWaypoint{idx: c.idx, pt: c.LonLat, label: chargeLabel(c)})
 		}
 	}
 	h := buildHandoff(p, cum, roadsOf(p, cum), forced, false)

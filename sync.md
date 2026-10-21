@@ -188,6 +188,20 @@ invents its own. Notes that bit the iOS side and will bite Android:
 
   None of this is confirmed against hardware yet; the acceptance checklist lives in ADR-039.
 
+- **The waypoints export now carries the ride, not just the stops** (ADR-040, server-side, so
+  Android gets it free; deployed 2026-10-21). First Beeline hardware test imported a one-stop ride
+  as **0.0 miles**, because the file held a single `<wpt>` and one point is not a route. It is now
+  start → stops in route order → finish, with an out-and-back's turnaround included. No client
+  change needed, but two things to copy:
+
+  - **Don't offer Charge stops when the ride has none.** The server 400s that export (the file would
+    be empty) and the iOS menu simply omits it. Whatever explains the modes must be built from the
+    list the menu is actually showing, or it will describe a choice that isn't there — that shipped
+    in iOS build 99 and came back as TestFlight feedback within a day.
+  - **Route mode re-routes more than expected and is still under test.** A 43 mi curvy ride imported
+    as 41.7 mi and 31 % highways. Don't harden any advice about which mode to recommend until the
+    three-way comparison in ADR-040 is done.
+
 - **Send `X-Serpentine-Platform: android`** on `/v1/plan` and `/v1/reach` (ADR-038, live on the
   server from 2026-10-07). One header, no body change, no new field — it is a header precisely so it
   stays out of the plan cache key, which hashes the request body. The server allowlists

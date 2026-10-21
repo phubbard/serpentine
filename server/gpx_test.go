@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/xml"
 	"io"
+	"math"
 	"strings"
 	"testing"
 )
@@ -66,6 +67,9 @@ func gpxFixture(t *testing.T) *planResult {
 		Source:      [2]float64{-116.8, 33.0},
 		Destination: [2]float64{-116.76, 33.0},
 		Waypoints:   [][2]float64{{-116.79, 33.0}, {-116.78, 33.0}},
+		// Forced waypoints carry the labels plan.go gives them; the waypoints export reads these
+		// back to find the stops a ride must visit, so a fixture without them tests nothing.
+		WaypointRoads: []string{"Charge: Ramona Shopping Sunvalley", "Charge: El Capitan"},
 	}
 	res.Energy = &energySummary{ChargeTo: 0.8}
 	res.Chargers = []charger{
@@ -110,12 +114,12 @@ func TestEachExportHoldsOneIntent(t *testing.T) {
 
 // In waypoints-only mode every <wpt> becomes a routing via-point, so anything that isn't a stop
 // bends the route and clutters the device's editor.
-func TestWaypointsFileHoldsStopsAndNothingElse(t *testing.T) {
+func TestWaypointsFileHoldsTheRideAndNothingElse(t *testing.T) {
 	res := gpxFixture(t)
 	_, doc := renderGPX(t, res, gpxWaypoints)
 
-	if len(doc.Wpt) != 2 {
-		t.Fatalf("want the 2 charge stops, got %d: %v", len(doc.Wpt), doc.Wpt)
+	if len(doc.Wpt) != 4 {
+		t.Fatalf("want start + 2 charge stops + finish, got %d: %v", len(doc.Wpt), doc.Wpt)
 	}
 	for _, w := range doc.Wpt {
 		if strings.Contains(w.Name, "backup") || strings.Contains(w.Name, "Somewhere else") {
@@ -147,13 +151,39 @@ func TestRouteFileCarriesBackupsAsMarkers(t *testing.T) {
 	}
 }
 
+// chargeWpts is the subset carrying a charger. Start, Finish and Turnaround are places to be, not
+// places to plug in, so they have no power rating, dwell or address of their own.
+func chargeWpts(doc gpxDoc) []struct {
+	Lat  float64 `xml:"lat,attr"`
+	Lon  float64 `xml:"lon,attr"`
+	Name string  `xml:"name"`
+	Cmt  string  `xml:"cmt"`
+	Desc string  `xml:"desc"`
+} {
+	var out []struct {
+		Lat  float64 `xml:"lat,attr"`
+		Lon  float64 `xml:"lon,attr"`
+		Name string  `xml:"name"`
+		Cmt  string  `xml:"cmt"`
+		Desc string  `xml:"desc"`
+	}
+	for _, w := range doc.Wpt {
+		switch w.Name {
+		case "Start", "Finish", turnaroundLabel:
+			continue
+		}
+		out = append(out, w)
+	}
+	return out
+}
+
 // The name is the one channel onto the device's own screen, so the numbers must survive even when
 // the site name cannot.
 func TestWaypointNameLeadsWithTheDecisionAndKeepsItsNumbers(t *testing.T) {
 	res := gpxFixture(t)
 	_, doc := renderGPX(t, res, gpxWaypoints)
 
-	first := doc.Wpt[0].Name
+	first := chargeWpts(doc)[0].Name
 	for _, want := range []string{"6x 6.5kW", "95 min", "arrive 27%"} {
 		if !strings.Contains(first, want) {
 			t.Errorf("name %q lost %q", first, want)
@@ -182,7 +212,11 @@ func TestWaypointNameLeadsWithTheDecisionAndKeepsItsNumbers(t *testing.T) {
 func TestEveryWaypointCarriesItsAddress(t *testing.T) {
 	res := gpxFixture(t)
 	_, doc := renderGPX(t, res, gpxWaypoints)
-	for _, w := range doc.Wpt {
+	stops := chargeWpts(doc)
+	if len(stops) == 0 {
+		t.Fatal("no charge stops in the waypoints file")
+	}
+	for _, w := range stops {
 		if w.Desc == "" {
 			t.Errorf("%q has no address", w.Name)
 		}
@@ -190,11 +224,11 @@ func TestEveryWaypointCarriesItsAddress(t *testing.T) {
 			t.Errorf("%q has no comment, so arrival and departure charge are nowhere", w.Name)
 		}
 	}
-	if !strings.Contains(doc.Wpt[0].Cmt, "depart 80%") {
-		t.Errorf("comment should state what the rider leaves with: %q", doc.Wpt[0].Cmt)
+	if !strings.Contains(stops[0].Cmt, "depart 80%") {
+		t.Errorf("comment should state what the rider leaves with: %q", stops[0].Cmt)
 	}
-	if !strings.Contains(doc.Wpt[0].Cmt, "Next leg") {
-		t.Errorf("comment should state what the next leg costs: %q", doc.Wpt[0].Cmt)
+	if !strings.Contains(stops[0].Cmt, "Next leg") {
+		t.Errorf("comment should state what the next leg costs: %q", stops[0].Cmt)
 	}
 }
 
@@ -309,6 +343,82 @@ func TestClimbReadsAsAHeight(t *testing.T) {
 	for in, want := range map[float64]string{0: "0", 999: "999", 1000: "1,000", 2138: "2,138", 12345: "12,345"} {
 		if got := commas(in); got != want {
 			t.Errorf("commas(%v) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// The first hardware test (2026-10-21) imported a one-stop charging ride into a Beeline and got
+// "0.0 miles". The file held a single <wpt>: faithful to ADR-039's "charge stops are the only
+// waypoints", and useless, because one point has no length and no direction. A waypoints export
+// has to carry the ends of the ride as well as the stops in the middle.
+func TestWaypointsFileIsARideAndNotAPoint(t *testing.T) {
+	res := gpxFixture(t)
+	_, doc := renderGPX(t, res, gpxWaypoints)
+
+	if len(doc.Wpt) < 3 {
+		t.Fatalf("a ride with a charge stop needs start, stop and finish: got %d <wpt>", len(doc.Wpt))
+	}
+	first, last := doc.Wpt[0], doc.Wpt[len(doc.Wpt)-1]
+	if first.Name != "Start" || last.Name != "Finish" {
+		t.Errorf("the ends must be named so a rider can tell them apart: %q … %q", first.Name, last.Name)
+	}
+	// The ends are the handoff's, which have already been moved onto public road: a charger car
+	// park is a bad place to ask a device to begin.
+	// Compared loosely: the file writes 5 decimal places, which is about a metre.
+	near := func(a, b float64) bool { return math.Abs(a-b) < 1e-5 }
+	if !near(first.Lon, res.Handoff.Source[0]) || !near(first.Lat, res.Handoff.Source[1]) {
+		t.Errorf("first waypoint is not the ride's start: %v,%v want %v", first.Lat, first.Lon, res.Handoff.Source)
+	}
+	if !near(last.Lon, res.Handoff.Destination[0]) || !near(last.Lat, res.Handoff.Destination[1]) {
+		t.Errorf("last waypoint is not the ride's finish: %v,%v want %v", last.Lat, last.Lon, res.Handoff.Destination)
+	}
+	// A device rides them in file order, so the stops must sit between the ends, in route order.
+	var middle []string
+	for _, w := range doc.Wpt[1 : len(doc.Wpt)-1] {
+		middle = append(middle, w.Name)
+	}
+	if len(middle) != 2 || !strings.Contains(middle[0], "Ramona") || !strings.Contains(middle[1], "El Capitan") {
+		t.Errorf("charge stops missing or out of route order: %v", middle)
+	}
+	// Each stop still carries the plan onto the device's own screen.
+	if doc.Wpt[1].Cmt == "" || doc.Wpt[1].Desc == "" {
+		t.Errorf("a charge stop lost its comment or address: %+v", doc.Wpt[1])
+	}
+}
+
+// An out-and-back is defined by its turnaround. Without it the device rides to the last charge stop
+// and home again, which is a different ride.
+func TestOutAndBackKeepsItsTurnaround(t *testing.T) {
+	res := gpxFixture(t)
+	res.Mode = "out_and_back"
+	res.Handoff.Waypoints = append(res.Handoff.Waypoints, [2]float64{-116.77, 33.0})
+	res.Handoff.WaypointRoads = append(res.Handoff.WaypointRoads, turnaroundLabel)
+
+	_, doc := renderGPX(t, res, gpxWaypoints)
+	var names []string
+	for _, w := range doc.Wpt {
+		names = append(names, w.Name)
+	}
+	found := false
+	for _, n := range names {
+		found = found || n == turnaroundLabel
+	}
+	if !found {
+		t.Errorf("the turnaround must be a waypoint or the ride is not an out-and-back: %v", names)
+	}
+}
+
+// A road-shaping waypoint is not a place the rider has to be. In this mode every <wpt> is a
+// via-point they would have to press past, so holding the roads stays the route file's job.
+func TestShapingWaypointsStayOutOfTheWaypointsFile(t *testing.T) {
+	res := gpxFixture(t)
+	res.Handoff.Waypoints = append(res.Handoff.Waypoints, [2]float64{-116.772, 33.0})
+	res.Handoff.WaypointRoads = append(res.Handoff.WaypointRoads, "Old Julian Highway")
+
+	_, doc := renderGPX(t, res, gpxWaypoints)
+	for _, w := range doc.Wpt {
+		if strings.Contains(w.Name, "Old Julian") {
+			t.Errorf("a shaping waypoint became a via-point: %q", w.Name)
 		}
 	}
 }
