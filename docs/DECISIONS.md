@@ -1210,6 +1210,28 @@ than naming them, so the dwell and the arrival charge stay on the phone. A rider
 the plan off the bars and finds "Waypoint 1 / 1" has been told something false by us, and that is the
 failure worth preventing.
 
+**Confirmed later the same evening, by driving the Mac Catalyst build directly.** Importing the same
+`Park` file as Turn-by-turn and dumping the route preview's whole accessibility tree gives exactly
+five elements — `"1.9 mi"`, `"7 min"`, `Route-Motorcycle`, `Save`, `Go`. The name is not on another
+page or scrolled out of view; it is not in the user interface at all. That is a stronger claim than
+the one made above from a screenshot, and it is the form this kind of finding should take: an
+inventory, not a look.
+
+The vendor's own wording, from the dialog's "How does this work?" links, since our help text has to
+sit beside it without contradicting it: Turn-by-turn *"creates a route with turn by turn directions,
+matched to the closest suitable roads and trails"*; Breadcrumb *"shows the shape of the trail to
+follow, not necessarily on roads or paths"*. Our copy says the same things in plainer words, so it
+stands.
+
+That "matched to the closest suitable roads" also explains a result that looks alarming and is not:
+the 1.11 mi test loop imported as 1.9 mi, 71 % long, on both the phone and the Mac. Fidelity was
+within 0.1 mi over 96.8 miles and is terrible over one, because the fixture doubles back along a
+single street and 33 points do not constrain a matcher that would rather go round the block than
+make a U-turn. An artifact of a toy route; real rides are long and do not retrace themselves. Worth
+knowing before someone tests with a short loop and concludes the exporter is broken.
+
+The three-option dialog appears identically on the Mac build, so none of this is phone-specific.
+
 Running tally for the evening: of ADR-039's device claims, the mode-precedence rule, the
 "waypoints-only is best for a Beeline" recommendation, the "charge stops are the only waypoints"
 shape and now the name-as-a-channel argument have all been wrong. Its file shapes, size limits and

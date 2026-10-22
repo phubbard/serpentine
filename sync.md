@@ -189,8 +189,15 @@ invents its own. Notes that bit the iOS side and will bite Android:
   None of this is confirmed against hardware yet; the acceptance checklist lives in ADR-039.
 
 - **A Beeline shows waypoints as "Waypoint 1 / 1", not by name** (ADR-042). Tested with a waypoint
-  named plainly `Park`. Keep sending the rich names — other GPX apps do show them — but don't build
-  any UI that promises the rider will read the charge plan off the device.
+  named plainly `Park`, then confirmed by dumping the Mac app's whole accessibility tree for the
+  route preview: five elements, none of them the name. Keep sending the rich names — other GPX apps
+  do show them — but don't build any UI that promises the rider will read the charge plan off the
+  device.
+
+- **Don't test with a short route.** A 1.11 mi out-and-back imported as 1.9 mi — 71 % long — because
+  Beeline matches to "the closest suitable roads" and 33 points along one street won't stop it going
+  round the block instead of making a U-turn. The same exporter was within 0.1 mi over 96.8 mi. Test
+  with a real ride or you will chase a bug that isn't there.
 
 - **Use `?for=all`, and delete any mode picker you were about to build** (ADR-041, server-side,
   deployed 2026-10-21). Tested against a real Beeline Moto II, and the ADR-039 premise the picker

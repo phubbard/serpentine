@@ -30,7 +30,7 @@ Apple Maps handoff; try it at
   rest after a charging detour, saved rides (star rating, notes, when you last
   rode it — kept on the device), place search showing each match's address and distance from the
   start, GPX export carrying the whole route and the charge stops in one file (verified against a
-  Beeline Moto II: a 97-mile loop imported within 0.1 mi of the plan), an About panel with the build
+  Beeline Moto II on iPhone and Mac: a 97-mile loop imported within 0.1 mi of the plan), an About panel with the build
   stamp (date and commit) for bug reports
 - `sync.md`, `android-port-brief.md` — cross-platform parity matrix with the Android port, and the
   scoping doc the Android session reads first
