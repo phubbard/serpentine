@@ -7,6 +7,12 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [0.1.0]
 
+- Sending a ride to a Beeline or a GPS works now. The Charge stops file held only the stops, so a
+  ride with one charge stop was a single point and a Beeline read it as "0.0 miles" — it now carries
+  where the ride starts and ends, and an out-and-back's turnaround, so the device has an actual ride
+  to follow. Also: when the battery covers a ride outright there are no charge stops, so that file
+  isn't offered — and "Which one do I want?" no longer describes a choice that isn't on screen.
+
 - Share GPX now asks what the file should mean, because a Beeline or a GPS decides what to do from
   what's in the file. **Charge stops** hands the device your stops and lets it navigate between them —
   the right answer for a Beeline, and each stop carries its name, its wait and what you arrive with.
@@ -53,11 +59,3 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 - "Just get me there": in Go somewhere, take the fastest way including freeways, with charge stops
   still planned. For the helmet shop and the dealer, not the Sunday ride.
 
-- A garage: keep more than one bike, pick from a catalogue of Zero, LiveWire and Can-Am models, or
-  type your own numbers when the spec sheet doesn't match what you ride. Charge stops are planned for
-  the bike you picked, at its own charging rate and plugs — including any adapters you carry.
-
-- Charge stops keep enough in the battery to reach another charger, so a dead or busy one isn't a
-  rescue. Turn it off under your bike's section if you'd rather ride the longest legs possible.
-- Charge stops now say what riders report about them: out of service, trouble charging, or not
-  confirmed working for years. A stop reported dead is replaced before you ever see it.
