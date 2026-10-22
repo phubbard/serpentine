@@ -370,11 +370,12 @@ func (s *server) handleGPX(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "plan expired; request it again")
 		return
 	}
-	// ?for=waypoints|route|track picks the Beeline import mode (ADR-039). Absent means track, which
+	// ?for=all|waypoints|route|track picks what goes in the file. "all" is what a rider wants
+	// (ADR-041): the device builds its own import menu from the contents. Absent means track, which
 	// is what a bare .gpx has always been, so existing clients are unaffected.
 	kind, ok := gpxKindOf(r.URL.Query().Get("for"))
 	if !ok {
-		writeError(w, http.StatusBadRequest, `for must be "waypoints", "route" or "track"`)
+		writeError(w, http.StatusBadRequest, `for must be "all", "waypoints", "route" or "track"`)
 		return
 	}
 	if kind == gpxWaypoints && len(chargeStops(res)) == 0 {

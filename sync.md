@@ -70,7 +70,7 @@ question to [Open questions](#open-questions).
 | Named roads with distances | ✅ | 🟡 | `roads[]`, filtered to ≥ 2 km and non-empty names. |
 | Hand off to voice navigation | ✅ | 🟡 | iOS: Apple Maps unified URL, ~10 stops, `avoid=tolls,highways` on curvy rides only (ADR-013, ADR-031). Android: the server's `google_maps_url` (now ≤ 9 waypoints, see Δ below) with the origin removed and `dir_action=navigate` added, which starts guidance from wherever the rider is. Measured 2026-10-05 on Maps 26.39. |
 | Share GPX | ✅ | 🟡 | `GET /v1/plan/{id}.gpx`. Android: `FileProvider` + `ACTION_SEND`. |
-| Pick what the GPX means | ✅ | ❌ | Three downloads, one import mode each, plus a help sheet (ADR-039). See Δ below. |
+| Share one GPX that carries everything | ✅ | 🟡 | `?for=all` — route + charge stops in one file (ADR-041). Android already has Share GPX; switch it to `for=all`. |
 | Charge stops with arrival %, dwell, backup | ✅ | 🟡 | Rendering only; all computed server-side. |
 | Charger reliability notes (Open Charge Map) | ✅ | 🟡 | `reliability` on each charger (ADR-022). Absent means "not listed there", which is not the same as "fine" — say so. |
 
@@ -187,6 +187,24 @@ invents its own. Notes that bit the iOS side and will bite Android:
     charge stops it says the count is untested territory rather than implying it works.
 
   None of this is confirmed against hardware yet; the acceptance checklist lives in ADR-039.
+
+- **Use `?for=all`, and delete any mode picker you were about to build** (ADR-041, server-side,
+  deployed 2026-10-21). Tested against a real Beeline Moto II, and the ADR-039 premise the picker
+  existed for is simply false: the device *asks* on import — Turn-by-turn / Breadcrumb / Waypoints
+  only — and builds that menu from what the file holds. One file offers all three.
+
+  What the file decides is how much of the route survives, and it is savage. Same rides,
+  Turn-by-turn each time:
+
+  | file | points | result |
+  |---|---|---|
+  | charge stops | 3 | 44 mi → **28.0 mi, 84 % highways** |
+  | route outline | ~12 | 43 mi → 41.7 mi, 31 % highways |
+  | `all` | 2,255 | 96.8 mi → **96.7 mi**, no highway warning |
+
+  iOS has dropped its three-way picker for a single Share GPX button plus a help sheet that says
+  "say Turn-by-turn". Charge stops arrive as waypoints the device counts down ("Waypoint 1 / 1"
+  on screen), so the plan does travel with the ride.
 
 - **The waypoints export now carries the ride, not just the stops** (ADR-040, server-side, so
   Android gets it free; deployed 2026-10-21). First Beeline hardware test imported a one-stop ride

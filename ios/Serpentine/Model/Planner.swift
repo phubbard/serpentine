@@ -153,14 +153,8 @@ final class Planner {
     ///
     /// A ride with no charge stops has no waypoints file; the server says so with a 422 and that
     /// kind is simply absent from the picker.
-    func gpxFiles(for plan: PlanResult) async -> [GPXKind: URL] {
-        var out: [GPXKind: URL] = [:]
-        for kind in GPXKind.allCases {
-            if let url = try? await api.downloadGPX(for: plan, kind: kind) {
-                out[kind] = url
-            }
-        }
-        return out
+    func gpxFile(for plan: PlanResult) async -> URL? {
+        try? await api.downloadGPX(for: plan, kind: .all)
     }
 
     /// Place search through MapKit (Apple's service, like the map itself), biased to near `near`.

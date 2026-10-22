@@ -141,20 +141,27 @@ Map support for the test page (ADR-016): OSM raster tiles through a caching prox
 404 when the server runs without `-tile-cache`), and vendored Leaflet under `/static/`. Not for the
 iOS app, which displays with MapKit.
 
-## GET /plan/{id}.gpx[?for=waypoints|route|track]
+## GET /plan/{id}.gpx[?for=all|waypoints|route|track]
 
-`for` picks which Beeline Moto II import mode the file is meant for (ADR-039). Omitted means
-`track`, which is what a bare `.gpx` has always been, so existing clients are unaffected.
+`for` picks what goes in the file. Omitted means `track`, which is what a bare `.gpx` has always
+been, so existing clients are unaffected. **A client with a rider in front of it should ask for
+`all`** (ADR-041).
 
-| `for` | Contents | Beeline mode | Behaviour |
-|---|---|---|---|
-| `waypoints` | `<wpt>` (charge stops only) | Waypoints only | Beeline routes between our stops with full turn-by-turn. **The one to prefer.** |
-| `route` | `<wpt>` (stops + backups) + `<rte>` | Turn-by-turn | Map-matched to Beeline's own network; our road choices may be altered. |
-| `track` | `<trk>`, decimated to ~30 m | Breadcrumb | Exact path, no re-routing — and no turn prompts at all. |
+| `for` | Contents | What a device does with it |
+|---|---|---|
+| `all` | `<wpt>` (start, stops, finish) + `<trk>` | **The one to send.** Offers every import mode, and keeps the ride. |
+| `waypoints` | `<wpt>` (start, stops, finish) | Stops without a path. The device invents the roads between them. |
+| `route` | `<wpt>` (stops + backups) + `<rte>` | A sparse corridor, map-matched; road choices altered. Superseded by `all`. |
+| `track` | `<trk>`, decimated to ~30 m | The path alone, no charge stops. The historical default. |
 
-One intent per file, never combined: Beeline picks its mode from what a file holds, in the order
-track → route → waypoints, so a `<trk>` wins outright over anything beside it. 422 if `waypoints` is
-asked for on a ride with no charge stops, since that file would import as an empty ride.
+A Beeline asks on import — Turn-by-turn, Breadcrumb or Waypoints only — and builds that menu from
+what the file holds, so one file can serve every intent. What the contents decide is how much of the
+route survives, and that is brutal: measured 2026-10-21, 3 waypoints turned a 44 mi curvy loop into
+28.0 mi at 84 % highways, ~12 route points gave 41.7 of 43 mi at 31 % highways, and 2,255 trackpoints
+reproduced a 96.8 mi loop as 96.7 with no highway warning at all. Send `all`.
+
+422 if `waypoints` is asked for on a ride with no charge stops, since that file would import as an
+empty ride. `all` is never refused — it is the ride.
 
 
 

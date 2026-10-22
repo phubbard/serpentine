@@ -422,3 +422,70 @@ func TestShapingWaypointsStayOutOfTheWaypointsFile(t *testing.T) {
 		}
 	}
 }
+
+// ADR-041: the premise ADR-039 rested on — that a <trk> makes a device ignore everything beside it
+// — is false. A Beeline builds its import menu from the contents, offering Turn-by-turn, Breadcrumb
+// and Waypoints only, and a combined file reproduced a 96.8 mi loop to within 0.1 mi where the
+// sparse exports lost 84 % and 31 % of it to highways. So one file carries the lot.
+func TestCombinedExportCarriesTheRideAndTheStops(t *testing.T) {
+	res := gpxFixture(t)
+	raw, doc := renderGPX(t, res, gpxAll)
+
+	if len(doc.Trk) != 1 || len(doc.Trk[0].Trkseg) != 1 {
+		t.Fatalf("want one track: %+v", doc.Trk)
+	}
+	if n := len(doc.Trk[0].Trkseg[0].Trkpt); n < 50 {
+		t.Errorf("the track is what keeps the ride: only %d trkpt", n)
+	}
+	if len(doc.Wpt) < 3 {
+		t.Fatalf("want start, stops and finish alongside the track: %d wpt", len(doc.Wpt))
+	}
+	// No <rte>: it would add a third interpretation worse than the track in every measurement.
+	if len(doc.Rte) != 0 {
+		t.Errorf("a route corridor has no job in the combined file: %+v", doc.Rte)
+	}
+	// Schema order is not decoration — a file out of order is invalid GPX 1.1 and may be refused.
+	if strings.Index(raw, "<wpt ") > strings.Index(raw, "<trk>") {
+		t.Error("wpt* must precede trk* (GPX 1.1 schema order)")
+	}
+	// The stops must be the same ones the waypoints-only export carries, so that importing this
+	// file as "waypoints only" gives exactly that ride.
+	var combined, alone []string
+	for _, w := range doc.Wpt {
+		combined = append(combined, w.Name)
+	}
+	_, wonly := renderGPX(t, res, gpxWaypoints)
+	for _, w := range wonly.Wpt {
+		alone = append(alone, w.Name)
+	}
+	if strings.Join(combined, "|") != strings.Join(alone, "|") {
+		t.Errorf("stops differ between the two exports:\n combined %v\n waypoints %v", combined, alone)
+	}
+}
+
+// A ride the battery covers has no charge stops. The waypoints-only export is refused for that, but
+// the combined one is still the whole ride and must not be.
+func TestCombinedExportWorksWithoutChargeStops(t *testing.T) {
+	res := gpxFixture(t)
+	res.Chargers = nil
+	res.Handoff.WaypointRoads = []string{"Old Julian Highway", "Wildcat Canyon Road"}
+
+	_, doc := renderGPX(t, res, gpxAll)
+	if len(doc.Trk) != 1 {
+		t.Fatalf("the ride is still a ride: %+v", doc.Trk)
+	}
+	if len(doc.Wpt) != 2 {
+		t.Errorf("want just the two ends, got %d: %+v", len(doc.Wpt), doc.Wpt)
+	}
+}
+
+func TestCombinedKindParses(t *testing.T) {
+	for _, in := range []string{"all", "ALL", " all "} {
+		if k, ok := gpxKindOf(in); !ok || k != gpxAll {
+			t.Errorf("gpxKindOf(%q) = %q, %v", in, k, ok)
+		}
+	}
+	if name := gpxName("abc", gpxAll); !strings.Contains(name, "all") {
+		t.Errorf("the file name should say which mode it is for: %q", name)
+	}
+}

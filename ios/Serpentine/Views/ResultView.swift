@@ -13,7 +13,7 @@ struct ResultView: View {
     @Environment(LocationProvider.self) private var location
     @Environment(\.openURL) private var openURL
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @State private var gpxFiles: [GPXKind: URL] = [:]
+    @State private var gpxFile: URL?
     @State private var showingExportHelp = false
     /// The saved entry for the ride on screen, when it has been kept.
     @State private var saved: SavedRide?
@@ -55,7 +55,7 @@ struct ResultView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .listRowSeparator(.hidden)
-                if !gpxFiles.isEmpty { gpxMenu }
+                if let gpxFile { shareRow(gpxFile) }
                 #if targetEnvironment(macCatalyst)
                 // On the Mac the toolbar is easy to miss, and "give me a different ride" is the most
                 // used control there is. Keep it in the page as well (⌘R does the same).
@@ -144,11 +144,8 @@ struct ResultView: View {
         } message: {
             Text(pauseProblem ?? "")
         }
-        .task(id: plan.id) { gpxFiles = await planner.gpxFiles(for: plan) }
-        .sheet(isPresented: $showingExportHelp) {
-            // The same order the menu uses, and only what the menu is actually offering.
-            GPXHelpView(kinds: GPXKind.allCases.filter { gpxFiles[$0] != nil }, stops: chargeStopCount)
-        }
+        .task(id: plan.id) { gpxFile = await planner.gpxFile(for: plan) }
+        .sheet(isPresented: $showingExportHelp) { GPXHelpView(stops: chargeStopCount) }
         // Keyed on the plan so opening a saved ride, or planning another, re-reads the entry.
         .onChange(of: plan.id, initial: true) { _, _ in saved = rides.ride(forPlan: plan.id) }
         .confirmationDialog("Remove this ride from your saved list?",
@@ -214,22 +211,20 @@ struct ResultView: View {
         .disabled(planner.isPlanning)
     }
 
-    /// Three files, one import mode each. A menu rather than a single button because the right
-    /// choice depends on the device at the other end, and because a Beeline treats a file holding a
-    /// track as a track whatever else is in it (ADR-039).
-    private var gpxMenu: some View {
-        Menu {
-            ForEach(GPXKind.allCases) { kind in
-                if let file = gpxFiles[kind] {
-                    ShareLink(item: file, preview: SharePreview("Serpentine ride — \(kind.title)")) {
-                        Label(kind.title, systemImage: kind.icon)
-                    }
-                }
+    /// One file, and a word about what the device will ask (ADR-041).
+    ///
+    /// This used to be a three-way menu, on the belief that a device picks its import mode from a
+    /// file's contents. It asks instead — so the file carries everything and the choice belongs
+    /// where the rider is already being asked for it.
+    private func shareRow(_ file: URL) -> some View {
+        VStack(spacing: 2) {
+            ShareLink(item: file, preview: SharePreview("Serpentine ride (GPX)")) {
+                Label("Share GPX", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity)
             }
-            Divider()
-            Button("Which one do I want?", systemImage: "questionmark.circle") { showingExportHelp = true }
-        } label: {
-            Label("Share GPX", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity)
+            Button("Sending it to a Beeline or GPS?") { showingExportHelp = true }
+                .font(.footnote)
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
         }
     }
 

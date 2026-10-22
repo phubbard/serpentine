@@ -1135,3 +1135,51 @@ against ours.
 
 The lesson worth keeping: ADR-039 was written from research and reasoned carefully to a conclusion
 that one import disproved in ten seconds. Device contracts are cheap to test and expensive to assume.
+
+## ADR-041 · 2026-10-21 · One file. The device has a better picker than ours
+
+Six imports into a real Beeline Moto II, hours after ADR-040, and the premise under ADR-039 is gone.
+
+**The device asks.** ADR-039 held that a Beeline picks its import mode from a file's contents, in the
+order track → route → waypoints, and that "a file holding a `<trk>` is treated as a track whatever
+else is in it", so one file could not serve two intents and three files were "the only honest lever".
+It does not work that way. On import it shows a dialog — **Turn-by-turn** ("Popular, best for road"),
+**Breadcrumb** ("Best for off-road"), **Waypoints only** ("Best for manual editing") — and it builds
+that menu from what the file holds. A waypoints-only file offered two options; a file with a track
+*and* waypoints offered all three. Contents decide what is *available*; the rider decides what is
+*done*. Those are two axes and ADR-039 collapsed them into one.
+
+**And fidelity is all about point count.** Measured, same rides, Turn-by-turn each time:
+
+	charge stops   3 points       44 mi → 28.0 mi, 84 % highways   a different ride that touches a charger
+	route outline  ~12 points     43 mi → 41.7 mi, 31 % highways   recognisable, quietly altered
+	track + stops  2,255 points   96.8 mi → 96.7 mi, no warning    the ride
+
+Three pins over a 44-mile loop is not a route, it is a hint, and the device fills the gap with
+freeway. Our own copy was telling riders to "start with Charge stops" — the mode that deletes the
+ride — because ADR-039 reasoned from "waypoints become via-points, so you get turn-by-turn between
+them" without asking what happens *between* them.
+
+**So: one file, `?for=all`** — the track and the charge stops together — and the app shares that and
+nothing else. The three-way picker is gone; the device asks better than we did, and the help sheet
+now just says which answer to give. `waypoints`, `route` and `track` stay in the API because they are
+published and another client may want them, and a bare `.gpx` is still the track, unchanged since the
+first build.
+
+**Waypoints do survive a Turn-by-turn import** — the device showed "Waypoint 1 / 1" while navigating
+an imported ride. That was recorded wrongly first: the pre-ride sheet showed tolls and ferries and no
+stops, and was read as proof they had been dropped, when the sheet is paginated and only one page had
+been looked at. The help text shipped and corrected within the hour. A reminder that "I looked and it
+wasn't there" is a claim about where you looked.
+
+**Two smaller findings.** A device may report "turn directions unavailable" for a short stretch —
+0.2 mi of 96.7 in our case — where our track passes within 19 m of a charger that sits in a car park
+it cannot route through. Harmless, and not worth moving the route for. And the device's riding
+estimate ran 20 % *longer* than ours on the same roads (3h22 against 2h49), which is the opposite
+direction from the ETA warning we print; that warning is about charging dwell and is still true
+against our total, but our riding estimate is the optimistic one and nobody has ridden either yet.
+
+ADR-039 is not withdrawn: its file shapes, its naming budget, its size limits and its "charge stops
+are not shaping points" all survived contact. What failed was every sentence about what the device
+would do with them — reasoned carefully, confidently, and from research. Three of its device claims
+have now been falsified in a single evening of testing that cost about an hour.

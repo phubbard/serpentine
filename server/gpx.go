@@ -31,6 +31,10 @@ const (
 	gpxWaypoints gpxKind = "waypoints"
 	gpxRoute     gpxKind = "route"
 	gpxTrack     gpxKind = "track"
+	// gpxAll is the one to share with a rider (ADR-041). Hardware showed that a device builds its
+	// import menu from what the file holds rather than collapsing it to one intent, so a file with
+	// both a track and the stops offers every mode and keeps the ride intact.
+	gpxAll gpxKind = "all"
 
 	// trackSpacingM decimates the breadcrumb. A trackpoint every few metres is wasted bytes on a
 	// 53 mm screen; 30 m sits in the middle of the 25–50 m the device is happy with.
@@ -54,6 +58,8 @@ func gpxKindOf(s string) (gpxKind, bool) {
 		return gpxWaypoints, true
 	case gpxRoute:
 		return gpxRoute, true
+	case gpxAll:
+		return gpxAll, true
 	case gpxTrack, "":
 		// Unchanged default: a bare .gpx has always been a track, and other apps (Kurviger,
 		// Garmin, Calimoto) take one happily. Changing it would silently alter every existing
@@ -84,6 +90,11 @@ func writePlanGPX(w io.Writer, res *planResult, kind gpxKind) error {
 		writePoints(&b, chargerPoints(append(chargeStops(res), backups(res)...), res))
 		writeRte(&b, res)
 	case gpxTrack:
+		writeTrk(&b, res)
+	case gpxAll:
+		// Schema order again: wpt* before trk*. The stops are the same ones the waypoints file
+		// carries, so a rider who imports this as "waypoints only" gets exactly that file's ride.
+		writePoints(&b, rideStops(res))
 		writeTrk(&b, res)
 	}
 	b.WriteString("</gpx>\n")

@@ -174,8 +174,8 @@ private func fixture(_ name: String) throws -> PlanResult {
     #expect(Format.nearby(meters: 5_000, locale: Locale(identifier: "de_DE")) == "5,0 km")
 }
 
-/// Records what was asked for, and answers with a stub body. The three GPX exports differ only in
-/// the query, so the URL is the whole behaviour under test.
+/// Records what was asked for, and answers with a stub body. The export differs only in the query,
+/// so the URL is the whole behaviour under test.
 final class RecordingProtocol: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) static var urls: [URL] = []
 
@@ -192,44 +192,34 @@ final class RecordingProtocol: URLProtocol, @unchecked Sendable {
     override func stopLoading() {}
 }
 
-// A Beeline picks its import mode from what the file holds, so each kind must be a separate ask of
-// the server and a separate file on disk (ADR-039).
-@Test func eachGPXKindIsItsOwnRequestAndItsOwnFile() async throws {
+// One file, not three (ADR-041). A device builds its own import menu from what the file holds, so
+// the app asks for everything — the track that keeps the ride, and the stops.
+@MainActor
+@Test func sharingAskedForOneFileHoldingEverything() async throws {
     let plan = try fixture("plan_loop_ev")
     RecordingProtocol.urls = []
     let api = SerpentineAPI(base: URL(string: "https://example.invalid/v1/")!,
                             protocolClasses: [RecordingProtocol.self])
 
-    var files: [URL] = []
-    for kind in GPXKind.allCases {
-        files.append(try await api.downloadGPX(for: plan, kind: kind))
-    }
+    let file = try #require(await Planner(api: api).gpxFile(for: plan))
 
-    let asked = RecordingProtocol.urls.map(\.absoluteString)
-    #expect(asked.count == 3)
-    // The bare .gpx has been the track since the first build; adding ?for=track would change what
-    // every existing share button fetches.
-    #expect(asked.contains { $0.hasSuffix("/plan/\(plan.id).gpx") })
-    #expect(asked.contains { $0.hasSuffix("?for=waypoints") })
-    #expect(asked.contains { $0.hasSuffix("?for=route") })
-
-    #expect(Set(files).count == 3, "all three must be able to sit in the share destination at once")
-    for file in files {
-        #expect(file.lastPathComponent.hasSuffix(".gpx"), "the name is what a rider picks in the Beeline app")
-        #expect(FileManager.default.fileExists(atPath: file.path))
-        try? FileManager.default.removeItem(at: file)
-    }
+    #expect(RecordingProtocol.urls.count == 1, "three downloads per ride was the old design")
+    let asked = try #require(RecordingProtocol.urls.first).absoluteString
+    #expect(asked.hasSuffix("?for=all"), "got \(asked)")
+    #expect(file.lastPathComponent.hasSuffix(".gpx"), "the name is what a rider picks when importing")
+    #expect(FileManager.default.fileExists(atPath: file.path))
+    try? FileManager.default.removeItem(at: file)
 }
 
-/// Answers like the server does: a waypoints export of a ride with no charge stops is a 400, since
-/// the file would be empty. Everything else is a stub body.
+/// Answers like the server does: a waypoints-only export of a ride with no charge stops is refused,
+/// because the file would be empty. The combined export is the whole ride and never is.
 final class NoStopsGPXProtocol: URLProtocol, @unchecked Sendable {
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         let url = request.url!
         let refused = url.query?.contains("for=waypoints") == true
-        let resp = HTTPURLResponse(url: url, statusCode: refused ? 400 : 200, httpVersion: nil,
+        let resp = HTTPURLResponse(url: url, statusCode: refused ? 422 : 200, httpVersion: nil,
                                    headerFields: nil)!
         client?.urlProtocol(self, didReceive: resp, cacheStoragePolicy: .notAllowed)
         let body = refused
@@ -241,23 +231,21 @@ final class NoStopsGPXProtocol: URLProtocol, @unchecked Sendable {
     override func stopLoading() {}
 }
 
-// A ride the battery covers outright has no charge stops, so there is no waypoints file to share.
-// The menu is built from what downloaded, and the help sheet is built from the same list — they
-// disagreed in build 99, which read as a bug and was reported as one from TestFlight.
+// A ride the battery covers outright has no charge stops. That refuses a waypoints-only export, and
+// must not stop a rider sharing the ride: build 99 showed a menu and an explainer disagreeing about
+// exactly this, and came back as TestFlight feedback within a day.
 @MainActor
-@Test func aRideWithNoChargeStopsOffersNoChargeStopsFile() async throws {
+@Test func aRideWithNoChargeStopsIsStillShareable() async throws {
     let plan = try fixture("plan_loop_ev")
     let api = SerpentineAPI(base: URL(string: "https://example.invalid/v1/")!,
                             protocolClasses: [NoStopsGPXProtocol.self])
-    let files = await Planner(api: api).gpxFiles(for: plan)
 
-    #expect(files[.waypoints] == nil, "the server refuses it, so nothing should offer it")
-    #expect(files[.track] != nil, "the ride itself is still shareable")
-    #expect(files[.route] != nil)
+    let file = await Planner(api: api).gpxFile(for: plan)
+    #expect(file != nil, "the ride is still a ride, with or without a charge stop")
+    if let file { try? FileManager.default.removeItem(at: file) }
 
-    // What the help sheet is handed: the same list, in menu order, and never a fourth thing.
-    let offered = GPXKind.allCases.filter { files[$0] != nil }
-    #expect(offered == [.waypoints, .route, .track].filter { $0 != .waypoints })
-
-    for file in files.values { try? FileManager.default.removeItem(at: file) }
+    // And the refusal is still honoured for the export it applies to.
+    await #expect(throws: (any Error).self) {
+        _ = try await api.downloadGPX(for: plan, kind: .waypoints)
+    }
 }

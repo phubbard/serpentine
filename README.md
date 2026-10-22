@@ -17,7 +17,7 @@ Apple Maps handoff; try it at
   table amended Oct 2026)
 - `server/` — serpentine-api (Go, stdlib only): loops, time budgets, per-bike charging against a local
   daily copy of every US public charger, with charger-reliability checks and tidied station names,
-  Apple Maps handoff, GPX in three import shapes (`?for=waypoints|route|track`), the
+  Apple Maps handoff, GPX (`?for=all` carries route + charge stops; ADR-041), the
   vehicle catalog (`vehicles.json`, served at `/v1/vehicles`), browser test page
   with a map (vendored Leaflet, cached OSM tiles)
 - `infra/` — GraphHopper 11 motorcycle profile (whole-US graph), docker-compose, Caddy site block,
@@ -29,11 +29,11 @@ Apple Maps handoff; try it at
   of the pack needed to reach each, not by distance), pause a ride mid-route and carry on with the
   rest after a charging detour, saved rides (star rating, notes, when you last
   rode it — kept on the device), place search showing each match's address and distance from the
-  start, GPX export in three shapes (charge stops, route outline or exact path, so a Beeline or a
-  GPS gets the file it can actually use), an About panel with the build stamp (date and commit) for
-  bug reports
+  start, GPX export carrying the whole route and the charge stops in one file (verified against a
+  Beeline Moto II: a 97-mile loop imported within 0.1 mi of the plan), an About panel with the build
+  stamp (date and commit) for bug reports
 - `sync.md`, `android-port-brief.md` — cross-platform parity matrix with the Android port, and the
   scoping doc the Android session reads first
-- `docs/` — roadmap, decisions (ADR-001..040, including what the charging research found and what it
+- `docs/` — roadmap, decisions (ADR-001..041, including what the charging research found and what it
   rules out), API contract
 - `CLAUDE.md` — orientation for agents and future me: architecture, conventions, gotchas

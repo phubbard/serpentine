@@ -1,114 +1,88 @@
 import SwiftUI
 
-/// What the three GPX exports do, and the two things about a Beeline that will otherwise surprise
-/// a rider mid-ride (ADR-039).
+/// What to answer when a GPS asks how to import the file, and the things about riding a planned
+/// route on a separate device that will otherwise catch a rider out mid-ride (ADR-039, ADR-041).
 struct GPXHelpView: View {
-    /// Exactly what the share menu is offering, in menu order. Passed in rather than assumed,
-    /// because a ride the battery covers outright has no charge stops and so no waypoints file —
-    /// an explainer listing three choices beside a menu of two reads as a bug, and was reported as
-    /// one from TestFlight build 99.
-    let kinds: [GPXKind]
-    /// How many charge stops this ride has, for the untested-territory warning.
+    /// How many charge stops this ride has. Decides whether the charging warnings apply at all.
     let stops: Int
 
     @Environment(\.dismiss) private var dismiss
-
-    /// There is no published waypoint cap on the device. Past about this many we say so rather
-    /// than imply we know it works.
-    private let untestedAbove = 25
-
-    /// Small counts read better as words in a heading, and the count is whatever the menu offers.
-    private var sectionTitle: String {
-        guard kinds.count != 1 else { return "One file" }
-        let words = ["no", "one", "two", "three"]
-        let n: String = kinds.count < words.count ? words[kinds.count] : String(kinds.count)
-        return n + " files, " + n + " behaviours"
-    }
-
-    /// Charge stops is the pick when the ride has any; otherwise it isn't on screen to recommend.
-    private var recommended: GPXKind { kinds.contains(.waypoints) ? .waypoints : .track }
-
-    private var pickingAdvice: String {
-        "A device picks what to do from what the file contains, not from what you meant, so each "
-            + "one holds a single kind of thing. If you have a Beeline, start with "
-            + recommended.title + "."
-    }
-
-    private var noWaypointsReason: String {
-        "There's no " + GPXKind.waypoints.title + " file for this ride: the battery covers it "
-            + "without stopping, so there would be nothing in it."
-    }
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(kinds) { kind in
+                    Label {
                         VStack(alignment: .leading, spacing: 3) {
-                            Label(kind.title, systemImage: kind.icon).font(.headline)
-                            Text(kind.effect).font(.subheadline).foregroundStyle(.secondary)
+                            Text("Turn-by-turn").font(.headline)
+                            Text("Follows the roads in the ride and gives you directions. This is "
+                                 + "the one you want, and it's already selected.")
+                                .font(.subheadline).foregroundStyle(.secondary)
                         }
-                        .padding(.vertical, 2)
+                    } icon: {
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                     }
-                    if !kinds.contains(.waypoints) {
-                        Label {
-                            Text(noWaypointsReason)
-                        } icon: {
-                            Image(systemName: GPXKind.waypoints.icon).foregroundStyle(.secondary)
-                        }
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    .padding(.vertical, 2)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Breadcrumb").font(.subheadline.bold())
+                        Text("Draws the line to follow, with no directions. For trails and dirt.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Waypoints only").font(.subheadline.bold())
+                        Text("Throws the roads away and keeps the stops, for building your own ride "
+                             + "on the device.")
+                            .font(.footnote).foregroundStyle(.secondary)
                     }
                 } header: {
-                    Text(sectionTitle)
+                    Text("A Beeline will ask. Say Turn-by-turn")
                 } footer: {
-                    Text(pickingAdvice)
+                    Text("One file covers all three — the device works out what it can offer from "
+                         + "what's inside, so there's nothing to choose before you send it.")
                 }
 
                 if stops > 0 {
                     Section {
                         Label {
-                            Text("A Beeline's arrival time leaves charging out, so it will always "
-                                 + "read earlier than ours. The time on the ride screen includes "
-                                 + "every charge stop; each stop also carries its own wait.")
+                            Text("Your charge stops come across as waypoints, so the device counts "
+                                 + "them down and routes you to each one. How much of the detail "
+                                 + "it shows varies, so keep the plan on your phone as well.")
+                        } icon: {
+                            Image(systemName: "bolt.fill").foregroundStyle(.green)
+                        }
+                        Label {
+                            Text("The device's arrival time counts the riding and not the "
+                                 + "charging, so it reads earlier than ours. The time on the ride "
+                                 + "screen includes every charge stop.")
                         } icon: {
                             Image(systemName: "clock.badge.exclamationmark").foregroundStyle(.orange)
                         }
                         Label {
-                            Text("If you leave the route, the device re-plans on its own and knows "
-                                 + "nothing about charging — the charge plan is gone. Pause the "
-                                 + "ride here, then carry on, and you'll get a fresh one from "
-                                 + "wherever you are.")
+                            Text("If you leave the route the device re-plans on its own and knows "
+                                 + "nothing about charging. Pause the ride here, then carry on, "
+                                 + "and you'll get a fresh plan from wherever you are.")
                         } icon: {
                             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                         }
                     } header: {
-                        Text("Two things that will catch you out")
-                    }
-                }
-
-                if stops > untestedAbove {
-                    Section {
-                        Label("This ride has \(stops) charge stops. Devices aren't documented to "
-                              + "take that many, and we haven't tested it. If the import looks "
-                              + "wrong, try Route outline instead.",
-                              systemImage: "questionmark.circle")
-                            .foregroundStyle(.orange)
+                        Text("Charging on a separate device")
                     }
                 }
 
                 Section {
-                    Text("Charge stops carry their name, wait and arrival charge, so the plan is "
-                         + "readable on the device itself. Addresses come along too.")
+                    Text("A GPS may say turn directions are unavailable for a short stretch. That's "
+                         + "usually a car park or a private road it can't route through — the line "
+                         + "is still drawn and the ride is unaffected.")
                 } header: {
-                    Text("What's in the file")
+                    Text("If it warns about missing directions")
                 } footer: {
-                    Text("Older Beeline apps show no import mode picker at all — you need iOS "
-                         + "3.4.2295 or Android 4.2.5277 and later. Other apps that read GPX, like "
-                         + "Kurviger or a Garmin, generally want Exact path.")
+                    Text("Older Beeline apps don't offer the import choice at all — you need iOS "
+                         + "3.4.2295 or Android 4.2.5277 and later. Kurviger, Calimoto and Garmin "
+                         + "read the same file and need no special handling.")
                 }
             }
-            .navigationTitle("Sharing a ride")
+            .navigationTitle("Sending a ride")
             #if !targetEnvironment(macCatalyst)
             .navigationBarTitleDisplayMode(.inline)
             #endif

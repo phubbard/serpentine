@@ -1,43 +1,31 @@
 import Foundation
 
-/// The three shapes a ride can be exported in (ADR-039), which exist because the Beeline Moto II
-/// picks its import mode from what a file contains rather than from anything the rider chooses.
+/// What goes into a shared GPX file. These are the server's `?for=` vocabulary, not a choice we put
+/// in front of a rider any more (ADR-041).
 ///
-/// It reads a file in the order track → route → waypoints, so one file cannot serve two intents: a
-/// `<trk>` wins over anything beside it. Hence three files and a picker.
-enum GPXKind: String, CaseIterable, Identifiable, Sendable {
-    /// Charge stops only. The device routes between them and gives full turn-by-turn.
+/// ADR-039 shipped a three-way picker because the Beeline Moto II was believed to pick its import
+/// mode from a file's contents, in the order track → route → waypoints, so one file could not serve
+/// two intents. Hardware disproved that on 2026-10-21: the device *asks*, offering Turn-by-turn,
+/// Breadcrumb and Waypoints only, and it builds that menu from what the file holds. A file with a
+/// track and the stops offers all three.
+///
+/// What the file does decide is how much of our ride survives, and that turned out to be brutal.
+/// Measured on one 44 mi curvy loop, then a 96.8 mi one:
+///
+///	waypoints  3 points      → 28.0 mi, 84 % highways. A different ride that touches the charger.
+///	route      ~12 points    → 41.7 mi, 31 % highways. Recognisable, quietly altered.
+///	all        ~2,000 points → 96.7 mi against 96.8, no highway warning at all. The ride.
+///
+/// So the app shares `all` and nothing else. The others stay here because they are a published part
+/// of the API that other clients may still ask for.
+enum GPXKind: String, Sendable {
+    /// Charge stops and the two ends of the ride, no path. Kept for API compatibility.
     case waypoints
-    /// A sparse corridor plus the stops. The device map-matches it to its own network, so our road
-    /// choices may be quietly altered.
+    /// A sparse corridor plus the stops. Superseded by `all` in every measurement.
     case route
-    /// The exact path, no re-routing — and no turn prompts at all.
+    /// Every point of the route, and nothing else. The historical default for a bare `.gpx`.
     case track
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .waypoints: "Charge stops"
-        case .route: "Route outline"
-        case .track: "Exact path"
-        }
-    }
-
-    /// What the device will actually do with it — the thing that decides which one a rider wants.
-    var effect: String {
-        switch self {
-        case .waypoints: "Turn-by-turn between your charge stops. Best for a Beeline."
-        case .route: "Turn-by-turn, but the device may pick its own roads between points."
-        case .track: "Follows the exact route. No turn prompts at all."
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .waypoints: "bolt.fill"
-        case .route: "arrow.triangle.turn.up.right.diamond"
-        case .track: "point.topleft.down.to.point.bottomright.curvepath"
-        }
-    }
+    /// The track *and* the charge stops: one file, every import mode, the ride intact — and the stops
+    /// arrive as waypoints the device counts and navigates to.
+    case all
 }
