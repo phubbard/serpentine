@@ -7,11 +7,14 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [0.1.0]
 
-- Sending a ride to a Beeline or a GPS works now. The Charge stops file held only the stops, so a
-  ride with one charge stop was a single point and a Beeline read it as "0.0 miles" — it now carries
-  where the ride starts and ends, and an out-and-back's turnaround, so the device has an actual ride
-  to follow. Also: when the battery covers a ride outright there are no charge stops, so that file
-  isn't offered — and "Which one do I want?" no longer describes a choice that isn't on screen.
+- Sending a ride to a Beeline or a GPS is one button again. Share GPX now hands over a single file
+  holding the whole route and your charge stops, and the device asks what to do with it — say
+  **Turn-by-turn**. Tap "Sending it to a Beeline or GPS?" under the button if you want the rest.
+
+  The three-way picker is gone, and good riddance: tested against a real Beeline, sharing only the
+  charge stops turned a 44-mile curvy loop into 28 miles at 84% freeway, because three points isn't
+  a route and the device fills in the rest. The full file came back within a tenth of a mile of the
+  ride we planned. Your charge stops still arrive as waypoints it counts down.
 
 - Share GPX now asks what the file should mean, because a Beeline or a GPS decides what to do from
   what's in the file. **Charge stops** hands the device your stops and lets it navigate between them —
@@ -48,14 +51,8 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
   the route exactly as planned, opens the same way every time, and works with no signal. Saved rides
   stay on your device and are never uploaded.
 
-- Search results show each match's address and straight-line distance, so two shops with the same
-  name are no longer a coin toss.
-
 - An About panel: what the app is, where your data goes, and credit to OpenStreetMap, the Department
   of Energy and Open Charge Map. It's at the bottom of the plan screen, or the Serpentine menu on a
   Mac. It shows when this build was made and which commit it came from — please paste that line into
   any bug report.
-
-- "Just get me there": in Go somewhere, take the fastest way including freeways, with charge stops
-  still planned. For the helmet shop and the dealer, not the Sunday ride.
 
