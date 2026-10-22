@@ -188,6 +188,10 @@ invents its own. Notes that bit the iOS side and will bite Android:
 
   None of this is confirmed against hardware yet; the acceptance checklist lives in ADR-039.
 
+- **A Beeline shows waypoints as "Waypoint 1 / 1", not by name** (ADR-042). Tested with a waypoint
+  named plainly `Park`. Keep sending the rich names — other GPX apps do show them — but don't build
+  any UI that promises the rider will read the charge plan off the device.
+
 - **Use `?for=all`, and delete any mode picker you were about to build** (ADR-041, server-side,
   deployed 2026-10-21). Tested against a real Beeline Moto II, and the ADR-039 premise the picker
   existed for is simply false: the device *asks* on import — Turn-by-turn / Breadcrumb / Waypoints

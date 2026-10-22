@@ -45,9 +45,10 @@ struct GPXHelpView: View {
                 if stops > 0 {
                     Section {
                         Label {
-                            Text("Your charge stops come across as waypoints, so the device counts "
-                                 + "them down and routes you to each one. How much of the detail "
-                                 + "it shows varies, so keep the plan on your phone as well.")
+                            Text("Your charge stops come across as waypoints, so the device routes "
+                                 + "you to each one and counts them down — but a Beeline numbers "
+                                 + "them rather than naming them, so how long you're stopping and "
+                                 + "what you arrive with stay here on your phone.")
                         } icon: {
                             Image(systemName: "bolt.fill").foregroundStyle(.green)
                         }

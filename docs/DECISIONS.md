@@ -1183,3 +1183,35 @@ ADR-039 is not withdrawn: its file shapes, its naming budget, its size limits an
 are not shaping points" all survived contact. What failed was every sentence about what the device
 would do with them — reasoned carefully, confidently, and from research. Three of its device claims
 have now been falsified in a single evening of testing that cost about an hour.
+
+## ADR-042 · 2026-10-21 · Keep the waypoint names a Beeline won't show
+
+A waypoint named exactly `Park` — no numbers, no punctuation, nothing to truncate — imported into a
+Beeline and navigated as **"Waypoint 1 / 1"**. The name is not surfaced.
+
+That falsifies the last unchecked claim in ADR-039: *"the waypoint name is the one channel we have
+into the device's own screen"*. It is the reason `wptName` packs ports, power, dwell and arrival
+charge into a 45-character budget and truncates the site name rather than the numbers, on the
+argument that "Ramona Shopping Sun…" is still recognisable while "25 mi" cut in half is not. That
+reasoning is sound and it is answering a question the Beeline never asks.
+
+Caveat worth keeping: every screenshot so far is the **phone app**, not the 53 mm display on the
+bars, which no test has seen. If the app doesn't carry the name the device almost certainly doesn't,
+but that is inference.
+
+**The names stay.** They cost about forty bytes each in a 155 KB file, and Kurviger, Calimoto, Garmin
+and anything else reading GPX do show them — the exporter has never been Beeline-only, and ADR-039's
+`<desc>`-carries-the-address decision rests on the same reasoning. Deleting work because one device
+ignores it would be optimising for the device we happen to own.
+
+What changes is what we say. The help sheet claimed "how much of the detail it shows varies", which
+was a hedge written when we didn't know; it now says plainly that a Beeline numbers the stops rather
+than naming them, so the dwell and the arrival charge stay on the phone. A rider who expects to read
+the plan off the bars and finds "Waypoint 1 / 1" has been told something false by us, and that is the
+failure worth preventing.
+
+Running tally for the evening: of ADR-039's device claims, the mode-precedence rule, the
+"waypoints-only is best for a Beeline" recommendation, the "charge stops are the only waypoints"
+shape and now the name-as-a-channel argument have all been wrong. Its file shapes, size limits and
+schema ordering have all been right. The pattern is not subtle — what we could test locally we got
+right, and what we reasoned about a device we had never touched we got wrong, every time.
