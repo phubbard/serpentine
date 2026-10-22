@@ -70,7 +70,7 @@ question to [Open questions](#open-questions).
 | Named roads with distances | ✅ | 🟡 | `roads[]`, filtered to ≥ 2 km and non-empty names. |
 | Hand off to voice navigation | ✅ | 🟡 | iOS: Apple Maps unified URL, ~10 stops, `avoid=tolls,highways` on curvy rides only (ADR-013, ADR-031). Android: the server's `google_maps_url` (now ≤ 9 waypoints, see Δ below) with the origin removed and `dir_action=navigate` added, which starts guidance from wherever the rider is. Measured 2026-10-05 on Maps 26.39. |
 | Share GPX | ✅ | 🟡 | `GET /v1/plan/{id}.gpx`. Android: `FileProvider` + `ACTION_SEND`. |
-| Share one GPX that carries everything | ✅ | 🟡 | `?for=all` — route + charge stops in one file (ADR-041). Android already has Share GPX; switch it to `for=all`. |
+| Share one GPX that carries everything | ✅ | 🟡 | `?for=all` — route + charge stops in one file (ADR-041). Android: done 2026-10-22, fetched when the ride appears, with the iOS help sheet's wording under the button. |
 | Charge stops with arrival %, dwell, backup | ✅ | 🟡 | Rendering only; all computed server-side. |
 | Charger reliability notes (Open Charge Map) | ✅ | 🟡 | `reliability` on each charger (ADR-022). Absent means "not listed there", which is not the same as "fine" — say so. |
 
@@ -125,7 +125,7 @@ damage on a genuine ride is bounded by what it can do between consecutive stops.
 | Charger data (NREL daily bulk, Open Charge Map) | `serpentine-api` | Keys live only on axiom and must never reach either client. |
 | Rate limits | `serpentine-api` | 24 in flight, 20/min per caller, 429 + `Retry-After`. **Both clients must handle 429 gracefully** and respect `Retry-After`. |
 | Health + ops dashboard | axiom, Pi watch | ADR-037. LAN-only. |
-| Platform counts | `serpentine-api` | ADR-038, server from 2026-10-07. Tallies which kind of device asked, per hour. |
+| Platform counts | `serpentine-api` | ADR-038, server from 2026-10-07. Tallies which kind of device asked, per hour. Android sends `android` on every request from 2026-10-22. |
 
 ---
 
@@ -166,6 +166,9 @@ invents its own. Notes that bit the iOS side and will bite Android:
 ---
 
 ## For the Android side
+
+*Everything below was picked up on 2026-10-22 (`?for=all`, the help sheet, the platform header).
+Items stay here as the record of why; add new ones at the bottom.*
 
 - **GPX now takes `?for=waypoints|route|track`** (ADR-039, server-side, so Android gets it free;
   deployed 2026-10-14). Three files, one import mode each, for the Beeline Moto II. Omitting `for`
