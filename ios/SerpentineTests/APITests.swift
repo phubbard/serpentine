@@ -249,3 +249,25 @@ final class NoStopsGPXProtocol: URLProtocol, @unchecked Sendable {
         _ = try await api.downloadGPX(for: plan, kind: .waypoints)
     }
 }
+
+// A search result has to be tellable apart from the others: which town, which postcode, how far.
+// MapKit names a plain address result after its own street, so the pieces need assembling rather
+// than printing.
+@Test func addressLinesSayWhichTownAndWhichPostcode() {
+    // The case that prompted this: an address result whose name is its own street.
+    #expect(Planner.addressLine(street: "2902 Vista del Mar", locality: "Rancho Palos Verdes",
+                                admin: "CA", postcode: "90275", name: "2902 Vista del Mar")
+            == "Rancho Palos Verdes, CA 90275")
+    // A named place keeps its street, because the name doesn't carry it.
+    #expect(Planner.addressLine(street: "1234 Main St", locality: "Poway", admin: "CA",
+                                postcode: "92064", name: "Speed Addicts")
+            == "1234 Main St, Poway, CA 92064")
+    // State and postcode are one unit — "CA, 90275" is not how anyone writes an address.
+    #expect(Planner.addressLine(street: nil, locality: "Julian", admin: "CA", postcode: "92036",
+                                name: "Julian") == "CA 92036")
+    // Sparse placemarks are normal abroad and in the backcountry; say what we have, or nothing.
+    #expect(Planner.addressLine(street: "", locality: "Ramona", admin: nil, postcode: nil,
+                                name: "Somewhere") == "Ramona")
+    #expect(Planner.addressLine(street: nil, locality: nil, admin: nil, postcode: nil,
+                                name: "Nowhere") == nil)
+}

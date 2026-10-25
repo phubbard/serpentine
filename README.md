@@ -28,7 +28,7 @@ Apple Maps handoff; try it at
 - `ios/` — the SwiftUI app: "find a charger" when the battery is low (chargers ranked by the share
   of the pack needed to reach each, not by distance), pause a ride mid-route and carry on with the
   rest after a charging detour, saved rides (star rating, notes, when you last
-  rode it — kept on the device), place search showing each match's address and distance from the
+  rode it — kept on the device), place search showing each match's town, postcode and distance from the
   start, GPX export carrying the whole route and the charge stops in one file (verified against a
   Beeline Moto II on iPhone and Mac: a 97-mile loop imported within 0.1 mi of the plan), an About panel with the build
   stamp (date and commit) for bug reports

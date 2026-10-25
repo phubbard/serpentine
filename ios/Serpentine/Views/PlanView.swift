@@ -154,7 +154,10 @@ struct PlanView: View {
         .onChange(of: garage.selected) { _, bike in planner.bike = bike }
         .task { planner.bike = garage.selected }
         .sheet(isPresented: $searching) {
-            PlaceSearchView(title: "Start from", near: location.coordinate) { planner.start = $0 }
+            // Falls back to the start already chosen, so a Mac with location switched off still
+            // measures from somewhere rather than showing a column of nothing.
+            PlaceSearchView(title: "Start from",
+                            near: location.coordinate ?? planner.start?.coordinate) { planner.start = $0 }
         }
         .sheet(isPresented: $showingGarage) { GarageView() }
         .sheet(isPresented: $showingAbout) { AboutView() }

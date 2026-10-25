@@ -167,19 +167,33 @@ final class Planner {
         guard let resp = try? await MKLocalSearch(request: req).start() else { return [] }
         return resp.mapItems.prefix(12).map { item in
             let name = item.name ?? "Unnamed place"
-            return StartPoint(name: name, coordinate: item.placemark.coordinate,
-                              address: addressLine(item.placemark, name: name))
+            let p = item.placemark
+            return StartPoint(name: name, coordinate: p.coordinate,
+                              address: addressLine(street: [p.subThoroughfare, p.thoroughfare]
+                                                       .compactMap { $0 }.joined(separator: " "),
+                                                   locality: p.locality,
+                                                   admin: p.administrativeArea,
+                                                   postcode: p.postalCode,
+                                                   name: name))
         }
     }
 
-    /// One line of address from a placemark: "1234 Main St, Poway, CA". MapKit names a plain address
-    /// result after its own street, so the street is dropped when it would only repeat the title.
-    private static func addressLine(_ place: MKPlacemark, name: String) -> String? {
-        let street = [place.subThoroughfare, place.thoroughfare].compactMap { $0 }.joined(separator: " ")
-        var parts = [street, place.locality, place.administrativeArea].compactMap { $0 }.filter { !$0.isEmpty }
+    /// One line of address: "1234 Main St, Poway, CA 92064". Takes the pieces rather than a
+    /// placemark so it can be tested without standing up MapKit.
+    ///
+    /// Two rules earn their keep. MapKit names a plain address result after its own street, so the
+    /// street is dropped when it would only repeat the title — otherwise every address result reads
+    /// "2902 Vista del Mar / 2902 Vista del Mar". And the postcode joins the state with a space
+    /// rather than a comma, because "CA, 90275" is not how anyone writes an address.
+    nonisolated static func addressLine(street: String?, locality: String?, admin: String?,
+                                        postcode: String?, name: String) -> String? {
+        var parts = [street, locality].compactMap { $0 }.filter { !$0.isEmpty }
         if let first = parts.first, first == name || name.hasPrefix(first) {
             parts.removeFirst()
         }
+        // State and postcode are one unit: "CA 90275", or whichever of them we were given.
+        let region = [admin, postcode].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+        if !region.isEmpty { parts.append(region) }
         let line = parts.joined(separator: ", ")
         return line.isEmpty ? nil : line
     }
