@@ -278,6 +278,14 @@ Items stay here as the record of why; add new ones at the bottom.*
 
 ### Resolved
 
+- **Pricing — Paul, 2026-10-27: free, donation-supported (ADR-044).** No price, no subscription, no
+  IAP, no paid tier, and **no payment or billing code in either client**. The only ask is a Buy Me a
+  Coffee link on the web pages, which both apps already reach through their About panel. Android
+  should mirror this: nothing to add to the app, and nothing to declare to Play about purchases.
+  The consequence that matters for both clients is positional — with no revenue to defend, privacy
+  is the product's distinguishing claim, so the shop window leads with it and neither client should
+  acquire a third-party SDK that would make the claim smaller.
+
 - **Battery features on Android (was open question 3) — Paul, 2026-10-05: built without waiting
   for the calibration ride.** Garage, charge stops, reserve toggle and find-a-charger are on
   Android's `main`, rendering the same server answers iOS does. The gate on the public beta is

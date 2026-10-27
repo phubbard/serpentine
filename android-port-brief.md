@@ -34,7 +34,9 @@ lines of Swift, against an API surface of two POST endpoints and a handful of GE
 - **One network peer.** The app talks to `https://serpentine.phfactor.net` and nothing else —
   *except* whatever map stack we settle on. That exception is unresolved; see Open question #1 below
   and in sync.md. Do not add analytics, crash reporting SDKs, font CDNs or ad networks. Ever.
-- **No subscription.** One-time purchase is a product principle, not a pricing experiment.
+- **Free, donation-supported** (ADR-044 on the iOS side). No price, no subscription, no IAP, no
+  paid tier, and no payment or billing code in the client — the ask is a Buy Me a Coffee link on the
+  web pages. Privacy is the product's distinguishing claim; lead with it.
 - **Distribution via the Play internal testing track**, mirroring TestFlight as the "shipped" bar.
   Paul's Play Console account and signing setup already exist from mapbook — see
   `/projects/mapbook-android.md` in Memento before reinventing any of it.

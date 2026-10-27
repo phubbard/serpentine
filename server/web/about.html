@@ -32,6 +32,7 @@
   .cta.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
   .cta-note { display: block; margin-top: 12px; font-size: 15px; color: var(--muted); }
   .coverage { margin: 14px auto 0; font-size: 17px; color: var(--ink); max-width: 44ch; }
+  .trust { margin: 10px auto 0; font-size: 16px; color: var(--muted); max-width: 48ch; }
 
   .hero-shot { margin: 40px auto 0; max-width: 640px; }
   .hero-shot img { width: 100%; height: auto; display: block; border-radius: 22px;
@@ -51,6 +52,18 @@
   .shot img { width: 100%; height: auto; display: block; border-radius: 12px; border: 1px solid var(--line);
               box-shadow: 0 24px 48px -24px rgba(0,0,0,.45); }
   .small { font-size: 15px; }
+  section.feature.privacy { grid-template-columns: 1fr; }
+  .privacy .text { max-width: none; }
+  .privacy p { max-width: 62ch; }
+  .privacy-list { margin: 0 0 14px; padding-left: 20px; color: var(--muted);
+                  columns: 2; column-gap: 48px; }
+  .privacy-list li { margin-bottom: 9px; break-inside: avoid; }
+  .privacy-list b { color: var(--ink); font-weight: 600; }
+  code { font-size: .92em; }
+  @media (max-width: 760px) { .privacy-list { columns: 1; } }
+  .band { border-top: 1px solid var(--line); padding: 64px 0; text-align: center; }
+  .band h2 { font-size: clamp(24px, 3vw, 32px); margin: 0 0 14px; letter-spacing: -.01em; }
+  .band p { color: var(--muted); max-width: 48ch; margin: 0 auto 12px; }
   .kicker { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--warm); margin-bottom: 8px; }
 
   .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 24px 0 72px; }
@@ -83,6 +96,8 @@
   </p>
   <span class="cta-note">In TestFlight now · coming to the App Store · iPhone, iPad and Mac</span>
   <p class="coverage">Every state, from the Tail of the Dragon to the Million Dollar Highway.</p>
+  <p class="trust">Free. No account, no ads, no analytics, no third-party code. Your phone talks to
+  one server — mine — and it doesn't keep where you went.</p>
   <div class="hero-shot">
     <img src="/v1/img/ipad-loop.jpg" width="1200" height="1600" alt="Serpentine on iPad: an 88-mile loop from Ramona through Julian, Descanso and Alpine, with a charging stop at El Capitan">
   </div>
@@ -193,6 +208,36 @@
     <div class="phone"><img src="/v1/img/phone-06-saved.jpg" width="552" height="1200" alt="A saved ride with a four-star rating, notes and the date it was last ridden"></div>
   </section>
 
+  <section class="feature privacy">
+    <div class="text">
+      <div class="kicker">Privacy</div>
+      <h2>It never finds out who you are.</h2>
+      <p>Not as a policy you have to trust: there is nowhere for it to put you. No account exists to
+      create, so nothing you plan is attached to a person.</p>
+      <ul class="privacy-list">
+        <li><b>One server, and it's mine.</b> The app contacts
+          <code>serpentine.phfactor.net</code> and nothing else — a Mac in my house. No ad network,
+          no analytics service, no crash reporter, no font or script from somewhere else.</li>
+        <li><b>Your ride is forgotten.</b> A plan sits in the server's memory for up to a day so that
+          sharing a GPX works, then it's gone. It is never written to disk, never logged, never
+          passed on.</li>
+        <li><b>The logs can't point at you.</b> The access log keeps the time, which request it was
+          and half an IP address — no routes, no locations, no browser details — and is deleted after
+          30 days. Rate limiting keys on a scrambled address that changes whenever the server
+          restarts.</li>
+        <li><b>Saved rides stay on the device.</b> Never uploaded. There is no account to sync them
+          to; deleting the app deletes them.</li>
+        <li><b>Chargers without naming you.</b> With charging on, my server — not your phone — asks
+          the Department of Energy and Open Charge Map about the route's shape and those chargers'
+          coordinates. Nothing about you or your device goes with it.</li>
+      </ul>
+      <p class="small">What isn't mine to promise: the map and the place search are Apple's, so
+      search terms go to Apple, and tapping Navigate hands the ride to Apple Maps. That's in the
+      <a href="/v1/privacy">privacy policy</a> too, which is written to be read rather than to cover
+      me.</p>
+    </div>
+  </section>
+
   <section class="feature" style="justify-items:center">
   <div class="text" style="grid-column:1/-1; text-align:center">
     <h2>No phone needed to see what it does.</h2>
@@ -220,14 +265,26 @@
   </section>
 
   <div class="facts">
-    <div class="fact"><h3>No account, no tracking</h3><p>No sign-up, ads or analytics. Your start point is used
-      to plan the ride and isn't kept. <a href="/v1/privacy">Privacy policy</a></p></div>
-    <div class="fact"><h3>Pay once</h3><p>No subscription. The routing runs on a server we own, so there's no
-      per-ride bill to pass on to you.</p></div>
+    <div class="fact"><h3>No account, no tracking</h3><p>No sign-up, ads, analytics or third-party code. Your
+      start point plans the ride and isn't kept. <a href="/v1/privacy">Privacy policy</a></p></div>
+    <div class="fact"><h3>Free</h3><p>No subscription, no in-app purchases, nothing locked. The routing runs
+      on my own hardware, so there's no per-ride bill to pass on.</p></div>
     <div class="fact"><h3>All 50 states</h3><p>Plans rides anywhere in the United States, Alaska and Hawaii
       included. Runs on
       iPhone and iPad (iOS 18.4 or later) and on the Mac (macOS 15.4 or later).</p></div>
   </div>
+
+  <section class="band">
+    <h2>Free, and staying that way.</h2>
+    <p>I built Serpentine for my own riding. It plans on a Mac in my house, costs me the electricity
+    and an Apple developer account, and asks you for nothing — no subscription, no in-app purchase,
+    no feature held back.</p>
+    <p>If it found you a road worth riding, you can buy me a coffee. That's the whole business
+    model.</p>
+    <p><a class="cta secondary" href="https://buymeacoffee.com/phfactor">Buy me a coffee</a></p>
+    <p class="small">Off-site, and that's deliberate: there's no payment processor on this page and
+    no payment code in the app, so nothing here ever sees your card. Giving nothing changes nothing.</p>
+  </section>
 </main>
 
 <footer>

@@ -2,7 +2,8 @@
 
 Curvy-road motorcycle ride planner for iPhone, iPad and Mac (Catalyst). Favours roads with plentiful turns, moderate speeds and
 minimal traffic over minimum time; plans charge stops for electric bikes; generates loops and out-and-back
-rides; hands off to Apple Maps for voice navigation. No subscription.
+rides; hands off to Apple Maps for voice navigation. Free: no subscription, no in-app purchases, no
+ads and no analytics — donation-supported (ADR-044).
 
 Plan by distance, by the time you have ("two hours on Saturday"), or A→B with a detour budget — the
 quick way plus however long you'll spend on better roads. For the trips that aren't about riding

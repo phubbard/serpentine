@@ -1277,3 +1277,60 @@ top of its start, an end in another state, and modes the app cannot plan.
 **`country` is on every entry from the first one**, while all eight say `US`. The graph is US-only
 today and Paul's riders on BikeSocial are not; an entry added before its graph exists cannot plan at
 all. Free now, annoying later.
+
+## ADR-044 · 2026-10-27 · Free and donation-supported, and what that makes the product
+
+**Decision.** Serpentine is free. No price, no subscription, no in-app purchase, no paid tier, no
+trial, nothing held back. The only ask is a **Buy Me a Coffee** link, and it lives on the web pages
+— `about.html` and `support.html` — not in the app. Principle 6 in CLAUDE.md, "one-time purchase",
+is replaced.
+
+**What prompted it.** Paul read that LiveWire sold **358 motorcycles** last year (WSJ, 2026-10-27,
+as relayed — I have not read the piece). Two honest corrections to the inference, neither of which
+changes the conclusion: the bike this app was built around is a **Zero**, not a LiveWire, and Zero's
+volumes are larger though it publishes none; and Serpentine plans perfectly good rides for a petrol
+bike, since charging is a toggle. But the number is the right order of magnitude for the question it
+answers. An electric-motorcycle-first route planner is priced into a market of a few thousand new
+bikes a year across all brands, minus the riders who don't plan rides, minus the ones who won't pay
+for an app. There is no price that makes that a business, and *pretending* there is costs real work:
+a paid tier means receipts, refunds, tax, App Store pricing matrices, a support obligation measured
+in money, and a reason to hold features back so a free tier looks thin.
+
+**What free buys that money wouldn't.** Everything downstream gets cheaper. No feature has to be
+reserved for a paid tier, so the product can simply be good. The UK — a real audience, since Paul is
+in front of BikeSocial's riders — stops being a pricing, VAT and refund question and becomes purely
+an engineering one (a 2.04 GB graph and the Type 2 connector vocabulary; see the UK notes). And the
+thing that is actually distinctive stops competing with revenue for the top of the page.
+
+**So privacy is now the pitch, and the shop window leads with it.** Every competitor in
+FEASIBILITY.md is a subscription with an account, which means a user database. Serpentine has no
+account to create, which is a stronger claim than a promise not to misuse one. `about.html` gained a
+Privacy section making the specific, checkable claims rather than the vague ones: one host and it's
+Paul's own Mac; a plan lives in memory for up to 24 h (`planCacheTTL`) and is never written to disk
+or logged; the access log keeps half an IPv4 (`ip_mask 16 32`) for 30 days (`roll_keep_for 720h`)
+and no routes; the rate limiter keys on a salted hash whose salt is fresh per process
+(`server/limiter.go`); saved rides never leave the device; the charger lookups go out from the
+server with nothing about the rider attached. Each of those was re-read in the code and the
+Caddyfile before being printed on the page — the lesson of the 2026-10-03 log incident is that a
+published privacy claim is a thing to verify, not to remember. The section also states what is *not*
+ours to promise: the map and place search are Apple's, and search terms go to Apple.
+
+**The link is off-site and the app contains no payment code.** Two reasons, and only one of them is
+Apple's. The first is principle 1: a Buy Me a Coffee *widget* is third-party JavaScript on a page
+that currently loads nothing from anywhere, and it would be tracking the visitor while the page next
+to it promises there is none. A plain link costs nothing until it is clicked, and then the visitor
+has chosen. The second is that Apple's rules on tips and donations — IAP for tips, the anti-steering
+guidelines, and whatever the 2025 US injunction left of them — are a thicket **[unverified; check
+before any in-app ask]**, and we do not have to enter it: `AboutView` already links to
+`serpentine.phfactor.net`, so the path from app to coffee exists without the app taking a position.
+If the link ever moves into the app, that is a new decision with homework attached.
+
+**What this does not change.** Server cost still has to stay flat — more so, because there is now
+no revenue line at all to set against it. The rate limits of ADR-030 are the budget, caching still
+matters, and "no per-request third-party billing" survives from the old principle 6 intact. Free is
+not a reason to be careless with somebody else's bandwidth or with Paul's electricity.
+
+**The risk worth naming.** Donations fund approximately nothing; the realistic income is zero and
+the correct expectation is zero. This decision is an admission that the project is a hobby that
+other people may use, and it should be re-read as such the next time a feature is justified by "it
+would help us sell it". Nothing is being sold.

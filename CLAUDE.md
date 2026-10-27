@@ -13,6 +13,8 @@ the reference for competitor and API facts; don't re-research what it already an
 ## Status (2026-09-18)
 
 - Feasibility done. GraphHopper serving on axiom:8989 (first good import 2026-09-18); loops 35–200 ms.
+- Donation-ware since 2026-10-27 (ADR-044): free app, coffee link on the web pages, no payment code
+  anywhere in the client.
 - serpentine-api (Go, `server/`) running on axiom:8990 via launchd, public at `/v1`: `point_to_point`,
   `loop` and `out_and_back` plans, loop scoring, charge stops (NREL), Apple Maps handoff, GPX, and
   `/v1/reach` — chargers ranked by the share of the pack it takes to get to each (ADR-034). Browser test page with a
@@ -107,8 +109,11 @@ Principles that constrain every design choice here:
    waypoints and announces each as a stop; ~13-stop cap observed in UI, unconfirmed for URL. In-app
    turn-by-turn (Ferrostar, BSD) is phase 4 and only if handoff proves inadequate — it would add
    MapLibre, which violates principle 1 unless tiles are self-hosted.
-6. **One-time purchase.** Server cost must stay flat: cache routes, no live traffic, no per-request
-   third-party billing.
+6. **Free, donation-supported (ADR-044).** No price, no subscription, no IAP, no paid tier, and no
+   payment code in the app — the ask is a Buy Me a Coffee link on the web pages only. Server cost
+   must still stay flat: cache routes, no live traffic, no per-request third-party billing. With no
+   revenue to defend, privacy is the product's distinguishing claim and the shop window leads with
+   it.
 
 ## Working on this repo
 

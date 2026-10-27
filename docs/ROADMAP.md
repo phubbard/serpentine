@@ -102,7 +102,8 @@ Acceptance:
     Catalyst`, `ExportOptions-TestFlight-Mac.plist`, `altool --type osx`), `MIN_BUILDS=2` for
     `testflight-notes`. Never run the iOS and Mac uploads in parallel (shared DerivedData).
   - ASC: add the macOS platform under App Information before the first `.pkg`, or it's rejected.
-    Mac App Store only; no Developer-ID DMG channel, because the app is sold once through the Store.
+    Mac App Store only; no Developer-ID DMG channel, because the Store is the one distribution
+    channel worth maintaining (the app is free — ADR-044).
   - Mac-specific checks: "Navigate in Apple Maps" opens Maps.app (the rider sends it to the phone
     from there), whether macOS honours `waypoint=` in the unified URL, ShareLink GPX → Finder,
     Wi-Fi location accuracy for "Use my location".
