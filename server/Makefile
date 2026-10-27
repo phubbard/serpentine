@@ -20,6 +20,13 @@ build:
 run:
 	go run . -addr 127.0.0.1:18990 -gh http://$(AXIOM):8989
 
+# Plans every demo ride against a live server and asserts the plan contains the road the entry
+# names. An entry with slightly-wrong coordinates still plans -- it just rides somewhere else --
+# so this is the only check that catches it. Needs a deployed server; not part of `make test`.
+check-rides:
+	@python3 ../tools/check_rides.py $(if $(BASE),$(BASE),)
+.PHONY: check-rides
+
 deploy: test build
 	ssh $(AXIOM) 'mkdir -p ~/serpentine-api/logs'
 	scp -q bin/serpentine-api $(AXIOM):serpentine-api/serpentine-api.new

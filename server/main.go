@@ -61,6 +61,13 @@ var statsPage []byte
 //go:embed vehicles.json
 var vehicleCatalog []byte
 
+// rideCatalog is the demo-ride list (ADR-043): roads worth knowing, planned in one tap. Validated
+// at startup rather than on first request, so a malformed entry fails the deploy instead of the
+// rider's first screen.
+//
+//go:embed rides.json
+var rideCatalog []byte
+
 // Vendored Leaflet for the test page's map, served at /v1/static/.
 //
 //go:embed web/vendor
@@ -102,6 +109,13 @@ func main() {
 	if *tileCache != "" {
 		s.tiles = newTileProxy(*tileCache, *tileURL)
 		s.tiles.stats = s.stats
+	}
+	// A broken ride catalogue is a broken first screen, so it fails the deploy, not the rider.
+	if cat, err := parseRideCatalog(rideCatalog); err != nil {
+		log.Error("ride catalogue", "err", err)
+		os.Exit(1)
+	} else {
+		log.Info("ride catalogue", "rides", len(cat.Rides), "version", cat.Version)
 	}
 	if key, err := nrelKey(*nrelKeyFile); err != nil {
 		log.Error("nrel key", "err", err)
@@ -220,6 +234,11 @@ func (s *server) routes() http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "public, max-age=3600")
 		_, _ = w.Write(vehicleCatalog)
+	})
+	mux.HandleFunc("GET /v1/rides", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		_, _ = w.Write(rideCatalog)
 	})
 	mux.HandleFunc("GET /{$}", servePage(aboutPage))
 	imgs, _ := fs.Sub(imgFS, "web/img")

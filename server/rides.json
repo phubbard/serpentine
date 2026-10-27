@@ -1,0 +1,94 @@
+{
+  "version": "2026-10-26",
+  "note": "Demo rides served at /v1/rides (ADR-043). A short list of roads worth knowing, each one a real stretch of road rather than a town, so picking one plans the ride that made the road famous. The app plans these in one tap -- this is what a new rider sees before they have given us a location. Every entry is verified against the live graph by `tools/check_rides.py`, which asserts the plan actually contains the road the entry names: an entry whose coordinates are slightly off still plans, it just quietly rides somewhere else. `country` exists from the first entry because the graph is US-only today and will not always be -- an entry added before its graph exists cannot plan at all.",
+  "rides": [
+    {
+      "id": "tail-of-the-dragon",
+      "name": "Tail of the Dragon",
+      "road": "US 129, Deals Gap",
+      "region": "North Carolina / Tennessee",
+      "country": "US",
+      "blurb": "318 curves in 11 miles. The road that put a name to the whole idea.",
+      "mode": "point_to_point",
+      "start": [-83.91812, 35.46659],
+      "end": [-84.01045, 35.55729]
+    },
+    {
+      "id": "million-dollar-highway",
+      "name": "Million Dollar Highway",
+      "road": "US 550, Ouray to Silverton",
+      "region": "Colorado",
+      "country": "US",
+      "blurb": "Over Red Mountain Pass at 11,000 ft, with no guardrail and nothing but air beside you.",
+      "mode": "point_to_point",
+      "start": [-107.74149, 38.14604],
+      "end": [-107.66436, 37.81153]
+    },
+    {
+      "id": "beartooth-highway",
+      "name": "Beartooth Highway",
+      "road": "US 212, Red Lodge to Cooke City",
+      "region": "Montana / Wyoming",
+      "country": "US",
+      "blurb": "Switchbacks to 10,947 ft at Beartooth Pass. Shut by snow for half the year.",
+      "mode": "point_to_point",
+      "start": [-109.24706, 45.18590],
+      "end": [-109.93360, 45.02004]
+    },
+    {
+      "id": "cherohala-skyway",
+      "name": "Cherohala Skyway",
+      "road": "Cherohala Skyway, NC 143 to TN 165",
+      "region": "North Carolina / Tennessee",
+      "country": "US",
+      "blurb": "The Dragon's quieter neighbour: longer, higher, and you can see where you're going.",
+      "mode": "point_to_point",
+      "start": [-83.80700, 35.32276],
+      "end": [-84.29402, 35.36260]
+    },
+    {
+      "id": "angeles-crest",
+      "name": "Angeles Crest Highway",
+      "road": "CA 2, La Cañada to Wrightwood",
+      "region": "California",
+      "country": "US",
+      "blurb": "Sixty miles of mountain road that starts in the suburbs of Los Angeles.",
+      "mode": "point_to_point",
+      "start": [-118.20052, 34.19983],
+      "end": [-117.62917, 34.35564]
+    },
+    {
+      "id": "palomar-south-grade",
+      "name": "Palomar South Grade",
+      "road": "S6, Lake Henshaw to Palomar Mountain",
+      "region": "California",
+      "country": "US",
+      "blurb": "Hairpin after hairpin up the mountain, and a telescope at the top.",
+      "mode": "point_to_point",
+      "start": [-116.74903, 33.23926],
+      "end": [-116.87864, 33.32281]
+    },
+    {
+      "id": "palos-verdes-switchbacks",
+      "name": "Palos Verdes Switchbacks",
+      "road": "Palos Verdes Drive",
+      "region": "California",
+      "country": "US",
+      "blurb": "Short, tight and well laid out, with the Pacific underneath you.",
+      "mode": "out_and_back",
+      "start": [-118.3329, 33.7311],
+      "turnaround": [-118.3539, 33.7445]
+    },
+    {
+      "id": "seven-lakes-drive",
+      "name": "Seven Lakes Drive",
+      "road": "Seven Lakes Drive, Harriman State Park",
+      "region": "New York",
+      "country": "US",
+      "blurb": "An hour out of Manhattan and suddenly there are corners.",
+      "mode": "out_and_back",
+      "start": [-74.0455, 41.2399],
+      "turnaround": [-74.0877, 41.2869]
+    }
+  ]
+}

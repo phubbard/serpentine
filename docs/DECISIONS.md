@@ -1237,3 +1237,43 @@ Running tally for the evening: of ADR-039's device claims, the mode-precedence r
 shape and now the name-as-a-channel argument have all been wrong. Its file shapes, size limits and
 schema ordering have all been right. The pattern is not subtle — what we could test locally we got
 right, and what we reasoned about a device we had never touched we got wrong, every time.
+
+## ADR-043 · 2026-10-26 · Demo rides, and the roads that refuse an out-and-back
+
+The product page names US 129 at Deals Gap and US 550 out of Ouray as if you could ask for them.
+You could not. And a rider who has just installed the app, before granting location or typing
+anything, is looking at an empty form and a disabled button — the worst possible first screen for
+something whose whole pitch is "it knows the good roads".
+
+So: a short catalogue at `GET /v1/rides`, embedded like `vehicles.json`, planned in one tap.
+
+**An entry is a road, not a town.** Picking "Deals Gap" and planning a loop in the vicinity would be
+worse than having no feature at all, because the app would have named the road and then not ridden
+it. Each entry carries both ends.
+
+**The mode had to change, and the reason is interesting.** The first draft made every entry an
+`out_and_back`, which seemed obvious: ride the famous road, come home. Every one of them failed, and
+two failed in a way that looked like bad coordinates. ADR-015 routes an out-and-back's return
+through a ±300 m corridor penalty, because out-and-back means *different roads on the way home*. But
+a famous road is very often the **only** road — the Dragon, Palomar South Grade, the Million Dollar
+Highway — so the mode designed to avoid retracing refuses precisely the roads this catalogue exists
+for. They are `point_to_point` now, which is also how riders describe them: Ouray to Silverton, Red
+Lodge to Cooke City.
+
+**Verification is the part that earned its keep.** `tools/check_rides.py` plans every entry against a
+live server and asserts the result *contains the road the entry names*. That check is not optional
+decoration: the first run scored **3 of 8**. Two entries would not plan at all, three planned
+perfectly well and quietly rode somewhere else — town streets in Robbinsville instead of the
+Cherohala Skyway — and one was riding the right road under the wrong name. None of that is visible
+from the JSON, and a unit test cannot see it either; only a real plan against a real graph can.
+Endpoints now come from geocoded towns rather than my guesses at where a road ends, because
+"Cannot find point" is what you get for putting a coordinate thirty metres into the trees.
+
+Structural checks live in `parseRideCatalog` and run at **startup**, so a malformed catalogue fails
+the deploy rather than the rider's first screen. It rejects swapped lon/lat — everything here is
+`[lon, lat]` and a swapped pair is usually still a valid point somewhere useless — a turnaround on
+top of its start, an end in another state, and modes the app cannot plan.
+
+**`country` is on every entry from the first one**, while all eight say `US`. The graph is US-only
+today and Paul's riders on BikeSocial are not; an entry added before its graph exists cannot plan at
+all. Free now, annoying later.
