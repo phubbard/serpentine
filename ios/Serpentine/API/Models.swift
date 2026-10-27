@@ -22,6 +22,9 @@ struct PlanRequest: Encodable, Sendable {
     /// what this is for: the rest of the original route, sampled.
     var via: [[Double]]?
     var end: [Double]?
+    /// The far end of an out-and-back. The planner picks one from `distanceM` when this is nil,
+    /// which is what the plan form does; a demo ride names the road's own end instead (ADR-043).
+    var turnaround: [Double]?
     var distanceM: Double?
     var durationS: Double?
     var maxExtraS: Double?
@@ -266,4 +269,27 @@ struct ReachOption: Decodable, Sendable, Identifiable, Hashable {
 
     static func == (a: ReachOption, b: ReachOption) -> Bool { a.id == b.id }
     func hash(into h: inout Hasher) { h.combine(id) }
+}
+
+/// One demo ride from `GET /v1/rides` (ADR-043): a road worth knowing, planned in one tap.
+///
+/// `country` is on the wire from the first entry although every entry is "US" today. When the graph
+/// covers somewhere else, an older build must not offer a ride it cannot plan — so filter on it.
+struct DemoRide: Decodable, Sendable, Identifiable {
+    let id: String
+    let name: String
+    let road: String
+    let region: String?
+    let country: String
+    let blurb: String
+    let mode: RideMode
+    let start: [Double]
+    let end: [Double]?
+    let turnaround: [Double]?
+    let distanceM: Double?
+}
+
+struct DemoRidesResponse: Decodable, Sendable {
+    let version: String
+    let rides: [DemoRide]
 }

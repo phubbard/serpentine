@@ -72,6 +72,13 @@ struct SerpentineAPI: Sendable {
         return try Self.decoder().decode(CatalogResponse.self, from: data).vehicles
     }
 
+    /// The demo-ride catalogue (ADR-043). Like the bike catalogue, a convenience the app caches —
+    /// planning a demo ride is an ordinary plan and does not depend on this having succeeded.
+    func demoRides() async throws -> [DemoRide] {
+        let data = try await send(URLRequest(url: base.appending(path: "rides")))
+        return try Self.decoder().decode(DemoRidesResponse.self, from: data).rides
+    }
+
     /// Downloads one GPX variant to a temporary file, for the share sheet (ADR-039).
     ///
     /// The file is named for its kind because the name is what a rider reads when picking it in the

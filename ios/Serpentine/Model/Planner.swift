@@ -97,6 +97,7 @@ final class Planner {
             start: start.coordinate.lonLat,
             via: nil,
             end: goingSomewhere ? destination?.coordinate.lonLat : nil,
+            turnaround: nil,
             distanceM: goingSomewhere || budget == .time ? nil : distanceKm * 1000,
             durationS: goingSomewhere || budget == .distance ? nil : durationMin * 60,
             maxExtraS: goingSomewhere && !directRoute ? maxExtraMin * 60 : nil,

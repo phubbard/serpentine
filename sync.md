@@ -202,6 +202,22 @@ Items stay here as the record of why; add new ones at the bottom.*
   round the block instead of making a U-turn. The same exporter was within 0.1 mi over 96.8 mi. Test
   with a real ride or you will chase a bug that isn't there.
 
+- **Demo rides: `GET /v1/rides`** (ADR-043, deployed 2026-10-26). Eight roads worth knowing — the
+  Dragon, the Million Dollar Highway, the Beartooth — that plan in one tap. On iOS it's a "Ride a
+  famous road" row in the Start section, which is the first useful thing a rider with no location
+  can do; two taps from a cold launch to a planned ride.
+
+  Three things to copy rather than rediscover:
+
+  - **Entries are mostly `point_to_point`, not `out_and_back`.** A famous road is usually the only
+    road, and out-and-back's corridor penalty forbids retracing, so it refuses them. Every entry
+    failed the first time for this reason.
+  - **Filter on `country`.** All eight are `US` because the graph is; an Android build still
+    installed when that changes must not offer a ride it cannot plan.
+  - **Verify against the graph, not the JSON.** `tools/check_rides.py` plans each entry and asserts
+    the named road is in the result. First run: 3 of 8 — two wouldn't plan and three rode town
+    streets instead of the skyway, which no unit test can see.
+
 - **Use `?for=all`, and delete any mode picker you were about to build** (ADR-041, server-side,
   deployed 2026-10-21). Tested against a real Beeline Moto II, and the ADR-039 premise the picker
   existed for is simply false: the device *asks* on import — Turn-by-turn / Breadcrumb / Waypoints

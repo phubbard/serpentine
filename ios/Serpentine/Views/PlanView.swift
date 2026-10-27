@@ -6,6 +6,8 @@ struct PlanView: View {
     @Environment(Planner.self) private var planner
     @Environment(LocationProvider.self) private var location
     @State private var searching = false
+    @State private var showingDemoRides = false
+    @State private var demoRides = DemoRides()
     @State private var searchingDestination = false
     @State private var showingGarage = false
     @State private var showingAbout = false
@@ -50,6 +52,12 @@ struct PlanView: View {
                     }
                 }
                 Button("Search for a place", systemImage: "magnifyingglass") { searching = true }
+                // Last in the section because it answers a different question — not "where am I"
+                // but "show me what this does". Hidden until the catalogue arrives rather than
+                // shown broken: it is the first thing a new rider sees.
+                if !demoRides.rides.isEmpty {
+                    Button("Ride a famous road", systemImage: "map") { showingDemoRides = true }
+                }
             }
 
             Section {
@@ -159,6 +167,19 @@ struct PlanView: View {
             PlaceSearchView(title: "Start from",
                             near: location.coordinate ?? planner.start?.coordinate) { planner.start = $0 }
         }
+        .sheet(isPresented: $showingDemoRides) {
+            DemoRidesView(rides: demoRides.rides) { ride in
+                // Runs on the planner, not on this view, so closing the sheet cannot cancel it.
+                let request = DemoRides.request(
+                    for: ride,
+                    twistiness: planner.twistiness,
+                    charging: planner.charging ? ChargingOptions(socStart: planner.socPercent / 100,
+                                                                 reserveForBackup: planner.reserveForBackup) : nil,
+                    vehicle: planner.charging ? planner.bike.wire : nil)
+                Task { await planner.run(request) }
+            }
+        }
+        .task { await demoRides.load() }
         .sheet(isPresented: $showingGarage) { GarageView() }
         .sheet(isPresented: $showingAbout) { AboutView() }
         .sheet(isPresented: $searchingDestination) {

@@ -25,7 +25,7 @@ Apple Maps handoff; try it at
 - `demo/`, `tools/` — a hardwired demo ride and the script that routes it
 - `ios/AppStore/screenshots/` — App Store screenshots: 6.9" (1320×2868), 6.5" (1284×2778), 13" iPad
   (2064×2752), Mac (2880×1800); `upload/` holds the opaque JPEGs ASC takes
-- `ios/` — the SwiftUI app: "find a charger" when the battery is low (chargers ranked by the share
+- `ios/` — the SwiftUI app: one-tap demo rides on famous roads (ADR-043), "find a charger" when the battery is low (chargers ranked by the share
   of the pack needed to reach each, not by distance), pause a ride mid-route and carry on with the
   rest after a charging detour, saved rides (star rating, notes, when you last
   rode it — kept on the device), place search showing each match's town, postcode and distance from the
@@ -34,6 +34,6 @@ Apple Maps handoff; try it at
   stamp (date and commit) for bug reports
 - `sync.md`, `android-port-brief.md` — cross-platform parity matrix with the Android port, and the
   scoping doc the Android session reads first
-- `docs/` — roadmap, decisions (ADR-001..042, including what the charging research found and what it
+- `docs/` — roadmap, decisions (ADR-001..043, including what the charging research found and what it
   rules out), API contract
 - `CLAUDE.md` — orientation for agents and future me: architecture, conventions, gotchas

@@ -99,6 +99,7 @@ final class RideProgress {
             start: here.lonLat,
             via: Self.sampleVia(ahead),
             end: end,
+            turnaround: nil,
             distanceM: nil, durationS: nil, maxExtraS: nil,
             style: ride.style ?? "curvy",
             headingDeg: nil, seed: nil, twistiness: ride.twistiness,

@@ -168,6 +168,30 @@ empty ride. `all` is never refused — it is the ride.
 The plan's track as GPX 1.1 with elevation, for Kurviger/Garmin users. Served from an in-memory
 cache (24 h, 500 plans); 404 after that — request the plan again.
 
+## GET /rides
+
+The demo-ride catalogue (ADR-043): a short list of roads worth knowing, which the app plans in one
+tap. Same shape of thing as `/vehicles` — static, embedded, cached an hour.
+
+```json
+{ "version": "2026-10-26",
+  "rides": [ { "id": "tail-of-the-dragon", "name": "Tail of the Dragon",
+               "road": "US 129, Deals Gap", "region": "North Carolina / Tennessee",
+               "country": "US", "blurb": "318 curves in 11 miles. …",
+               "mode": "point_to_point",
+               "start": [-83.91812, 35.46659], "end": [-84.01045, 35.55729] } ] }
+```
+
+`mode` decides which geometry field is present: `point_to_point` has `end`, `out_and_back` has
+`turnaround`, `loop` has `distance_m`. A client turns an entry straight into a `/plan` body.
+
+Most entries are `point_to_point`, which looks odd for a there-and-back ride and is not: a famous
+road is usually the *only* road, and `out_and_back` routes the return through a corridor penalty
+that forbids retracing, so it refuses these roads outright.
+
+**`country` is on every entry and a client must filter on it.** Every entry says `US` today because
+the graph is US-only; a build in the field when that changes must not offer a ride it cannot plan.
+
 ## POST /reach
 
 "I'm low — where can I actually get to?" (ADR-034). Public chargers the bike can use, **sorted by the

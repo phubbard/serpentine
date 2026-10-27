@@ -7,6 +7,12 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [0.1.0]
 
+- New here, or just want to see what it does? Tap **Ride a famous road** under Start. It plans the
+  Tail of the Dragon, the Million Dollar Highway, the Beartooth Highway and five more, with no
+  location and nothing to fill in — two taps from opening the app to a real planned ride. They're
+  planned exactly like your own rides, so what you see is the real thing, and the ride starts where
+  the road does rather than where you are.
+
 - Sending a ride to a Beeline or a GPS is one button again. Share GPX now hands over a single file
   holding the whole route and your charge stops, and the device asks what to do with it — say
   **Turn-by-turn**. Tap "Sending it to a Beeline or GPS?" under the button if you want the rest.
@@ -50,9 +56,4 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
   so it works as a list of roads to try as well as a record of the ones you've done. A saved ride keeps
   the route exactly as planned, opens the same way every time, and works with no signal. Saved rides
   stay on your device and are never uploaded.
-
-- An About panel: what the app is, where your data goes, and credit to OpenStreetMap, the Department
-  of Energy and Open Charge Map. It's at the bottom of the plan screen, or the Serpentine menu on a
-  Mac. It shows when this build was made and which commit it came from — please paste that line into
-  any bug report.
 

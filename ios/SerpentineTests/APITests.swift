@@ -271,3 +271,47 @@ final class NoStopsGPXProtocol: URLProtocol, @unchecked Sendable {
     #expect(Planner.addressLine(street: nil, locality: nil, admin: nil, postcode: nil,
                                 name: "Nowhere") == nil)
 }
+
+// The demo catalogue is what a new rider meets first (ADR-043), so a bad entry must be dropped
+// rather than offered and then failing at the planner.
+@MainActor
+@Test func demoRidesOnlyOffersRidesThisBuildCanPlan() {
+    func ride(_ id: String, _ country: String, _ mode: RideMode,
+              end: [Double]? = nil, turnaround: [Double]? = nil, distanceM: Double? = nil) -> DemoRide {
+        DemoRide(id: id, name: id, road: "R", region: nil, country: country, blurb: "b",
+                 mode: mode, start: [-117, 33], end: end, turnaround: turnaround, distanceM: distanceM)
+    }
+    #expect(DemoRides.canPlan(ride("ok", "US", .pointToPoint, end: [-117.1, 33.1])))
+    #expect(DemoRides.canPlan(ride("ok", "US", .outAndBack, turnaround: [-117.1, 33.1])))
+    #expect(DemoRides.canPlan(ride("ok", "US", .loop, distanceM: 90_000)))
+    // The graph is US-only. An older build must not offer a UK ride the day one is added.
+    #expect(!DemoRides.canPlan(ride("gb", "GB", .pointToPoint, end: [-0.1, 51.5])))
+    // Geometry that doesn't match the mode would fail at the planner, after the rider tapped.
+    #expect(!DemoRides.canPlan(ride("bad", "US", .pointToPoint)))
+    #expect(!DemoRides.canPlan(ride("bad", "US", .outAndBack)))
+}
+
+// One tap has to produce the ride the road is famous for, not a loop in the vicinity.
+@MainActor
+@Test func aDemoRideAsksForTheRoadAndNotTheNeighbourhood() {
+    let dragon = DemoRide(id: "tail-of-the-dragon", name: "Tail of the Dragon", road: "US 129",
+                          region: "NC / TN", country: "US", blurb: "b", mode: .pointToPoint,
+                          start: [-83.91812, 35.46659], end: [-84.01045, 35.55729],
+                          turnaround: nil, distanceM: nil)
+    let req = DemoRides.request(for: dragon, twistiness: 0.5, charging: nil, vehicle: nil)
+
+    #expect(req.mode == .pointToPoint)
+    #expect(req.start == dragon.start)
+    #expect(req.end == dragon.end)
+    #expect(req.style == "curvy", "the road is the point; 'direct' would take the fast way round")
+    #expect(req.maxExtraS == nil, "a detour budget invites wandering off the famous road")
+    #expect(req.distanceM == nil && req.durationS == nil, "the road's length is the ride's length")
+    #expect(req.charging == nil, "a demo shows the app as the rider has it set, not charging forced on")
+
+    // An out-and-back demo names the far end rather than letting the planner invent one.
+    let pv = DemoRide(id: "pv", name: "PV", road: "Palos Verdes Drive", region: nil, country: "US",
+                      blurb: "b", mode: .outAndBack, start: [-118.3329, 33.7311], end: nil,
+                      turnaround: [-118.3539, 33.7445], distanceM: nil)
+    #expect(DemoRides.request(for: pv, twistiness: 0.5, charging: nil, vehicle: nil).turnaround
+            == pv.turnaround)
+}
