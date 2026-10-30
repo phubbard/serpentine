@@ -254,7 +254,11 @@ behaves exactly like a catalog one.
       charger, then resume the remainder from wherever you ended up. `via` on point-to-point plans
       holds the resumed leg to the original roads.
 - [ ] Watch whether riders trust the percentage. The energy model has never been checked against a
-      real ride log; this is the first feature where being 3 % optimistic strands someone.
+      real ride log; this is the first feature where being 3 % optimistic strands someone. **A bike
+      arrived 2026-10-29** — a 2020 SR/S ZF14.4 Premium, catalogue entry `zero-srs-2020` — so the
+      calibration ride is schedulable. Its derived consumption (~47 Wh/km city, ~77 highway) sits
+      about 5 % under the current SR/S's, and 5 % the optimistic way is exactly the error that
+      strands someone. The ride settles it.
 - [ ] DC fast charging would change which sites are worth listing (a 50 kW stop beats four 6.6 kW
       ones when you're stuck), and needs the connector work in phase 3b.
 - [ ] Offline: the one time this matters most is the one time there may be no signal. Caching the

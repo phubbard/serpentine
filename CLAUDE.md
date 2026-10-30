@@ -15,6 +15,11 @@ the reference for competitor and API facts; don't re-research what it already an
 - Feasibility done. GraphHopper serving on axiom:8989 (first good import 2026-09-18); loops 35–200 ms.
 - Donation-ware since 2026-10-27 (ADR-044): free app, coffee link on the web pages, no payment code
   anywhere in the client.
+- **The bike exists** (2026-10-29): a 2020 SR/S ZF14.4 Premium, pack replaced 2025, under 5000 mi.
+  It is *not* the bike the defaults model — 14.4 kWh max / 12.2 nominal against the current SR/S's
+  17.3 / 15.1, and 6.0 kW charging against 6.6. Catalogue entry `zero-srs-2020` added 2026-10-30.
+  Measured difference on a 132 mi Ramona loop from 90 %: two stops and 188 min of charging against
+  one stop and 93 min. The calibration ride is no longer blocked on hardware.
 - serpentine-api (Go, `server/`) running on axiom:8990 via launchd, public at `/v1`: `point_to_point`,
   `loop` and `out_and_back` plans, loop scoring, charge stops (NREL), Apple Maps handoff, GPX, and
   `/v1/reach` — chargers ranked by the share of the pack it takes to get to each (ADR-034). Browser test page with a

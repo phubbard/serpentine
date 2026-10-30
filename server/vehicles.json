@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-19",
+  "version": "2026-10-30",
   "note": "Vehicle catalog served at /v1/vehicles (ADR-020). The app caches this and sends the resolved vehicle with each plan, so a rider's edits behave exactly like a catalog entry. Every entry carries where its numbers came from and how much to trust them: 'verified' = read off the manufacturer's own spec page or sheet, 'derived' = computed from published figures (shown in the formula), 'press' = reputable coverage only, 'unverified' = plausible but unconfirmed, do not rely on it. Ranges are manufacturer claims and optimistic by nature; the energy model stays pessimistic regardless. Zero labels its highway figures 'Low-Speed' and 'High-Speed Highway Commuting' and no longer publishes the speeds behind them; older sheets used 55 and 70 mph and that mapping is likely but unverified, so don't treat it as Zero's claim. Zero's US pages are MY2025 — there is no published MY2026 US spec. The Zero SR (naked) is discontinued, and the XE/XB are omitted: Zero quotes their range at 31 mph and they top out near 50 mph, which puts them outside what this app plans for.",
   "vehicles": [
     {
@@ -21,6 +21,25 @@
       "source": "zeromotorcycles.com/model/zero-srs power-system + range tables, 2026-09-19",
       "confidence": "verified",
       "notes": "12.6 kW needs the $3,000 dealer-fit 6 kW Rapid Charging Module, which excludes the Power Tank. Power Tank ($3,200) takes the pack to nearly 21 kWh max; Zero doesn't publish the resulting nominal capacity or range. DC fast charging announced 2026-09-03 for 2027 models, retrofittable to MY2022+ — nothing ships today.  Zero's pack is roughly 102 V, far below the ~150-200 V floor of car DC hardware (ADR-021), which is why the 2027 answer is a fast-charge module and not just a port. The contactor opens above 50 °C, so a hot bike after a hard ride may refuse to charge."
+    },
+    {
+      "id": "zero-srs-2020",
+      "make": "Zero",
+      "model": "SR/S ZF14.4 Premium",
+      "year": 2020,
+      "kind": "electric",
+      "battery_max_kwh": 14.4,
+      "battery_nominal_kwh": 12.2,
+      "range_city_mi": 161,
+      "range_highway_mi": 99,
+      "ac_kw": 6.0,
+      "dc_kw": 0,
+      "connectors": [
+        "J1772"
+      ],
+      "source": "14.4 kWh and the 161/99/123 mi city/highway/combined ranges from contemporary buyer's guides and reviews (Cycle World, Ultimate Motorcycling, MCN), read 2026-10-30 — Zero's own MY2020 spec page is gone. 12.2 kWh nominal from the owner of the bike this entry was added for.",
+      "confidence": "press",
+      "notes": "The 2020-22 SR/S, which is a different bike from the current one: 14.4 kWh where today's is 17.3. Trim decides the charger and it doubles the wait — Premium carries 6 kW, Standard 3 kW, so pick by what is actually fitted. Published guides give 12.6 kWh nominal; this entry says 12.2 because that is what the owner reads off his own bike, whose pack was replaced in 2025, and because the smaller number is the safer error. Deriving from these figures gives about 47 Wh/km city and 77 Wh/km highway, roughly 5% under the MY2025 SR/S's 54.9 and 80.9 — same fairing on a slightly lighter bike, so plausible, but it leans optimistic and nothing here has met a real ride yet. A rider who wants the cautious version until then can set highway range to 94 mi in the garage, which reproduces the 80.9 Wh/km the current SR/S is modelled at. The 2020 and 2021 packs had a defect and many were replaced under warranty, so check which pack is in the bike. Same ~102 V pack and 50 °C charging cutoff as the current SR/S (ADR-021); Power Tank was an option."
     },
     {
       "id": "zero-srf",
