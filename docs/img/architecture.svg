@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1036" viewBox="0 0 1280 1036" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif">
+<defs>
+<marker id="a-0a6c5a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#0a6c5a"/></marker>
+<marker id="a-5f5f66" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#5f5f66"/></marker>
+</defs>
+<rect width="1280" height="1036" fill="#f6f5f2"/>
+<text x="40" y="44" font-size="25" font-weight="700" fill="#1d1d1f">Serpentine — how a ride gets planned</text>
+<text x="40" y="70" font-size="14" fill="#5f5f66">The phone talks to one host and nothing else. Every third-party service is reached from inside the house, never from the device.</text>
+<rect x="40" y="122" width="300" height="106" rx="10" fill="#ffffff" stroke="#dcd9d2" stroke-width="1.2"/>
+<text x="56" y="150" font-size="10.5" font-weight="700" fill="#0a6c5a" letter-spacing="1.1">CLIENT</text>
+<text x="56" y="171" font-size="16.5" font-weight="700" fill="#1d1d1f">iPhone · iPad · Mac</text>
+<text x="56" y="193" font-size="12.5" fill="#5f5f66">SwiftUI · MapKit · CoreLocation. No SPM</text>
+<text x="56" y="209" font-size="12.5" fill="#5f5f66">packages, no analytics, no account, no</text>
+<text x="56" y="225" font-size="12.5" fill="#5f5f66">third-party SDKs.</text>
+<rect x="364" y="122" width="256" height="106" rx="10" fill="#ffffff" stroke="#dcd9d2" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="380" y="150" font-size="10.5" font-weight="700" fill="#5f5f66" letter-spacing="1.1">CLIENT · IN PROGRESS</text>
+<text x="380" y="171" font-size="16.5" font-weight="700" fill="#1d1d1f">Android</text>
+<text x="380" y="193" font-size="12.5" fill="#5f5f66">Kotlin · Compose. Same API, second</text>
+<text x="380" y="209" font-size="12.5" fill="#5f5f66">client — the hard parts are all</text>
+<text x="380" y="225" font-size="12.5" fill="#5f5f66">server-side.</text>
+<rect x="644" y="122" width="240" height="106" rx="10" fill="#ffffff" stroke="#dcd9d2" stroke-width="1.2"/>
+<text x="660" y="150" font-size="10.5" font-weight="700" fill="#0a6c5a" letter-spacing="1.1">CLIENT</text>
+<text x="660" y="171" font-size="16.5" font-weight="700" fill="#1d1d1f">Browser test page</text>
+<text x="660" y="193" font-size="12.5" fill="#5f5f66">/v1/ — the same planner,</text>
+<text x="660" y="209" font-size="12.5" fill="#5f5f66">vendored Leaflet, tiles from our</text>
+<text x="660" y="225" font-size="12.5" fill="#5f5f66">own cache.</text>
+<rect x="916" y="122" width="324" height="106" rx="10" fill="#ffffff" stroke="#dcd9d2" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="932" y="150" font-size="10.5" font-weight="700" fill="#5f5f66" letter-spacing="1.1">ON THE DEVICE</text>
+<text x="932" y="171" font-size="16.5" font-weight="700" fill="#1d1d1f">Apple Maps · Google Maps</text>
+<text x="932" y="193" font-size="12.5" fill="#5f5f66">Voice guidance by handoff: one URL carrying</text>
+<text x="932" y="209" font-size="12.5" fill="#5f5f66">the planned stops. The platform's own</text>
+<text x="932" y="225" font-size="12.5" fill="#5f5f66">navigation does the talking; there is no</text>
+<text x="932" y="241" font-size="12.5" fill="#5f5f66">turn-by-turn in the app.</text>
+<path d="M190,122 V100 H1078 V118" fill="none" stroke="#5f5f66" stroke-width="1.6" stroke-dasharray="2 4" marker-end="url(#a-5f5f66)" stroke-linejoin="round"/>
+<rect x="521" y="86" width="225" height="18" rx="4" fill="#f6f5f2"/>
+<text x="634" y="96" font-size="11.5" font-weight="600" fill="#5f5f66" text-anchor="middle">waypoint URL · stays on the device</text>
+<rect x="40" y="292" width="1200" height="534" rx="16" fill="none" stroke="#a8491a" stroke-width="1.6" stroke-dasharray="7 5"/>
+<text x="1216" y="318" font-size="10.5" font-weight="700" fill="#a8491a" letter-spacing="1.1" text-anchor="end">PAUL'S HOUSE · LAN 204.128.136.0/24</text>
+<path d="M190,228 V262" fill="none" stroke="#0a6c5a" stroke-width="1.8" stroke-linejoin="round"/>
+<path d="M492,228 V262" fill="none" stroke="#0a6c5a" stroke-width="1.8" stroke-linejoin="round"/>
+<path d="M764,228 V262" fill="none" stroke="#0a6c5a" stroke-width="1.8" stroke-linejoin="round"/>
+<path d="M190,262 H764" stroke="#0a6c5a" stroke-width="1.8" fill="none"/>
+<path d="M210,262 V336" fill="none" stroke="#0a6c5a" stroke-width="2.4" marker-end="url(#a-0a6c5a)" stroke-linejoin="round"/>
+<text x="800" y="266" font-size="12" font-weight="600" fill="#0a6c5a">HTTPS · serpentine.phfactor.net — the only host any client contacts</text>
+<rect x="64" y="336" width="292" height="128" rx="10" fill="#ffffff" stroke="#dcd9d2" stroke-width="1.2"/>
+<text x="80" y="364" font-size="10.5" font-weight="700" fill="#0a6c5a" letter-spacing="1.1">INTERNET-FACING</text>
+<text x="80" y="385" font-size="16.5" font-weight="700" fill="#1d1d1f">Caddy — webserver (Pi 5)</text>
+<text x="80" y="407" font-size="12.5" fill="#5f5f66">The only host with ports open: 80 and</text>
+<text x="80" y="423" font-size="12.5" fill="#5f5f66">443. TLS, then reverse_proxy /v1/* →</text>
+<text x="80" y="439" font-size="12.5" fill="#5f5f66">axiom:8990. Log keeps half an IPv4 for</text>
+<text x="80" y="455" font-size="12.5" fill="#5f5f66">30 days, no routes.</text>
+<rect x="880" y="336" width="336" height="128" rx="10" fill="#ffffff" stroke="#dcd9d2" stroke-width="1.2"/>
+<text x="896" y="364" font-size="10.5" font-weight="700" fill="#0a6c5a" letter-spacing="1.1">MONITORING</text>
+<text x="896" y="385" font-size="16.5" font-weight="700" fill="#1d1d1f">serpentine-health.timer</text>
+<text x="896" y="407" font-size="12.5" fill="#5f5f66">Every 2 min from the Pi, probing the public URL</text>
+<text x="896" y="423" font-size="12.5" fill="#5f5f66">and the API. Three strikes, then ntfy. On the</text>
+<text x="896" y="439" font-size="12.5" fill="#5f5f66">Pi so the watcher can't share fate with what it</text>
+<text x="896" y="455" font-size="12.5" fill="#5f5f66">watches.</text>
+<path d="M876,400 H360" fill="none" stroke="#5f5f66" stroke-width="1.6" stroke-dasharray="2 4" marker-end="url(#a-5f5f66)" stroke-linejoin="round"/>
+<rect x="592" y="386" width="51" height="18" rx="4" fill="#f6f5f2"/>
+<text x="618" y="396" font-size="11.5" font-weight="600" fill="#5f5f66" text-anchor="middle">probes</text>
+<rect x="64" y="508" width="1104" height="302" rx="12" fill="#f1efe9" stroke="#dcd9d2" stroke-width="1.2"/>
+<text x="88" y="534" font-size="10.5" font-weight="700" fill="#0a6c5a" letter-spacing="1.1">AXIOM · MAC STUDIO M4 MAX, 128 GB (.7)</text>
+<path d="M210,464 V550" fill="none" stroke="#0a6c5a" stroke-width="2.4" marker-end="url(#a-0a6c5a)" stroke-linejoin="round"/>
+<path d="M1048,464 V504" fill="none" stroke="#5f5f66" stroke-width="1.6" stroke-dasharray="2 4" marker-end="url(#a-5f5f66)" stroke-linejoin="round"/>
+<rect x="88" y="550" width="1056" height="86" rx="10" fill="#ffffff" stroke="#dcd9d2" stroke-width="1.2"/>
+<text x="104" y="578" font-size="16.5" font-weight="700" fill="#1d1d1f">serpentine-api :8990</text>
+<text x="104" y="600" font-size="12.5" fill="#5f5f66">Go, stdlib only. Generates and scores loop candidates, out-and-backs and A→B rides, runs the energy model and picks charge stops, builds the handoff URL and</text>
+<text x="104" y="616" font-size="12.5" fill="#5f5f66">the GPX. A plan lives in memory for up to 24 h, then it is gone — never written to disk.</text>
+<path d="M257,636 V666" fill="none" stroke="#0a6c5a" stroke-width="1.8" marker-end="url(#a-0a6c5a)" stroke-linejoin="round"/>
+<path d="M616,636 V666" fill="none" stroke="#0a6c5a" stroke-width="1.8" marker-end="url(#a-0a6c5a)" stroke-linejoin="round"/>
+<path d="M974,636 V666" fill="none" stroke="#0a6c5a" stroke-width="1.8" marker-end="url(#a-0a6c5a)" stroke-linejoin="round"/>
+<rect x="88.0" y="666" width="338.6666666666667" height="120" rx="10" fill="#ffffff" stroke="#dcd9d2" stroke-width="1.2"/>
+<text x="104.0" y="694" font-size="16.5" font-weight="700" fill="#1d1d1f">GraphHopper 11 :8989</text>
+<text x="104.0" y="716" font-size="12.5" fill="#5f5f66">Docker, whole-US graph: 13 GB, 70 M nodes. Two</text>
+<text x="104.0" y="732" font-size="12.5" fill="#5f5f66">profiles — motorcycle (curvy) and direct (the</text>
+<text x="104.0" y="748" font-size="12.5" fill="#5f5f66">errand ride). Built offline in 63 min from a</text>
+<text x="104.0" y="764" font-size="12.5" fill="#5f5f66">Geofabrik extract and SRTM tiles.</text>
+<rect x="446.6666666666667" y="666" width="338.6666666666667" height="120" rx="10" fill="#ffffff" stroke="#dcd9d2" stroke-width="1.2"/>
+<text x="462.6666666666667" y="694" font-size="16.5" font-weight="700" fill="#1d1d1f">stations.json</text>
+<text x="462.6666666666667" y="716" font-size="12.5" fill="#5f5f66">Every public US charger, fetched once a day</text>
+<text x="462.6666666666667" y="732" font-size="12.5" fill="#5f5f66">from the Department of Energy. The corridor</text>
+<text x="462.6666666666667" y="748" font-size="12.5" fill="#5f5f66">search then runs locally, so planning a ride</text>
+<text x="462.6666666666667" y="764" font-size="12.5" fill="#5f5f66">costs no third-party call.</text>
+<rect x="805.3333333333334" y="666" width="338.6666666666667" height="120" rx="10" fill="#ffffff" stroke="#dcd9d2" stroke-width="1.2"/>
+<text x="821.3333333333334" y="694" font-size="16.5" font-weight="700" fill="#1d1d1f">stats.db · tile cache</text>
+<text x="821.3333333333334" y="716" font-size="12.5" fill="#5f5f66">Hourly counters only: no routes, no locations,</text>
+<text x="821.3333333333334" y="732" font-size="12.5" fill="#5f5f66">nothing tied to a device. OSM map tiles are</text>
+<text x="821.3333333333334" y="748" font-size="12.5" fill="#5f5f66">fetched and cached here, so the rider never</text>
+<text x="821.3333333333334" y="764" font-size="12.5" fill="#5f5f66">touches OpenStreetMap.</text>
+<path d="M200,810 V866" fill="none" stroke="#5f5f66" stroke-width="1.6" stroke-dasharray="2 4" marker-end="url(#a-5f5f66)" stroke-linejoin="round"/>
+<path d="M493,810 V866" fill="none" stroke="#5f5f66" stroke-width="1.6" stroke-dasharray="2 4" marker-end="url(#a-5f5f66)" stroke-linejoin="round"/>
+<path d="M786,810 V866" fill="none" stroke="#5f5f66" stroke-width="1.6" stroke-dasharray="2 4" marker-end="url(#a-5f5f66)" stroke-linejoin="round"/>
+<path d="M1196,464 V846 H1079 V866" fill="none" stroke="#5f5f66" stroke-width="1.6" stroke-dasharray="2 4" marker-end="url(#a-5f5f66)" stroke-linejoin="round"/>
+<rect x="193" y="842" width="306" height="18" rx="4" fill="#f6f5f2"/>
+<text x="346" y="852" font-size="11.5" font-weight="600" fill="#5f5f66" text-anchor="middle">no rider data: route shape, charger coordinates</text>
+<rect x="64.0" y="866" width="273.0" height="96" rx="10" fill="#eceae4" stroke="#d6d3cb" stroke-width="1.2"/>
+<text x="80.0" y="894" font-size="10.5" font-weight="700" fill="#5f5f66" letter-spacing="1.1">OUTSIDE THE HOUSE</text>
+<text x="80.0" y="915" font-size="16.5" font-weight="700" fill="#1d1d1f">NREL AFDC</text>
+<text x="80.0" y="937" font-size="12.5" fill="#5f5f66">Charger locations, bulk, once a day.</text>
+<text x="80.0" y="953" font-size="12.5" fill="#5f5f66">Key lives on axiom.</text>
+<rect x="357.0" y="866" width="273.0" height="96" rx="10" fill="#eceae4" stroke="#d6d3cb" stroke-width="1.2"/>
+<text x="373.0" y="894" font-size="10.5" font-weight="700" fill="#5f5f66" letter-spacing="1.1">OUTSIDE THE HOUSE</text>
+<text x="373.0" y="915" font-size="16.5" font-weight="700" fill="#1d1d1f">Open Charge Map</text>
+<text x="373.0" y="937" font-size="12.5" fill="#5f5f66">Is this stop alive? Asked per charge</text>
+<text x="373.0" y="953" font-size="12.5" fill="#5f5f66">stop, not per ride.</text>
+<rect x="650.0" y="866" width="273.0" height="96" rx="10" fill="#eceae4" stroke="#d6d3cb" stroke-width="1.2"/>
+<text x="666.0" y="894" font-size="10.5" font-weight="700" fill="#5f5f66" letter-spacing="1.1">OUTSIDE THE HOUSE</text>
+<text x="666.0" y="915" font-size="16.5" font-weight="700" fill="#1d1d1f">OpenStreetMap</text>
+<text x="666.0" y="937" font-size="12.5" fill="#5f5f66">Map tiles for the test page, cached</text>
+<text x="666.0" y="953" font-size="12.5" fill="#5f5f66">on axiom.</text>
+<rect x="943.0" y="866" width="273.0" height="96" rx="10" fill="#eceae4" stroke="#d6d3cb" stroke-width="1.2"/>
+<text x="959.0" y="894" font-size="10.5" font-weight="700" fill="#5f5f66" letter-spacing="1.1">OUTSIDE THE HOUSE</text>
+<text x="959.0" y="915" font-size="16.5" font-weight="700" fill="#1d1d1f">ntfy</text>
+<text x="959.0" y="937" font-size="12.5" fill="#5f5f66">Alerts to Paul's phone when the</text>
+<text x="959.0" y="953" font-size="12.5" fill="#5f5f66">service stops answering.</text>
+<path d="M40,1000 H74" fill="none" stroke="#0a6c5a" stroke-width="2.4" marker-end="url(#a-0a6c5a)" stroke-linejoin="round"/>
+<text x="84" y="1004" font-size="12" fill="#5f5f66">carries the ride</text>
+<path d="M222.4,1000 H256.4" fill="none" stroke="#5f5f66" stroke-width="1.6" stroke-dasharray="2 4" marker-end="url(#a-5f5f66)" stroke-linejoin="round"/>
+<text x="266.4" y="1004" font-size="12" fill="#5f5f66">no rider data attached</text>
+<path d="M443.20000000000005,1000 H477.20000000000005" fill="none" stroke="#5f5f66" stroke-width="1.6" stroke-dasharray="2 4" marker-end="url(#a-5f5f66)" stroke-linejoin="round"/>
+<text x="487.20000000000005" y="1004" font-size="12" fill="#5f5f66">handoff and monitoring</text>
+<text x="1240" y="1004" font-size="12" fill="#5f5f66" text-anchor="end">serpentine.phfactor.net</text>
+</svg>
