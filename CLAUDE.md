@@ -13,8 +13,10 @@ the reference for competitor and API facts; don't re-research what it already an
 ## Status (2026-09-18)
 
 - Feasibility done. GraphHopper serving on axiom:8989 (first good import 2026-09-18); loops 35–200 ms.
-- Donation-ware since 2026-10-27 (ADR-044): free app, coffee link on the web pages, no payment code
-  anywhere in the client.
+- Donation-ware since 2026-10-27 (ADR-044): free app, no payment code anywhere in the client. The
+  coffee link is **pending** — `buymeacoffee.com/phfactor` is unclaimed, so the three web pages say
+  a donation page is coming rather than linking a 404 (2026-10-30). Claiming the handle is a
+  one-line edit to `about.html`, `support.html` and `privacy.html` plus `make -C server deploy`.
 - **The bike exists** (2026-10-29): a 2020 SR/S ZF14.4 Premium, pack replaced 2025, under 5000 mi.
   It is *not* the bike the defaults model — 14.4 kWh max / 12.2 nominal against the current SR/S's
   17.3 / 15.1, and 6.0 kW charging against 6.6. Catalogue entry `zero-srs-2020` added 2026-10-30.

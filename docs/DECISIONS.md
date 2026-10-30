@@ -1334,3 +1334,12 @@ not a reason to be careless with somebody else's bandwidth or with Paul's electr
 the correct expectation is zero. This decision is an admission that the project is a hobby that
 other people may use, and it should be re-read as such the next time a feature is justified by "it
 would help us sell it". Nothing is being sold.
+
+**Note, 2026-10-30: the link is pending, not live.** `buymeacoffee.com/phfactor` is unclaimed, so
+the three pages say a donation page is coming instead of linking a 404. The pages shipped in that
+state deliberately — a live page that says "Pay once" is worse than one that says the ask isn't
+ready, and a dead donate button is worse than both. The privacy policy's Money section is written
+in the future tense to match, because a policy describing a link that does not exist is the same
+kind of untrue as the Caddy log block that promised masked addresses for two weeks while logging
+full ones (`infra/README.md`, found 2026-10-03). When the handle is claimed, the edit is
+three sentences and a deploy.
