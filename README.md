@@ -25,6 +25,7 @@ Apple Maps handoff; try it at
   setup + smoke tests
 - `demo/`, `tools/` — a hardwired demo ride, the script that routes it, and
   `arch_diagram.py`, which regenerates the architecture diagram in `docs/img/`
+  (authored at 1024 px wide, the width WordPress serves; publish the `@2x` file)
 - `ios/AppStore/screenshots/` — App Store screenshots: 6.9" (1320×2868), 6.5" (1284×2778), 13" iPad
   (2064×2752), Mac (2880×1800); `upload/` holds the opaque JPEGs ASC takes
 - `ios/` — the SwiftUI app: one-tap demo rides on famous roads (ADR-043), "find a charger" when the battery is low (chargers ranked by the share

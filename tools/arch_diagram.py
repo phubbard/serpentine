@@ -1,8 +1,13 @@
-# Generates the serpentine architecture diagram as SVG.
-# Presentation attributes only (no <style>), so any renderer draws it the same.
+# Generates the serpentine architecture diagram as SVG, plus PNGs.
+#
+# Authored at 1024 wide because that is the width WordPress serves it at: text sized for 1280 and
+# then downscaled lands around 10px and stops being readable. Upload the @2x file — the browser
+# shows it at 1024 CSS px and retina screens get the full pixels.
+#
+# Presentation attributes only (no <style>), so every renderer draws it the same.
 import pathlib
 
-W, H = 1280, 1036
+W, H = 1024, 948
 BG, PANEL, INK, MUTED = "#f6f5f2", "#ffffff", "#1d1d1f", "#5f5f66"
 LINE, ACCENT, WARM, EXT = "#dcd9d2", "#0a6c5a", "#a8491a", "#eceae4"
 FONT = "'Helvetica Neue', Helvetica, Arial, sans-serif"
@@ -14,8 +19,8 @@ def esc(s):
 def wrap(text, width_px, size, bold=False):
     per = size * (0.56 if bold else 0.515)
     maxc = max(8, int(width_px / per))
-    words, lines, cur = text.split(), [], ""
-    for w in words:
+    lines, cur = [], ""
+    for w in text.split():
         t = (cur + " " + w).strip()
         if len(t) <= maxc:
             cur = t
@@ -31,37 +36,35 @@ def box(x, y, w, h, kicker, title, body, kind="core"):
         fill, stroke, acc = EXT, "#d6d3cb", MUTED
     if kind == "ghost":
         dash, acc = ' stroke-dasharray="5 4"', MUTED
-    out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="10" '
+    out.append(f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="9" '
                f'fill="{fill}" stroke="{stroke}" stroke-width="1.2"{dash}/>')
-    tx, ty = x + 16, y + 28
+    tx, ty = x + 14, y + 22
     if kicker:
-        out.append(f'<text x="{tx}" y="{ty}" font-size="10.5" font-weight="700" fill="{acc}" '
-                   f'letter-spacing="1.1">{esc(kicker)}</text>')
-        ty += 21
-    for i, ln in enumerate(wrap(title, w - 32, 16.5, True)):
-        out.append(f'<text x="{tx}" y="{ty}" font-size="16.5" font-weight="700" '
+        out.append(f'<text x="{tx:.0f}" y="{ty:.0f}" font-size="10" font-weight="700" fill="{acc}" '
+                   f'letter-spacing="1">{esc(kicker)}</text>')
+        ty += 22
+    for ln in wrap(title, w - 28, 15.5, True):
+        out.append(f'<text x="{tx:.0f}" y="{ty:.0f}" font-size="15.5" font-weight="700" '
                    f'fill="{INK}">{esc(ln)}</text>')
         ty += 20
-    ty += 2
     for para in body:
-        for ln in wrap(para, w - 32, 12.5):
-            out.append(f'<text x="{tx}" y="{ty}" font-size="12.5" fill="{MUTED}">{esc(ln)}</text>')
+        for ln in wrap(para, w - 28, 12):
+            out.append(f'<text x="{tx:.0f}" y="{ty:.0f}" font-size="12" fill="{MUTED}">'
+                       f'{esc(ln)}</text>')
             ty += 16
-    return ty
 
-def arrow(d, color=ACCENT, dash=None, width=2.0, head="end"):
+def arrow(d, color=ACCENT, dash=None, width=1.9, head=True):
     m = f' marker-end="url(#a-{color[1:]})"' if head else ""
     ds = f' stroke-dasharray="{dash}"' if dash else ""
-    out.append(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{width}"'
-               f'{ds}{m} stroke-linejoin="round"/>')
+    out.append(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{width}"{ds}{m} '
+               f'stroke-linejoin="round"/>')
 
-def tag(x, y, text, color=MUTED, size=11.5, weight="600", anchor="middle"):
-    w = len(text) * size * 0.54 + 14
-    bx = x - w / 2 if anchor == "middle" else x - 7
-    out.append(f'<rect x="{bx:.0f}" y="{y - size + 1:.0f}" width="{w:.0f}" height="{size + 7:.0f}" '
-               f'rx="4" fill="{BG}"/>')
-    out.append(f'<text x="{x}" y="{y}" font-size="{size}" font-weight="{weight}" fill="{color}" '
-               f'text-anchor="{anchor}">{esc(text)}</text>')
+def tag(x, y, text, color=MUTED, size=11, weight="600"):
+    w = len(text) * size * 0.54 + 12
+    out.append(f'<rect x="{x - w / 2:.0f}" y="{y - size + 1:.0f}" width="{w:.0f}" '
+               f'height="{size + 6:.0f}" rx="4" fill="{BG}"/>')
+    out.append(f'<text x="{x:.0f}" y="{y:.0f}" font-size="{size}" font-weight="{weight}" '
+               f'fill="{color}" text-anchor="middle">{esc(text)}</text>')
 
 out.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
            f'viewBox="0 0 {W} {H}" font-family="{FONT}">')
@@ -73,115 +76,103 @@ for c in (ACCENT, MUTED):
 out.append('</defs>')
 out.append(f'<rect width="{W}" height="{H}" fill="{BG}"/>')
 
-# ---- title -------------------------------------------------------------
-out.append(f'<text x="40" y="44" font-size="25" font-weight="700" fill="{INK}">'
+out.append(f'<text x="32" y="40" font-size="21" font-weight="700" fill="{INK}">'
            'Serpentine — how a ride gets planned</text>')
-out.append(f'<text x="40" y="70" font-size="14" fill="{MUTED}">The phone talks to one host and '
-           'nothing else. Every third-party service is reached from inside the house, never from '
-           'the device.</text>')
+out.append(f'<text x="32" y="62" font-size="12.5" fill="{MUTED}">The phone talks to one host and '
+           'nothing else. Everything third-party is reached from inside the house.</text>')
 
 # ---- clients -----------------------------------------------------------
-CY, CH = 122, 106
-box(40, CY, 300, CH, "CLIENT", "iPhone · iPad · Mac",
-    ["SwiftUI · MapKit · CoreLocation. No SPM packages, no analytics, no account, "
-     "no third-party SDKs."])
-box(364, CY, 256, CH, "CLIENT · IN PROGRESS", "Android",
-    ["Kotlin · Compose. Same API, second client — the hard parts are all server-side."], "ghost")
-box(644, CY, 240, CH, "CLIENT", "Browser test page",
-    ["/v1/ — the same planner, vendored Leaflet, tiles from our own cache."])
-box(916, CY, 324, CH, "ON THE DEVICE", "Apple Maps · Google Maps",
-    ["Voice guidance by handoff: one URL carrying the planned stops. The platform's "
-     "own navigation does the talking; there is no turn-by-turn in the app."], "ghost")
-arrow(f"M190,{CY} V100 H1078 V{CY - 4}", MUTED, "2 4", 1.6)
-tag(634, 96, "waypoint URL · stays on the device")
+CY, CH = 112, 112
+box(32, CY, 228, CH, "CLIENT", "iPhone · iPad · Mac",
+    ["SwiftUI and MapKit. No SDKs, no account, no analytics."])
+box(276, CY, 228, CH, "CLIENT · IN PROGRESS", "Android",
+    ["Compose. A second client, not a reimplementation."], "ghost")
+box(520, CY, 228, CH, "CLIENT", "Browser",
+    ["/v1/ — the same planner, in a page."])
+box(764, CY, 228, CH, "ON THE DEVICE", "Apple · Google Maps",
+    ["Voice guidance by handoff: one URL carrying the planned stops."], "ghost")
+arrow(f"M146,{CY} V92 H878 V{CY - 4}", MUTED, "2 4", 1.5)
+tag(512, 88, "waypoint URL · stays on the device")
 
 # ---- the house ---------------------------------------------------------
-HY, HB = 292, 826
-out.append(f'<rect x="40" y="{HY}" width="1200" height="{HB - HY}" rx="16" fill="none" '
-           f'stroke="{WARM}" stroke-width="1.6" stroke-dasharray="7 5"/>')
-out.append(f'<text x="1216" y="{HY + 26}" font-size="10.5" font-weight="700" fill="{WARM}" '
-           f'letter-spacing="1.1" text-anchor="end">PAUL\'S HOUSE · LAN 204.128.136.0/24</text>')
+HY, HB = 276, 760
+out.append(f'<rect x="32" y="{HY}" width="960" height="{HB - HY}" rx="14" fill="none" '
+           f'stroke="{WARM}" stroke-width="1.5" stroke-dasharray="7 5"/>')
+out.append(f'<text x="968" y="{HY + 22}" font-size="10" font-weight="700" fill="{WARM}" '
+           f'letter-spacing="1" text-anchor="end">PAUL\'S HOUSE · LAN 204.128.136.0/24</text>')
 
-# clients -> Caddy
-for x in (190, 492, 764):
-    arrow(f"M{x},{CY + CH} V262", ACCENT, None, 1.8, head=None)
-out.append(f'<path d="M190,262 H764" stroke="{ACCENT}" stroke-width="1.8" fill="none"/>')
-arrow("M210,262 V336", ACCENT, None, 2.4)
-out.append(f'<text x="800" y="266" font-size="12" font-weight="600" fill="{ACCENT}">'
-           'HTTPS · serpentine.phfactor.net — the only host any client contacts</text>')
+for x in (146, 390, 634):
+    arrow(f"M{x},{CY + CH} V248", ACCENT, None, 1.6, head=False)
+out.append(f'<path d="M146,248 H634" stroke="{ACCENT}" stroke-width="1.6" fill="none"/>')
+arrow("M202,248 V316", ACCENT, None, 2.2)
+out.append(f'<text x="660" y="244" font-size="11.5" font-weight="600" fill="{ACCENT}">'
+           'HTTPS · serpentine.phfactor.net</text>')
+out.append(f'<text x="660" y="259" font-size="11.5" fill="{MUTED}">'
+           'the only host any client contacts</text>')
 
-CDY = 336
-box(64, CDY, 292, 128, "INTERNET-FACING", "Caddy — webserver (Pi 5)",
+box(52, 316, 300, 128, "INTERNET-FACING", "Caddy — webserver (Pi 5)",
     ["The only host with ports open: 80 and 443. TLS, then reverse_proxy /v1/* → axiom:8990. "
-     "Log keeps half an IPv4 for 30 days, no routes."])
-box(880, CDY, 336, 128, "MONITORING", "serpentine-health.timer",
-    ["Every 2 min from the Pi, probing the public URL and the API. Three strikes, then ntfy. "
-     "On the Pi so the watcher can't share fate with what it watches."])
-arrow(f"M876,{CDY + 64} H360", MUTED, "2 4", 1.6)
-tag(618, CDY + 60, "probes")
+     "The log keeps half an IPv4 for 30 days, and no routes."])
+box(672, 316, 300, 128, "MONITORING", "serpentine-health.timer",
+    ["Every 2 min from the Pi, probing the API and the public URL. Three strikes, then ntfy. "
+     "On the Pi so the watcher can't share fate with axiom."])
+arrow("M668,380 H356", MUTED, "2 4", 1.5)
+tag(512, 375, "probes")
 
 # ---- axiom -------------------------------------------------------------
-AY = 508
-out.append(f'<rect x="64" y="{AY}" width="1104" height="302" rx="12" fill="#f1efe9" '
+AY, AH = 468, 272
+out.append(f'<rect x="52" y="{AY}" width="880" height="{AH}" rx="11" fill="#f1efe9" '
            f'stroke="{LINE}" stroke-width="1.2"/>')
-out.append(f'<text x="88" y="{AY + 26}" font-size="10.5" font-weight="700" fill="{ACCENT}" '
-           f'letter-spacing="1.1">AXIOM · MAC STUDIO M4 MAX, 128 GB (.7)</text>')
-arrow(f"M210,464 V{AY + 42}", ACCENT, None, 2.4)
-arrow(f"M1048,464 V{AY - 4}", MUTED, "2 4", 1.6)
+out.append(f'<text x="72" y="{AY + 22}" font-size="10" font-weight="700" fill="{ACCENT}" '
+           f'letter-spacing="1">AXIOM · MAC STUDIO M4 MAX, 128 GB (.7)</text>')
+arrow(f"M202,444 V{AY - 4}", ACCENT, None, 2.2)
+arrow(f"M822,444 V{AY - 4}", MUTED, "2 4", 1.5)
 
-API_Y = AY + 42
-box(88, API_Y, 1056, 86, "", "serpentine-api :8990",
-    ["Go, stdlib only. Generates and scores loop candidates, out-and-backs and A→B rides, "
-     "runs the energy model and picks charge stops, builds the handoff URL and the GPX. "
-     "A plan lives in memory for up to 24 h, then it is gone — never written to disk."])
-RY = API_Y + 116
-for x in (257, 616, 974):
-    arrow(f"M{x},{API_Y + 86} V{RY}", ACCENT, None, 1.8)
-rw = (1056 - 2 * 20) / 3
-for i, (t, b) in enumerate([
-    ("GraphHopper 11 :8989",
-     "Docker, whole-US graph: 13 GB, 70 M nodes. Two profiles — motorcycle (curvy) and direct "
-     "(the errand ride). Built offline in 63 min from a Geofabrik extract and SRTM tiles."),
-    ("stations.json",
-     "Every public US charger, fetched once a day from the Department of Energy. The corridor "
-     "search then runs locally, so planning a ride costs no third-party call."),
-    ("stats.db · tile cache",
-     "Hourly counters only: no routes, no locations, nothing tied to a device. OSM map tiles are "
-     "fetched and cached here, so the rider never touches OpenStreetMap."),
+box(72, 508, 840, 76, "", "serpentine-api :8990",
+    ["Go, stdlib only. Generates and scores rides, runs the energy model, picks the charge stops, "
+     "builds the Maps handoff and the GPX. A plan lives in memory for up to 24 h, then it is "
+     "gone — never written to disk, never logged."])
+rw = (840 - 32) / 3
+for i, (cx, t, b) in enumerate([
+    (207, "GraphHopper 11 :8989",
+     "Docker. Whole-US graph: 13 GB, 70 M nodes. Curvy and direct profiles, built offline in 63 min."),
+    (508, "stations.json",
+     "Every US public charger, fetched once a day. Corridor search runs locally, so a ride costs "
+     "no third-party call."),
+    (809, "stats.db · tile cache",
+     "Hourly counters: no routes, no locations, nothing tied to a device. Map tiles cached here."),
 ]):
-    box(88 + i * (rw + 20), RY, rw, 120, "", t, [b])
+    arrow(f"M{cx},584 V612", ACCENT, None, 1.6)
+    box(72 + i * (rw + 16), 612, rw, 108, "", t, [b])
 
 # ---- outside -----------------------------------------------------------
-OY = 866
-AB = AY + 302
-for x in (200, 493, 786):
-    arrow(f"M{x},{AB} V{OY}", MUTED, "2 4", 1.6)
-arrow(f"M1196,464 V846 H1079 V{OY}", MUTED, "2 4", 1.6)
-tag(346, 852, "no rider data: route shape, charger coordinates")
+OY = 798
+for x in (146, 390, 634):
+    arrow(f"M{x},{AY + AH} V{OY}", MUTED, "2 4", 1.5)
+arrow(f"M960,444 V778 H878 V{OY}", MUTED, "2 4", 1.5)
+tag(268, 782, "no rider data")
 
-ow = (1152 - 3 * 20) / 4
 for i, (t, b) in enumerate([
-    ("NREL AFDC", "Charger locations, bulk, once a day. Key lives on axiom."),
-    ("Open Charge Map", "Is this stop alive? Asked per charge stop, not per ride."),
-    ("OpenStreetMap", "Map tiles for the test page, cached on axiom."),
-    ("ntfy", "Alerts to Paul's phone when the service stops answering."),
+    ("NREL AFDC", "Charger locations, in bulk, once a day."),
+    ("Open Charge Map", "Is this stop alive? Asked per stop."),
+    ("OpenStreetMap", "Map tiles, cached on axiom."),
+    ("ntfy", "Alerts when the service stops answering."),
 ]):
-    box(64 + i * (ow + 20), OY, ow, 96, "OUTSIDE THE HOUSE", t, [b], "ext")
+    box(32 + i * 244, OY, 228, 92, "OUTSIDE THE HOUSE", t, [b], "ext")
 
 # ---- legend ------------------------------------------------------------
-LY = 1004
-items = [("carries the ride", ACCENT, None, 2.4),
-         ("no rider data attached", MUTED, "2 4", 1.6),
-         ("handoff and monitoring", MUTED, "2 4", 1.6)]
-x = 40
-for label, c, d, w in items:
-    arrow(f"M{x},{LY - 4} H{x + 34}", c, d, w)
-    out.append(f'<text x="{x + 44}" y="{LY}" font-size="12" fill="{MUTED}">{esc(label)}</text>')
-    x += 44 + len(label) * 6.4 + 36
-out.append(f'<text x="1240" y="{LY}" font-size="12" fill="{MUTED}" text-anchor="end">'
+LY = 920
+x = 32
+for label, c, d, w in [("carries the ride", ACCENT, None, 2.2),
+                       ("no rider data attached", MUTED, "2 4", 1.5),
+                       ("handoff and monitoring", MUTED, "2 4", 1.5)]:
+    arrow(f"M{x},{LY - 4} H{x + 30}", c, d, w)
+    out.append(f'<text x="{x + 39}" y="{LY}" font-size="11.5" fill="{MUTED}">{esc(label)}</text>')
+    x += 39 + len(label) * 6.1 + 32
+out.append(f'<text x="992" y="{LY}" font-size="11.5" fill="{MUTED}" text-anchor="end">'
            'serpentine.phfactor.net</text>')
 out.append('</svg>')
 
-p = pathlib.Path("/Users/pfh/code/claude-cowork/serpentine/docs/img/architecture.svg")
+p = pathlib.Path(__file__).resolve().parent.parent / "docs/img/architecture.svg"
 p.write_text("\n".join(out))
 print("wrote", p)
