@@ -7,6 +7,19 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [0.1.0]
 
+- Riding a 2020–22 Zero SR/S? It's in the garage now as **Zero SR/S ZF14.4 Premium** — a different
+  bike from today's SR/S: 12.2 kWh of usable battery against 15.1, and the Premium's 6 kW charger.
+  On a 132-mile loop from 90% that's two charge stops and over three hours plugged in, where the
+  newer bike wants one stop and ninety minutes. Pick yours under Garage, and correct the numbers
+  there if you've measured your own.
+
+- Search boxes open with the keyboard already up and the cursor in them, so there's no second tap to
+  reach the field you just asked for. Adding a bike of your own works the same way.
+
+- Search results carry the postcode now — "Rancho Palos Verdes, CA 90275" — which is often the only
+  thing telling two same-named places apart. And with location switched off, distances are measured
+  from the start you already picked instead of coming up blank.
+
 - New here, or just want to see what it does? Tap **Ride a famous road** under Start. It plans the
   Tail of the Dragon, the Million Dollar Highway, the Beartooth Highway and five more, with no
   location and nothing to fill in — two taps from opening the app to a real planned ride. They're
@@ -21,15 +34,6 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
   charge stops turned a 44-mile curvy loop into 28 miles at 84% freeway, because three points isn't
   a route and the device fills in the rest. The full file came back within a tenth of a mile of the
   ride we planned. Your charge stops still arrive as waypoints it counts down.
-
-- Share GPX now asks what the file should mean, because a Beeline or a GPS decides what to do from
-  what's in the file. **Charge stops** hands the device your stops and lets it navigate between them —
-  the right answer for a Beeline, and each stop carries its name, its wait and what you arrive with.
-  **Route outline** pins more of the roads we picked. **Exact path** is what you got before: the whole
-  route, no turn prompts, and what Kurviger or a Garmin wants. "Which one do I want?" explains it on
-  the spot. Two things it warns about: the device's arrival time leaves charging out, so it reads
-  earlier than ours, and if you leave the route the device re-plans and the charge plan is gone —
-  pause the ride here and carry on for a fresh one.
 
 - Stopped part-way? Tap pause on a ride and Serpentine remembers the part you haven't ridden. Go and
   charge — or eat, or go home and come back tomorrow — then "Carry on with this ride" appears at the
@@ -49,11 +53,4 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
   The estimates lean cautious and come from a charge figure you type in. They have not yet been
   checked against a real ride — please tell me how close they land.
-
-- Keep the rides worth keeping. Tap Save on any ride and it goes to your saved list — the bookmark at
-  the top of the plan screen. Give it stars, write down what you found (gravel on a turn, the charger
-  that was busy), and record when you last rode it. Rides you haven't ridden yet sit in the same list,
-  so it works as a list of roads to try as well as a record of the ones you've done. A saved ride keeps
-  the route exactly as planned, opens the same way every time, and works with no signal. Saved rides
-  stay on your device and are never uploaded.
 
