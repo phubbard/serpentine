@@ -117,6 +117,9 @@ struct BikeEditor: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft: Bike
     private let isNew: Bool
+    /// A new bike opens on its own empty name field; editing an existing one does not, because
+    /// there the keyboard would cover the numbers the rider came to change.
+    @FocusState private var nameFocused: Bool
 
     init(bike: Bike, isNew: Bool = false) {
         _draft = State(initialValue: bike)
@@ -138,6 +141,7 @@ struct BikeEditor: View {
             Form {
                 Section("Bike") {
                     TextField("Name", text: $draft.name)
+                        .focused($nameFocused)
                 }
                 Section {
                     stepperRow("Battery", value: $draft.usableKWh, step: 0.1, unit: "kWh", format: "%.1f")
@@ -177,6 +181,7 @@ struct BikeEditor: View {
             }
             .navigationTitle(isNew ? "New bike" : draft.name)
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear { if isNew { nameFocused = true } }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {

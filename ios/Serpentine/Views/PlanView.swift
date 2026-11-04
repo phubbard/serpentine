@@ -281,6 +281,9 @@ struct PlaceSearchView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var results: [StartPoint] = []
+    /// This sheet exists to be typed into, so it opens with the cursor already in the box. A rider
+    /// who has just asked for a destination should not have to tap the field they asked for.
+    @FocusState private var queryFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -296,6 +299,8 @@ struct PlaceSearchView: View {
                 }
             }
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Town, address or place")
+            .searchFocused($queryFocused)
+            .onAppear { queryFocused = true }
             .task(id: query) {
                 guard query.count >= 3 else { results = []; return }
                 try? await Task.sleep(for: .milliseconds(300)) // debounce typing

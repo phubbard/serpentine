@@ -58,7 +58,7 @@ question to [Open questions](#open-questions).
 | Direction ("head north") | ✅ | 🟡 | `heading_deg`, or omit for "any". |
 | "Another ride like this" | ✅ | 🟡 | Seed stepping; server plans seeds n and n+1, so the client steps by two. |
 | Start from current location | ✅ | 🟡 | iOS CoreLocation; Android the platform `LocationManager` (not Google's fused-location SDK), asking for high accuracy by name. |
-| Start/destination place search | ✅ | 🟡 | iOS `MKLocalSearch`. Android: Google Places SDK (decided 2026-10-05, see Resolved). Rows show name, address and straight-line distance. |
+| Start/destination place search | ✅ | 🟡 | iOS `MKLocalSearch`. Android: Google Places SDK (decided 2026-10-05, see Resolved). Rows show name, address and straight-line distance. The search field takes focus the moment the sheet opens (2026-11-03), so the keyboard is up without a second tap — worth mirroring. |
 
 ### The ride
 

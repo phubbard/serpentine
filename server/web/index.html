@@ -202,7 +202,11 @@ async function loadBikes() {
 }
 loadBikes();
 $("mode").onchange = () => { $("go").textContent = modeLabel(); $("again").disabled = true; };
-$("preset").onchange = () => $("custom").classList.toggle("hidden", $("preset").value !== "custom");
+$("preset").onchange = () => {
+  const custom = $("preset").value === "custom";
+  $("custom").classList.toggle("hidden", !custom);
+  if (custom) $("custom").focus(); // the box only appeared because you asked to type in it
+};
 
 fetch("health").then(r => r.json()).then(h => {
   $("health").textContent = h.ok ? `API ${h.version}, GraphHopper ${h.graphhopper}${h.chargers ? "" : ", no chargers"}` : "routing engine down";
