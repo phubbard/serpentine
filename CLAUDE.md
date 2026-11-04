@@ -155,9 +155,14 @@ Principles that constrain every design choice here:
   `/Library/Developer/PrivateFrameworks/CoreSimulator.framework` is stale. Fix is
   `sudo xcodebuild -runFirstLaunch` (needs a password, so an agent cannot do it); the next `simctl`
   prints "detected version change … removing the stale service" and works. Seen 2026-10-17 on Xcode
-  27.1. Note what this does *not* break: a device archive never loads the simulator, so
+  27.1, and again 2026-11-03 with 1174.9.2 against 1174.21.0 — it recurs on every Xcode update.
+  Note what this does *not* break: a device archive never loads the simulator, so
   `make upload-testflight` succeeds throughout — it just prints "Simulator device support disabled"
   and carries on. A green TestFlight upload is therefore no evidence the test run still works.
+  **`runFirstLaunch` is only half the fix.** After it, `simctl list` showed the iOS 27.0 runtime and
+  its devices, but `xcodebuild` still failed with "The iOS 27.0 simulator runtime is not available".
+  Booting the target device once by UDID (`xcrun simctl boot <udid>`) cleared it and `make test` has
+  worked since. Don't read the second error as the first one not being fixed.
 - TestFlight signing uses **Xcode's signed-in Apple ID** (Account Holder mints the distribution
   cert). That session expires silently, and does it mid-session: build 74 signed fine and build 76,
   two hours later, did not. It has shown two different faces, both meaning "sign in again under

@@ -73,7 +73,10 @@ struct AddBikeView: View {
             List {
                 Section {
                     Button("Enter my own numbers", systemImage: "square.and.pencil") {
-                        custom = Bike(name: "My bike", usableKWh: 10, cityWhPerKM: 55, highwayWhPerKM: 80,
+                        // No placeholder name: the editor opens with this field focused, and a
+                        // seeded "My bike" would have to be deleted before the first letter lands.
+                        // An empty name already fails validation, so Save stays off until it's named.
+                        custom = Bike(name: "", usableKWh: 10, cityWhPerKM: 55, highwayWhPerKM: 80,
                                       acKW: 6.6, dcKW: 0, connectors: ["J1772"])
                     }
                 }
