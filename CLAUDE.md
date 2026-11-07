@@ -45,7 +45,21 @@ the reference for competitor and API facts; don't re-research what it already an
   ADR-018 budget loop, which was the real casualty ("45 minutes" was buying a 65-minute ride).
   `budgetSpeedKMH` 55 → 42 for the same reason. `free_flow_time_s` and `delay_s` ride along in the
   response so the allowance can be refitted. Energy was never affected: it keys off `max_speed`,
-  not travel speed. **The rates are still desk estimates**, never fitted to a logged ride.
+  not travel speed. **The rates are still desk estimates** — see the calibration bullet below.
+- **First ride logged 2026-11-06; no constant changed yet (ADR-045 addendum).** 42.6 km of San Diego
+  at 1 Hz (Beeline GPX) plus the bike's MBB/BMS logs, map-matched to the production graph:
+  **67.5 min riding against 44.4 free-flow (+52 %)**, where the allowance predicts 57.5 — so it
+  closes half the gap and what's left is *optimistic*, the wrong direction per ADR-018. Structure
+  confirmed (`freeway/residential` measured 1.2 s/km against a modelled 0; arterial rows ordered
+  right, all wanting 1.3–2.0×). **Rates deliberately not retuned:** Friday rush hour, **Eco mode**,
+  and 5.4 km of I-805 at 18 mph median (congestion we refuse to model) each inflate the ratios and
+  one ride can't separate them. Energy measured 65 %→49 % SoC = 1.95 kWh ≈ 46 Wh/km against a
+  modelled 2.81 — conservative, as designed, and **not to be loosened** off one Eco stop-start ride
+  when the 76.6 Wh/km highway figure has never been tested at all. `tools/calibrate_ride.py
+  ride.gpx --mbb X.bin --bms Y.bin --mode eco` reproduces the whole fit; `docs/calibration.md` has
+  the table and what to log next (same loop, Sport, Sunday morning). Note the MBB log is what
+  distinguishes a traffic light from a parked bike — a GPX alone cannot, and six minutes of parking
+  would otherwise have been fitted into the signal rate.
 - **Don't enable `turn_costs` hoping for better times.** Verified 2026-11-06: it buys OSM turn
   *restrictions* and a u-turn penalty, nothing else — a GraphHopper maintainer says it "does not
   necessarily produce more realistic travel times". There is no signal-delay model in GraphHopper.

@@ -1439,3 +1439,33 @@ Beeline's 26.1 for Del Mar, that looked like over-correction. It wasn't — thos
 Measured on all three fixtures the two models land within 2–5 minutes of each other over a two-hour
 ride. The class × density split stayed because it is the physically right shape and it separates
 routes the simpler model conflates, not because it fixed a gap it never fixed.
+
+### Addendum · 2026-11-07 · first logged ride: structure confirmed, rates unchanged
+
+A 42.6 km San Diego ride was logged at 1 Hz (Beeline GPX, every point timestamped) with the bike's
+own MBB and BMS logs, and map-matched onto the production graph. Full write-up and the per-class
+table in `docs/calibration.md`; `tools/calibrate_ride.py` reproduces it in one command.
+
+Riding time **67.5 min against 44.4 min free-flow, +52 %**. This allowance predicted 57.5 min, so it
+closes somewhat over half the gap and the residual is **optimistic** — the wrong direction per
+ADR-018. The shape held up: `freeway/residential` measured 1.2 s/km against a modelled 0, confirming
+the grade-separated rule, and the three arterial rows ordered correctly and all wanted a correction
+of the same rough size (1.3–2.0×).
+
+**The rates were still not changed**, because every ratio from this ride is an upper bound and one
+ride cannot separate the causes: it was Friday 15:00–16:14, the worst hour of the week on a San
+Diego arterial; it was ridden in **Eco**, which caps exactly the signal launch the per-km term
+models; and 5.4 km of it was I-805 at a median 18 mph, which is congestion we deliberately refuse to
+model and which alone accounts for 4.4 of the 10 min residual. We have no time-of-day input and
+never will, so these rates must represent a typical ride — fitting them to this one would make every
+Sunday morning read late.
+
+What this does retire is the claim above that the rates "match one independent app on one corridor,
+which is not calibration". That agreement is now the weaker evidence: the corridor has been measured
+directly and reads 23.5 mph including signals.
+
+The MBB log earned its place. Three apparent signal stops of 124 s, 106 s and 150 s were one parking
+event — `State change from RUN to STOP`, `Hibernating for 3600 sec`, `Board was reset. Source: Hib
+Wake Pin` — with the Beeline logging through it on its own battery. Six minutes of parking would
+otherwise have been fitted into the signal-delay rate. **A GPX alone cannot tell a traffic light
+from a coffee stop; the bike can.**
