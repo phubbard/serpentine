@@ -103,12 +103,12 @@ func (r *planRequest) normalize() error {
 			r.DistanceM, r.HeadingDeg, r.Seed = 0, nil, nil
 			break
 		}
-		if r.DistanceM < 20_000 || r.DistanceM > 500_000 {
+		if r.DistanceM < minLoopM || r.DistanceM > maxLoopM {
 			return badf("out_and_back needs a turnaround or distance_m between 20000 and 500000")
 		}
 		r.normalizeHeadingSeed()
 	case "loop":
-		if r.DistanceM < 20_000 || r.DistanceM > 500_000 {
+		if r.DistanceM < minLoopM || r.DistanceM > maxLoopM {
 			return badf("distance_m must be between 20000 and 500000 for a loop")
 		}
 		r.End, r.Turnaround = nil, nil
@@ -157,8 +157,12 @@ func (r *planRequest) normalize() error {
 
 // budgetSpeedKMH turns a time budget into a first distance guess. Deliberately low: serpentine's
 // roads are slow, and a ride that comes in under the budget is fine while one that runs over is a
-// broken promise. The plan is corrected against GraphHopper's own time afterwards (planForBudget).
-const budgetSpeedKMH = 55
+// broken promise. The plan is corrected against the route's own time afterwards (planForBudget),
+// but only budgetTries times — so a first guess that is badly high can still hand back an overrun,
+// which is exactly what 55 did once ADR-045 started charging rides for signals: a 30-minute
+// request came back as a 31.4-minute ride. 42 km/h is the low end of the corrected range measured
+// 2026-11-06 (town ~42, rural ~53), so the first guess now errs short and the loop grows it.
+const budgetSpeedKMH = 42
 
 // normalizeDuration converts a time budget into the distance the rest of the pipeline works in.
 func (r *planRequest) normalizeDuration() error {
@@ -175,11 +179,24 @@ func (r *planRequest) normalizeDuration() error {
 		return badf("duration_s must be between 1800 and 28800")
 	}
 	r.DurationS = math.Round(r.DurationS)
-	r.DistanceM = math.Round(clamp(r.DurationS/3600*budgetSpeedKMH*1000, 20_000, 500_000))
+	r.DistanceM = math.Round(clamp(r.DurationS/3600*budgetSpeedKMH*1000, minLoopM, maxLoopM))
 	return nil
 }
 
 func clamp(v, lo, hi float64) float64 { return math.Min(math.Max(v, lo), hi) }
+
+// minLoopM/maxLoopM bound every generated ride, whether the rider asked in kilometres or in
+// minutes. Named rather than repeated, so the validator, the budget rescale and the budget's
+// "shortest ride available" note cannot drift apart.
+//
+// loopFloorSlackM is how far over minLoopM a round_trip may land before we stop calling the result
+// the shortest ride available: GraphHopper overshoots round_trip.distance by 10–130 %
+// (infra/README.md).
+const (
+	minLoopM        = 20_000.0
+	maxLoopM        = 500_000.0
+	loopFloorSlackM = 6_000.0
+)
 
 func (r *planRequest) normalizeHeadingSeed() {
 	if r.HeadingDeg != nil {
@@ -319,9 +336,14 @@ type planResult struct {
 	Mode string `json:"mode"`
 	// Style of a point_to_point ride, echoed so a client can tell what it got back — carrying on
 	// with a paused ride has to ask for the same kind of route it interrupted (ADR-035).
-	Style        string           `json:"style,omitempty"`
-	DistanceM    float64          `json:"distance_m"`
-	TimeS        float64          `json:"time_s"`
+	Style     string  `json:"style,omitempty"`
+	DistanceM float64 `json:"distance_m"`
+	TimeS     float64 `json:"time_s"`
+	// FreeFlowS is GraphHopper's own time and DelayS the allowance added to it (ADR-045). Reported
+	// so the allowance can be refitted against a logged ride without re-deriving it, and so a bad
+	// estimate can be told apart from a bad route.
+	FreeFlowS    float64          `json:"free_flow_time_s"`
+	DelayS       float64          `json:"delay_s"`
 	AscendM      float64          `json:"ascend_m"`
 	Polyline     [][]float64      `json:"polyline"`
 	Roads        []road           `json:"roads"`
@@ -342,6 +364,10 @@ type planResult struct {
 func buildResult(id, mode, style string, p *ghPath, loop *loopInfo, ob *outBackInfo, turnIdx int, stations []nrelStation, co *chargingOpts, v *vehicle) *planResult {
 	coords := p.Points.Coordinates
 	cum := cumulativeKM(coords)
+	// GraphHopper's figure is free-flow; this is what the ride actually takes (ADR-045). Everything
+	// below quotes or spends rideS, never p.Time.
+	freeFlowS := float64(p.Time) / 1000
+	rideS := rideTimeS(p, cum)
 	roads := roadsOf(p, cum)
 	var (
 		energy *energySummary
@@ -357,9 +383,9 @@ func buildResult(id, mode, style string, p *ghPath, loop *loopInfo, ob *outBackI
 		var sum energySummary
 		if style == "efficient" {
 			// The ride to a charger already ends at one: cost it, don't plan stops along it.
-			sum = energyOnly(v, energyProfile(v, p, cum), float64(p.Time)/1000, *co, sites)
+			sum = energyOnly(v, energyProfile(v, p, cum), rideS, *co, sites)
 		} else {
-			sum = planCharging(v, sites, energyProfile(v, p, cum), float64(p.Time)/1000, *co)
+			sum = planCharging(v, sites, energyProfile(v, p, cum), rideS, *co)
 			sum.ChargersNearby = len(sites)
 		}
 		energy = &sum
@@ -371,15 +397,18 @@ func buildResult(id, mode, style string, p *ghPath, loop *loopInfo, ob *outBackI
 		sites = selectChargers(sites)
 	}
 	ins := make([]instructionOut, 0, len(p.Instructions))
+	scale := scaleInstructionS(freeFlowS, rideS)
 	for _, i := range p.Instructions {
-		ins = append(ins, instructionOut{Text: i.Text, DistanceM: math.Round(i.Distance), TimeS: math.Round(float64(i.Time) / 1000), Sign: i.Sign, Index: i.Interval[0]})
+		ins = append(ins, instructionOut{Text: i.Text, DistanceM: math.Round(i.Distance), TimeS: math.Round(float64(i.Time) / 1000 * scale), Sign: i.Sign, Index: i.Interval[0]})
 	}
 	return &planResult{
 		ID:           id,
 		Mode:         mode,
 		Style:        style,
 		DistanceM:    math.Round(p.Distance),
-		TimeS:        math.Round(float64(p.Time) / 1000),
+		TimeS:        math.Round(rideS),
+		FreeFlowS:    math.Round(freeFlowS),
+		DelayS:       math.Round(rideS - freeFlowS),
 		AscendM:      math.Round(p.Ascend),
 		Polyline:     coords,
 		Roads:        roads,

@@ -1343,3 +1343,99 @@ in the future tense to match, because a policy describing a link that does not e
 kind of untrue as the Caddy log block that promised masked addresses for two weeks while logging
 full ones (`infra/README.md`, found 2026-10-03). When the handle is claimed, the edit is
 three sentences and a deploy.
+
+## ADR-045 · 2026-11-06 · Ride time is free-flow plus an allowance, not GraphHopper's number
+
+**Context.** Paul planned a ~25 mi loop around Del Mar / Carmel Valley and compared it with the
+same corner of San Diego in Beeline's app. Serpentine said 25 mi in 41 min; Beeline said 26.5 mi in
+61 min. That is **36.6 mph against 26.1 mph** — a twenty-minute gap on a forty-minute ride, which a
+6 % difference in distance cannot explain.
+
+The cause is that we were passing GraphHopper's time through untouched (`plan.go`,
+`TimeS: math.Round(float64(p.Time)/1000)`), and GraphHopper's time is free-flow. Three things
+compound, all pushing the same way:
+
+1. `infra/graphhopper/custom_models/serpentine.json` sets speed to
+   `min(car_average_speed, max_speed * 0.9)` — a posted-limit through speed.
+2. **`turn_costs` is absent from `infra/graphhopper/config.yml`**, so junctions and turns cost
+   nothing.
+3. We hold no traffic data at all, which is principle 6 working as designed, not a bug.
+
+Reproduced 2026-11-06 on a University City loop: 23.0 mi in 44 min claimed, with **1.75 mi of
+Clairemont Mesa Blvd at 42.1 mph** and **2.0 mi of Sunset Cliffs Blvd at 44.9 mph** — straight-
+through speeds on roads with a light every few hundred metres. That loop measured 78 % primary +
+secondary and 74 % built-up. The error concentrates in town: a 120 km Ramona loop claimed 40.8 mph
+at 82 % rural, against 29.4 mph for an urban loop at 12.5 % rural.
+
+ADR-018 anticipated this in writing — "GraphHopper's motorcycle speeds are themselves optimistic on
+tight roads", and "calibrate `budgetSpeedKMH` from the first real ride logs" — and then nothing was
+done about it for seven weeks.
+
+**What this broke.** Not mainly the number on the screen. ADR-018 plans a `duration_s` request to
+97 % of the budget *measured in GraphHopper seconds*, so "I have 45 minutes" was buying a ride that
+really took 65. The time budget is the one feature whose entire promise is the figure that was
+wrong, and it failed in the direction that gets a rider home late. Charging inherited it too, since
+`planCharging` was handed free-flow seconds as the ride time.
+
+Energy did **not** inherit it: `energyProfile` keys consumption off `max_speed`, not off the travel
+speed, so the charge plan was never corrupted by the optimistic clock — and a rider really
+averaging 26 mph burns less than the model assumes. That one errs safe.
+
+**Decision.** Correct in serpentine-api, in `server/timing.go`. `rideTimeS` = GraphHopper's
+free-flow seconds plus a delay allowance, and *everything* that quotes a duration or spends one
+against a budget goes through it: `time_s`, the turn list, the charging ride time, the A→B detour
+budget, and the per-charger times in `/v1/reach`. It lands before the ADR-018 budget loop, not on
+the way to the screen, because the budget was the real casualty.
+
+The allowance is structural rather than one global multiplier, so each term names a cause that can
+be checked against a ride log on its own:
+
+- **Interruptions** — signals, stop signs, cross traffic, pedestrians — at a rate keyed on road
+  class *and* urban density together. Arterials (trunk/primary/secondary/tertiary) get
+  36 / 24 / 5 s per km at city / residential / rural density; local streets get 10 / 8 / 3.
+  Grade-separated road gets nothing. The two axes are needed because the error lives where the
+  *modelled speed is high and the interruptions frequent* — a city arterial signed 50 mph that
+  GraphHopper rides at 45. A residential street is already modelled near its real speed, so
+  charging it the arterial rate would count the same slowness twice.
+- **Corners** — 12 s per km of curvy road (curvature < 0.94, the same threshold `computeStats`
+  uses), for the ADR-018 term: the posted limit is not achievable through a tight sequence.
+
+Measured against the live graph, 2026-11-06: a Del Mar 40 km loop goes 32.4 → **26.3 mph**, against
+Beeline's 26.1 for the same area. Ramona 120 km goes 42.5 → 35.6 mph; Palomar 200 km 37.0 → 32.0.
+Rural rides gain 16–20 %, town 23–30 %.
+
+`budgetSpeedKMH` drops **55 → 42**. It was the first distance guess for a time budget, tuned against
+free-flow time, and once rides were charged for signals it was high enough that the three-attempt
+correction loop could still hand back an overrun — a 30-minute request came back as a 31.4-minute
+ride. 42 km/h is the low end of the corrected range, so the first guess now errs short and the loop
+grows it.
+
+**Rejected: enabling `turn_costs`.** It does not do what the name suggests. Verified against
+GraphHopper's own docs and forum 2026-11-06: enabling it means exactly two things — OSM turn
+*restrictions* are respected, and u-turns are forbidden or cost `u_turn_costs`. A maintainer states
+plainly that it "does not necessarily produce more realistic travel times (except the fact that the
+routes no longer involve forbidden turns)". There is no traffic-signal delay model in GraphHopper
+and no finite per-turn penalty exposed. So it would buy us no accuracy here, while costing a profile
+change — which ADR-009 says is hashed into the graph, i.e. a **63-minute full re-import** — plus
+slower preparation and slower queries.
+
+It remains worth doing *for a different reason*: without it our routes may contain illegal turns,
+which Apple Maps then silently re-routes around, quietly breaking the handoff of principle 5. That
+is a route-legality decision to take on its own evidence, bundled into the next re-import rather
+than run for its own sake. **Not yet investigated: how often our routes actually contain a
+restricted turn.**
+
+**The part that is not settled.** The rates above are desk estimates — roughly 2 signals/km on a San
+Diego city arterial times a mean control delay near 18 s — and **have never been fitted to a logged
+ride**. They are honest about their own direction (early is fine, late is a broken promise) and they
+match one independent app on one corridor, which is not calibration. `docs/calibration.md` says what
+to measure. The response now carries `free_flow_time_s` and `delay_s` alongside `time_s` precisely
+so the allowance can be refitted from a logged ride without re-deriving any of this, and so a bad
+estimate can be told apart from a bad route.
+
+**A correction worth recording**, because it nearly went in as a justification: the first cut keyed
+the rate on urban density alone, and when a University City reproduction then read 22.6 mph against
+Beeline's 26.1 for Del Mar, that looked like over-correction. It wasn't — those are different roads.
+Measured on all three fixtures the two models land within 2–5 minutes of each other over a two-hour
+ride. The class × density split stayed because it is the physically right shape and it separates
+routes the simpler model conflates, not because it fixed a gap it never fixed.

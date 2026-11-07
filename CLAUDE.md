@@ -35,6 +35,23 @@ the reference for competitor and API facts; don't re-research what it already an
   On TestFlight since 2026-09-18 (0.1.0 build 99, 2026-10-17) as **"Serpentine EV"** (ASC app id 6813768490;
   home-screen name stays "Serpentine"), internal group "Internal" with automatic distribution. `make -C server test|run|deploy|logs`. No app code yet.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.
+- **Ride time is corrected, not GraphHopper's (ADR-045, 2026-11-06).** The engine reports free-flow:
+  posted limit, no turn costs in the graph, no traffic data. Measured 36.6 mph against Beeline's
+  26.1 on a Del Mar loop — twenty minutes on forty. `server/timing.go` adds an allowance per km of
+  at-grade road, keyed on road class × urban density (arterial 36/24/5 s/km city/residential/rural,
+  local 10/8/3) plus 12 s/km of curvy, nothing on grade-separated. Rural +16–20 %, town +23–30 %;
+  Del Mar now 26.3 mph. **Everything** that quotes or spends a duration goes through `rideTimeS` —
+  `time_s`, the turn list, charging, the A→B detour budget, `/v1/reach` — and it lands *before* the
+  ADR-018 budget loop, which was the real casualty ("45 minutes" was buying a 65-minute ride).
+  `budgetSpeedKMH` 55 → 42 for the same reason. `free_flow_time_s` and `delay_s` ride along in the
+  response so the allowance can be refitted. Energy was never affected: it keys off `max_speed`,
+  not travel speed. **The rates are still desk estimates**, never fitted to a logged ride.
+- **Don't enable `turn_costs` hoping for better times.** Verified 2026-11-06: it buys OSM turn
+  *restrictions* and a u-turn penalty, nothing else — a GraphHopper maintainer says it "does not
+  necessarily produce more realistic travel times". There is no signal-delay model in GraphHopper.
+  It costs a profile change, hence a 63-min re-import (ADR-009), plus slower prep and queries. Worth
+  doing for route *legality* — an illegal turn makes Apple Maps silently re-route and breaks the
+  handoff — but bundle it into the next re-import, and on that evidence, not this.
 - Rate limits (ADR-030): 24 plans in flight, 20/min per caller (burst 8), 429 + Retry-After. Measured
   ceiling ~16 plans/s at 32 concurrent. `make -C server deploy` retries the launchd bootstrap: doing
   it immediately after a bootout fails with "Input/output error" and leaves the service down.

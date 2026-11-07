@@ -511,7 +511,7 @@ func (s *server) planForBudget(ctx context.Context, req *planRequest, cm *custom
 	target := req.DurationS * 0.97
 	best, attempts := res, 1
 	for attempts < budgetTries && !withinBudget(res, target) {
-		scaled := clamp(req.DistanceM*target/budgetUsedS(res), 20_000, 500_000)
+		scaled := clamp(req.DistanceM*target/budgetUsedS(res), minLoopM, maxLoopM)
 		if math.Abs(scaled-req.DistanceM) < 1_000 {
 			break // as close as the distance limits allow
 		}
@@ -539,6 +539,13 @@ func (s *server) planForBudget(ctx context.Context, req *planRequest, cm *custom
 		} else {
 			b.Note = "No longer ride was available from here — this is the best that fits."
 		}
+	} else if !b.Fits && best.DistanceM <= minLoopM+loopFloorSlackM {
+		// The other way a budget fails: the ride is already as short as a loop is allowed to be
+		// (minLoopM) and still runs over. In town that is reachable from the shortest budget the
+		// API accepts — 20 km of signalised arterial is over half an hour once ADR-045 charges it
+		// for the signals. Say so plainly; shrinking further would mean routing below the
+		// documented minimum, and quietly overrunning is the promise this all exists to keep.
+		b.Note = "The shortest loop from here still runs a little over your time — city streets are slower than they look."
 	}
 	best.Budget = b
 	return best, attempts, nil

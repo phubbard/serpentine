@@ -93,8 +93,9 @@ picked and gives you directions, and your charge stops come through as waypoints
 Breadcrumb draws the line without directions, for trails. Waypoints only throws the roads away and
 keeps the stops, which is for building your own ride on the device. Kurviger, Calimoto and Garmin
 read the same file and need no special handling.</p>
-<p>Two things to know before you set off. A device works out its arrival time from riding alone, so
-it will read earlier than ours — the time on the ride screen includes every charge stop. And if you
+<p>Two things to know before you set off. A device will read an earlier arrival than ours, for two
+reasons: our time includes every charge stop, and it also allows for the signals and junctions a
+free-flow estimate skips. And if you
 leave the route, the device re-plans on its own and knows nothing about charging, so the charge plan
 is gone; pause the ride in Serpentine and carry on, and you'll get a fresh one from wherever you
 are.</p>
@@ -118,6 +119,17 @@ to keep it on them. Tap to continue after each one.</p>
 a charger is listed as in service, when it was last confirmed working, and whether people recently
 failed to charge there. A stop reported out of service is replaced. Treat the rest as a hint, not a
 promise, and take the backup seriously.</p>
+
+<h2>How accurate are the ride times?</h2>
+<p>Closer than they used to be. Most route planners quote free-flow time — the speed limit, with
+nothing for the traffic light at the end of the block — which reads fine on an empty mountain road
+and badly wrong across town. Serpentine adds time back for the junctions, signals and tight corners
+on the particular roads it picked, so a city stretch is costed as the stop-start riding it really is.
+On a rural ride that adds about a sixth to the time; through town, closer to a third.</p>
+<p>The allowance is worked out from the route, not from live traffic: there is none in here, because
+that would mean asking somebody else where you are. So a jam, a parade or a Sunday morning are all
+the same to it. It is also set to err late rather than early — a ride that gets you back with time
+to spare is a small annoyance, and one that runs over is a broken promise.</p>
 
 <h2>How accurate are the charging estimates?</h2>
 <p>Deliberately cautious: Serpentine would rather suggest a stop you didn't need than strand you. Stops

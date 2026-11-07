@@ -54,6 +54,7 @@ question to [Open questions](#open-questions).
 | "Just get me there" errand ride | ✅ | 🟡 | `style: "direct"` (ADR-031). Freeways allowed, fastest, charging still planned. |
 | Plan by distance | ✅ | 🟡 | `distance_m`, 20–500 km. |
 | Plan by time ("two hours on Saturday") | ✅ | 🟡 | `duration_s` (ADR-018). Server does the speed guessing and rescaling. |
+| Ride times allow for signals and corners | ✅ | ✅ | ADR-045 (2026-11-06), server-side: both clients get it for free and **neither should do its own time arithmetic**. `time_s` is already corrected; `free_flow_time_s` and `delay_s` are diagnostics, not for display. |
 | Twistiness slider | ✅ | 🟡 | 0..1 → per-request custom model server-side. |
 | Direction ("head north") | ✅ | 🟡 | `heading_deg`, or omit for "any". |
 | "Another ride like this" | ✅ | 🟡 | Seed stepping; server plans seeds n and n+1, so the client steps by two. |

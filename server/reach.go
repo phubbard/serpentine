@@ -289,7 +289,7 @@ func optionFor(v *vehicle, site *charger, p *ghPath, soc float64) reachOption {
 		Connectors: site.Connectors, Hours: site.Hours, Pricing: site.Pricing,
 		StraightKM: round1(site.OffRouteKM),
 		DistanceM:  math.Round(p.Distance),
-		TimeS:      math.Round(float64(p.Time) / 1000),
+		TimeS:      math.Round(rideTimeOf(p)),
 		AscendM:    math.Round(p.Ascend),
 		KWhEst:     round2(kwh),
 		// Three places, not two: a two-kilometre hop costs well under half a percent of the pack,

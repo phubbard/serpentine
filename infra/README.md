@@ -90,10 +90,25 @@ paste into `/etc/caddy/Caddyfile` on webserver and `sudo systemctl reload caddy`
 - Out-and-back with a different return road — needs an `avoid_edges`-style penalty on the outbound
   path; GraphHopper OSS doesn't expose that directly, so it's either two routes with a per-request
   custom model penalising the first leg's area, or a small server-side patch.
-- Real traffic. `urban_density` is the stand-in.
+- Real traffic. `urban_density` is the stand-in — and as of ADR-045 it is a stand-in that is
+  actually used: serpentine-api costs every at-grade kilometre for signals and junctions at a rate
+  keyed on `urban_density` × `road_class`, because the engine's own time is free-flow.
 - Apple Maps handoff URL builder — trivial, belongs in the app.
 
 ## Gotchas (each cost real time)
+
+- **`turn_costs` is not a traffic-signal model, whatever the name suggests.** Checked against
+  GraphHopper's docs and forum, 2026-11-06, before spending an hour of re-import on it. Enabling it
+  does exactly two things: OSM turn *restrictions* are respected, and u-turns are either forbidden or
+  cost `u_turn_costs`. A maintainer's words: it "does not necessarily produce more realistic travel
+  times (except the fact that the routes no longer involve forbidden turns)". There is no finite
+  per-turn penalty exposed and no signal delay anywhere in the engine — so it fixes nothing about the
+  optimistic times that ADR-045 exists to correct. It also isn't free: it's part of the profile, which
+  GraphHopper hashes into the graph (ADR-009), so switching it on is a **full 63-minute re-import**,
+  and it makes both preparation and queries slower.
+  It is still worth doing one day, for the reason the name doesn't advertise: without it a route may
+  contain an illegal turn, and Apple Maps then silently re-routes around it, which quietly breaks the
+  handoff. Bundle it into the next re-import for *that*, not for timing.
 
 - **Docker Desktop VM memory.** Default cap was 7.57 GB; the container sat at 92 % and would have
   been OOM-killed mid-import. Settings > Resources > Memory ≥ 24 GB, Apply & Restart, then

@@ -49,7 +49,7 @@ func (s *server) planAtoB(ctx context.Context, r *planRequest, cm *customModel) 
 	if err != nil {
 		return nil, nil, err
 	}
-	fastestS := float64(fastest.Time) / 1000
+	fastestS := rideTimeOf(fastest)
 	budgetS := fastestS + *r.MaxExtraS
 
 	best, bestTwist := fastest, 0.0
@@ -62,14 +62,14 @@ func (s *server) planAtoB(ctx context.Context, r *planRequest, cm *customModel) 
 		if err != nil {
 			return nil, nil, err
 		}
-		if float64(path.Time)/1000 <= budgetS {
+		if rideTimeOf(path) <= budgetS {
 			best, bestTwist = path, twist
 			break // the first that fits is the twistiest that fits
 		}
 	}
 	return best, &detourInfo{
 		FastestS:   math.Round(fastestS),
-		ExtraS:     math.Round(float64(best.Time)/1000 - fastestS),
+		ExtraS:     math.Round(rideTimeOf(best) - fastestS),
 		MaxExtraS:  *r.MaxExtraS,
 		Twistiness: math.Round(bestTwist*100) / 100,
 		Fits:       bestTwist > 0,

@@ -70,6 +70,8 @@ Response (200):
   "id": "1f0c…",                    // stable hash of the normalised request + profile version
   "mode": "loop",
   "distance_m": 141800, "time_s": 8700, "ascend_m": 2400,
+  "free_flow_time_s": 7400,         // the router's own figure, before the delay allowance
+  "delay_s": 1300,                  // what ADR-045 added for signals, junctions and corners
   "polyline": [[lon, lat, ele], ...],
   "roads": [ { "name": "South Grade Road (CR S6)", "km": 11.2 }, ... ],      // in order, merged
   "instructions": [ { "text": "Turn left onto …", "distance_m": 1200, "time_s": 90, "sign": -2, "i": 812 } ],
@@ -311,8 +313,9 @@ power, 24 h access, J1772 over Tesla-only, and closeness to the route.
 `duration_s` replaces `distance_m` for `loop` and `out_and_back`: "I have two hours". Sending both is
 a 400, as is `duration_s` on `point_to_point`.
 
-The server converts the budget into a first distance at `budgetSpeedKMH` (55 km/h — serpentine's roads
-are slow), plans, then corrects the distance against GraphHopper's own time for the winning route.
+The server converts the budget into a first distance at `budgetSpeedKMH` (42 km/h — serpentine's roads
+are slow, and the figure is deliberately at the low end of the corrected range), plans, then corrects
+the distance against the winning route's own `time_s`, allowance included (ADR-045).
 At most three plans (`budgetTries`); it stops early once the ride lands inside the budget. It aims at
 97 % of the budget and prefers the longest ride that still fits: finishing early is fine, running over
 is a broken promise.
@@ -328,7 +331,34 @@ The response carries a `budget` block on these requests:
 
 `fits` is false when even the shortest correction ran over (rare: a 30-minute budget in an area whose
 shortest loop is longer, or charging that can't be avoided). Show the ride anyway; it's the best
-available, and `total_s` says what it really costs.
+available, and `total_s` says what it really costs. An optional `note` explains the two cases worth
+explaining: a ride that came back far shorter than asked for, and a ride already at the 20 km floor
+that still runs over — in town 20 km can take more than half an hour.
+
+## How `time_s` is worked out (ADR-045)
+
+`time_s` is **not** the routing engine's figure. The engine reports free-flow time: the posted limit,
+with nothing for the signal at the end of the block, no turn costs in the graph, and no traffic data
+anywhere (that last is deliberate — see principle 6 in `CLAUDE.md`). Measured against one independent
+app on a San Diego corridor, that ran 36.6 mph where the real answer was near 26.
+
+So `time_s` = `free_flow_time_s` + `delay_s`, where the allowance is built from the route's own
+geometry: seconds per kilometre of at-grade road, at a rate set by road class and urban density
+together, plus a surcharge over curvy kilometres. Grade-separated road gets nothing. Typical effect:
+**+16–20 % on a rural ride, +23–30 % in town.**
+
+Three consequences for a client:
+
+- `instructions[].time_s` carries the same correction, scaled proportionally, so the turn list still
+  sums to `time_s`. Per-manoeuvre delay would need junction detail the server doesn't fetch.
+- `energy.total_time_s`, `detour.fastest_s`/`extra_s` and `/v1/reach`'s per-charger `time_s` are all
+  corrected too. There is no endpoint left that quotes free-flow time as an answer.
+- `free_flow_time_s` and `delay_s` are reported for diagnostics: they let a logged ride be used to
+  refit the allowance, and they let a bad estimate be told apart from a bad route. A client has no
+  reason to show either.
+
+The rates are honest estimates that have **not** been fitted to a logged ride yet; they err late
+rather than early on purpose. `docs/calibration.md` says what to measure.
 
 ## Detour budgets (`max_extra_s`, `point_to_point`)
 
