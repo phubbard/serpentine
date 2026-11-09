@@ -7,7 +7,10 @@ ads and no analytics — donation-supported (ADR-044).
 
 Plan by distance, by the time you have ("two hours on Saturday"), or A→B with a detour budget — the
 quick way plus however long you'll spend on better roads. For the trips that aren't about riding
-(the helmet shop, the dealer), "just get me there" takes the freeway and still plans the charging. Status: routing engine and API running in-house; app v0.1 on TestFlight (build 118) for iPhone, iPad
+(the helmet shop, the dealer), "just get me there" takes the freeway and still plans the charging.
+Quoted times allow for the signals, junctions and tight corners on the roads it actually picked
+rather than the free-flow figure most planners show — about a sixth more on a rural ride, closer to
+a third through town (ADR-045). Status: routing engine and API running in-house; app v0.1 on TestFlight (build 118) for iPhone, iPad
 and Mac as "Serpentine EV". Product page: <https://serpentine.phfactor.net/v1/about>; support:
 <https://serpentine.phfactor.net/v1/support>; privacy policy: <https://serpentine.phfactor.net/v1/privacy>. `serpentine-api` plans
 point-to-point rides, scored loops and out-and-backs with charge stops (plus backup chargers) and an
@@ -23,7 +26,8 @@ Apple Maps handoff; try it at
   with a map (vendored Leaflet, cached OSM tiles)
 - `infra/` — GraphHopper 11 motorcycle profile (whole-US graph), docker-compose, Caddy site block,
   setup + smoke tests
-- `demo/`, `tools/` — a hardwired demo ride, the script that routes it, and
+- `demo/`, `tools/` — a hardwired demo ride, the script that routes it, `calibrate_ride.py`, which
+  fits the ride-time and energy models against a logged GPX and the bike's own logs, and
   `arch_diagram.py`, which regenerates the architecture diagram in `docs/img/`
   (authored at 1024 px wide, the width WordPress serves; publish the `@2x` file)
 - `ios/AppStore/screenshots/` — App Store screenshots: 6.9" (1320×2868), 6.5" (1284×2778), 13" iPad
@@ -37,6 +41,7 @@ Apple Maps handoff; try it at
   stamp (date and commit) for bug reports
 - `sync.md`, `android-port-brief.md` — cross-platform parity matrix with the Android port, and the
   scoping doc the Android session reads first
-- `docs/` — roadmap, decisions (ADR-001..043, including what the charging research found and what it
-  rules out), API contract
+- `docs/` — roadmap, decisions (ADR-001..045, including what the charging research found and what it
+  rules out), API contract, and `calibration.md`: what the time and energy constants are still
+  estimates of, and what the first logged ride measured them at
 - `CLAUDE.md` — orientation for agents and future me: architecture, conventions, gotchas
