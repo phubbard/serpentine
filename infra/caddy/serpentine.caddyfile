@@ -28,6 +28,33 @@ serpentine.phfactor.net {
 		}
 	}
 
+	# The test page's map (ADR-046): vector tiles, styles, glyphs and sprites from the tile server
+	# on this machine (pmtiles on 127.0.0.1:8323, files in /srv/tiles/www), under this site's own
+	# name so the page still talks to one host. Answered here, not by serpentine-api: macOS will
+	# not let a launchd agent on axiom open a connection to another machine on the LAN. The four
+	# shapes below are the same four server/tiles.go relays for a dev run; keep them in step.
+	handle_path /v1/tiles/* {
+		@tile path_regexp ^/([0-9]|1[0-5])/[0-9]{1,7}/[0-9]{1,7}\.mvt$
+		handle @tile {
+			rewrite * /planet{path}
+			reverse_proxy 127.0.0.1:8323 {
+				header_down Cache-Control "public, max-age=86400, stale-while-revalidate=604800"
+			}
+		}
+		# \x20, not a literal space: the Caddyfile splits a matcher's arguments on whitespace.
+		@mapfile path_regexp ^/(styles/[a-z]{1,20}\.json|fonts/[A-Za-z0-9%\x20]{1,80}/[0-9]{1,5}-[0-9]{1,5}\.pbf|sprites/v[0-9]/[a-z]{1,20}(@2x)?\.(json|png))$
+		handle @mapfile {
+			root * /srv/tiles/www
+			header Cache-Control "public, max-age=86400"
+			@pbf path *.pbf
+			header @pbf Content-Type application/x-protobuf
+			file_server
+		}
+		handle {
+			respond "serpentine" 404
+		}
+	}
+
 	# serpentine-api: what the app uses.
 	handle /v1/* {
 		reverse_proxy axiom.phfactor.net:8990 {

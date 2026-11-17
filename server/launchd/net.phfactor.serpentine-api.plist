@@ -27,9 +27,9 @@
              only; open it with sqlite3 on axiom. -->
         <string>-stats-db</string>
         <string>/Users/pfh/serpentine-api/stats.db</string>
-        <!-- The /v1/ test page's map: /v1/tiles relays to our own vector tile server (ADR-046). -->
-        <string>-tile-server</string>
-        <string>https://tiles.phfactor.net</string>
+        <!-- No -tile-server here on purpose (ADR-046). In production the Pi's Caddy answers
+             /v1/tiles itself. This job could not: macOS Local Network privacy stops a launchd
+             agent from connecting to another machine on the LAN, so the relay only ever got 502. -->
     </array>
     <key>RunAtLoad</key>
     <true/>

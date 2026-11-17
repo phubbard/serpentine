@@ -84,6 +84,27 @@ the `/maps` UI and the expensive `/spt` / `/isochrone` endpoints stay LAN-only. 
 paste into `/etc/caddy/Caddyfile` on webserver and `sudo systemctl reload caddy`. Check:
 `curl -s -o /dev/null -w '%{http_code}' https://serpentine.phfactor.net/maps/` should be 404.
 
+The block also answers `/v1/tiles/` itself, from the tile server on the Pi (ADR-046), so that one
+path never reaches axiom. Gotchas from putting it there (2026-11-16):
+
+- **Replace the block, do not hand-paste, and validate a candidate before it goes live.** Copy
+  `/etc/caddy/Caddyfile` to a temp directory with the new block spliced in, run
+  `sudo -u caddy caddy validate --config <copy> --adapter caddyfile`, and only then move it into
+  place and reload. A rejected candidate cost nothing; a rejected live file takes 443 down.
+- **Validate as the `caddy` user, never with plain `sudo`.** As root, validation creates any log
+  file the config names that does not exist yet, owned by root; the service then cannot open it
+  and the reload fails.
+- **A matcher's arguments split on whitespace.** `path_regexp` with a literal space inside a
+  character class is cut in two and the second half fails to compile. Write `\x20`.
+- **A launchd agent on axiom cannot connect to other LAN machines** (macOS Local Network
+  privacy). Symptom: the service's outbound request fails in a couple of milliseconds with "no
+  route to host" while the same binary run from an SSH shell works. Daemons, root and
+  terminal-launched processes are exempt; an unsigned binary would need re-approving in System
+  Settings after every build. This is why the tile path is served on the Pi and not relayed by
+  serpentine-api.
+- After any change, compare the deployed block with the repo file byte for byte and check a live
+  request for each path shape, including the ones that must 404.
+
 ## 4. What's deliberately not here yet
 
 - Charger stops (NREL `nearby-route` on the returned polyline) — client side, next step.

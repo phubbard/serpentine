@@ -1527,3 +1527,30 @@ policy; a test checks that neither policy names a host or allows `eval`.
   drawn.
 - Not done here: the apps. The relay already serves everything MapLibre Native would need, but
   replacing MapKit or the Google Maps SDK is its own decision (principle 5, sync.md).
+
+**Amended the same day, after the first deploy: in production the relay is Caddy's, not ours.**
+The relay shipped, the health check passed, and every map request came back 502 in 2 ms. The same
+binary started from an SSH shell on axiom fetched the style without complaint. The difference is
+macOS Local Network privacy: a launchd *agent* may not open a connection to another machine on
+the LAN until someone approves it in System Settings, while daemons, root and anything started
+from a terminal or SSH are exempt. serpentine-api had never needed the LAN before; GraphHopper is
+on localhost and NREL and Open Charge Map are on the internet. Approving it by hand would work
+until the next build, since the binary is unsigned and each one is a new identity to the system.
+
+So `/v1/tiles/` is now answered on the Pi, by a `handle_path` in the site block that proxies tiles
+to `pmtiles` on loopback and serves styles, glyphs and sprites from `/srv/tiles/www`
+(`infra/caddy/serpentine.caddyfile`). That is where the tile server lives, so the detour through
+axiom is gone and the map no longer depends on axiom at all. The page did not change: same URLs,
+one host, same CSP, and the access log already collapsed `/v1/tiles/…`. The launchd job no longer
+passes `-tile-server`. The Go relay stays for `make run`, where it works because a dev run starts
+from a terminal, and its tests stay as the written specification of the four shapes. The two
+implementations must be kept in step by hand. Where they differ today: Caddy does not range-check
+x and y (pmtiles answers an out-of-range tile with some other tile, which is harmless), and it
+proxies the caller's headers to `pmtiles`, which is our own process on the same machine, runs
+with `--quiet` and keeps no log.
+
+Two smaller scars from the same hour, both in `infra/README.md`: a Caddyfile matcher's arguments
+split on whitespace, so a regular expression with a literal space in it is silently cut in two
+(use `\x20`); and `sudo caddy validate` creates any new log file as root, which makes the next
+reload fail, so validate as the `caddy` user. In both cases the guard that validates a candidate
+config before it replaces the live one is what kept the site up.

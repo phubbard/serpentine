@@ -6,8 +6,8 @@
 <title>serpentine test</title>
 <!-- Test page for serpentine-api, served by the API itself at /v1/. No external resources (CSP
      enforces it): the one-host rule applies here too. Leaflet, MapLibre GL and the binding between
-     them are vendored (static/); the vector map's style, tiles, glyphs and sprites all come through
-     the API's own relay to our tile server (tiles/, ADR-046). -->
+     them are vendored (static/); the vector map's style, tiles, glyphs and sprites all come from our
+     own tile server under this host's tiles/ path (ADR-046). -->
 <link rel="stylesheet" href="static/leaflet-1.9.4/leaflet.css">
 <link rel="stylesheet" href="static/maplibre-gl-5.24.1/maplibre-gl.css">
 <script src="static/leaflet-1.9.4/leaflet.js"></script>
@@ -284,7 +284,7 @@ async function plan() {
 
 // The basemap style lives on our tile server and names that server's own address for its tiles,
 // glyphs and sprites. This page may only talk to the host it came from, so every one of those is
-// re-pointed at this API's relay (tiles/) before MapLibre sees the style.
+// re-pointed at this host's tiles/ path before MapLibre sees the style.
 async function basemapStyle() {
   const relay = new URL("tiles", location.href).href;
   const dark = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches;

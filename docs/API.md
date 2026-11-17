@@ -139,9 +139,10 @@ the binary from `server/web/index.html`; a CSP forbids loading anything from ano
 
 ## GET /tiles/… and /static/…
 
-Map support for the test page (ADR-046). `/tiles/` relays to our own vector tile server and
-answers exactly four shapes, 404 for anything else and for everything when the server runs without
-`-tile-server`:
+Map support for the test page (ADR-046). `/tiles/` serves our own vector tile server's data under
+this host's name and answers exactly four shapes, 404 for anything else. On the public host the
+Pi's Caddy answers these itself; a dev run of serpentine-api relays the same shapes when started
+with `-tile-server` and 404s them all without it:
 
 - `/tiles/{z}/{x}/{y}.mvt` — vector tiles, z ≤ 15 (clients overzoom); 204 where the map is empty
 - `/tiles/styles/{light,dark,white,grayscale,black}.json` — MapLibre styles. They name the tile

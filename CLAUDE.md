@@ -27,9 +27,13 @@ the reference for competitor and API facts; don't re-research what it already an
   `/v1/reach` — chargers ranked by the share of the pack it takes to get to each (ADR-034). Browser test page with a
   map at `https://serpentine.phfactor.net/v1/`, product page `/v1/about` (also `/` via Caddy), support
   `/v1/support`, privacy `/v1/privacy` (`server/web/`, embedded). The test page's map is vector
-  tiles from our own tile server since 2026-11-16 (ADR-046): `/v1/tiles/…` relays style, tiles,
-  glyphs and sprites to `https://tiles.phfactor.net` (`-tile-server`; Memento
-  `/services/tileserver.md`), so the page still talks to one host. No OSM proxy, no tile cache.
+  tiles from our own tile server since 2026-11-16 (ADR-046; Memento `/services/tileserver.md`),
+  under `/v1/tiles/…` so the page still talks to one host. **In production the Pi's Caddy answers
+  `/v1/tiles/` itself** (`infra/caddy/serpentine.caddyfile`); the Go relay in `server/tiles.go`
+  (`-tile-server`) serves the same four shapes for `make run` only. No OSM proxy, no tile cache.
+  **A launchd agent on axiom cannot connect to another LAN machine** (macOS Local Network
+  privacy): the same binary works from an SSH shell and gets "no route to host" under launchd.
+  Anything new that serpentine-api must reach on the LAN needs a plan for that first.
 - iOS app v0.1.0 in `ios/` (SwiftUI + MapKit, xcodegen; iPhone + iPad split view, Mac Catalyst planned): plan loop / out-and-back from location or
   search, charging, map + stats, Apple Maps handoff, GPX share, saved rides with rating/notes/last-ridden
   (ADR-033, local files under Application Support), "find a charger" for a low battery (ADR-034),
@@ -116,9 +120,11 @@ serpentine-api on axiom (Mac Studio M4 Max, 128 GB, .7)   ← phase 1, Go, :8990
    │     "direct" (the errand ride, ADR-031), both LM/hybrid
    ├─► NREL AFDC: the whole US fetched once a day into ~/serpentine-api/stations.json (ADR-028);
    │     corridor search is local. Key only on axiom, X-Api-Key. Per-plan calls are the fallback.
-   ├─► tiles.phfactor.net (PMTiles planet on the Pi): the test page's map, relayed under /v1/tiles
-   │     (ADR-046). The apps do not use it: they draw with MapKit and Google Maps.
    └─► (later) elevation, HPMS AADT
+
+The test page's map is the one thing Caddy answers without axiom: /v1/tiles/ goes to the tile
+server on the Pi itself (PMTiles planet, ADR-046). The apps do not use it: they draw with MapKit
+and Google Maps.
 ```
 
 Principles that constrain every design choice here:

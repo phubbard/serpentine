@@ -12,11 +12,16 @@ import (
 )
 
 // Map relay for the test page (ADR-046, replacing ADR-016's cached OpenStreetMap rasters). The
-// page draws a vector map and asks this host for every piece of it: style, tiles, glyphs, sprites.
-// Each request is passed to our own tile server (tiles.phfactor.net, a PMTiles planet on the Pi)
-// and the answer handed back, so the browser still talks to serpentine.phfactor.net and nothing
-// else, and no map company sees anyone, not even this server. Nothing about the viewer travels
-// upstream: no address, Origin, Referer or cookie.
+// page draws a vector map and asks the host it came from for every piece of it: style, tiles,
+// glyphs, sprites. Each request is passed to our own tile server (tiles.phfactor.net, a PMTiles
+// planet on the Pi) and the answer handed back, so the browser talks to one host and no map
+// company sees anyone. Nothing about the viewer travels upstream: no address, Origin, Referer or
+// cookie.
+//
+// This is the dev-run path (`make run`, which passes -tile-server). In production the Pi's Caddy
+// answers /v1/tiles/ itself, from the same four shapes (infra/caddy/serpentine.caddyfile), because
+// macOS will not let the launchd agent on axiom connect to another machine on the LAN. Change the
+// shapes in both places or not at all.
 
 const (
 	tileMaxZoom   = 15 // the archive's deepest level; MapLibre overzooms beyond it
