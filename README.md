@@ -23,7 +23,7 @@ Apple Maps handoff; try it at
   daily copy of every US public charger, with charger-reliability checks and tidied station names,
   Apple Maps handoff, GPX (`?for=all` carries route + charge stops; ADR-041), the
   vehicle catalog (`vehicles.json`, served at `/v1/vehicles`), browser test page
-  with a map (vendored Leaflet, cached OSM tiles)
+  with a map (vendored Leaflet and MapLibre GL, vector tiles from our own tile server)
 - `infra/` — GraphHopper 11 motorcycle profile (whole-US graph), docker-compose, Caddy site block,
   setup + smoke tests
 - `demo/`, `tools/` — a hardwired demo ride, the script that routes it, `calibrate_ride.py`, which

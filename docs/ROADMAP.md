@@ -47,8 +47,9 @@ Acceptance:
 - [x] `out_and_back` mode (ADR-015)
 - [x] Browser test page at `/v1/` with a map: vendored Leaflet + caching OSM tile proxy (ADR-016)
 - [x] Loops penalise repeated road (round_trip spurs; ADR-010 amendment, ADR-012 resolution)
-- [ ] **Self-hosted vector tiles** replace the tile proxy: Protomaps PMTiles extract (California or
-      us-west) on axiom, vendored MapLibre GL + style/glyphs/sprites, served under `/v1/` (ADR-016)
+- [x] **Self-hosted vector tiles** replace the tile proxy (ADR-046, 2026-11-16): a Protomaps
+      PMTiles planet on the Pi at `tiles.phfactor.net`, relayed under `/v1/tiles/`, drawn with
+      vendored MapLibre GL inside the page's Leaflet map
 - [ ] Verify forest roads: a 150 km Ramona loop (seed 1) used Eagle Peak / Boulder Creek / Engineers
       Rd (FR 13S06/08/03), tagged asphalt in OSM but partly dirt in reality further along; and with
       `avoid: unpaved` it still carried 0.8 km dirt + 0.7 km gravel. Check against imagery; consider
@@ -267,8 +268,8 @@ behaves exactly like a catalog one.
 ## Phase 4 — In-app turn-by-turn  *(only if phase 0's handoff measurement is bad)*
 
 - [ ] Ferrostar (BSD) with `CustomRouteProvider` fed by serpentine-api (OSRM-format adapter)
-- [ ] Self-hosted vector tiles (so the phone still talks to one host) — Protomaps `.pmtiles` on axiom
-      behind Caddy is the likely shape
+- [ ] Self-hosted vector tiles in the app (so the phone still talks to one host). The server half
+      exists since ADR-046: `/v1/tiles/` already relays everything MapLibre Native would ask for
 - [ ] Voice: `AVSpeechSynthesizer` first, pre-rendered neural phrases later
 
 ## Explicitly not planned

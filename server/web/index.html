@@ -5,10 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>serpentine test</title>
 <!-- Test page for serpentine-api, served by the API itself at /v1/. No external resources (CSP
-     enforces it): the one-host rule applies here too. Leaflet is vendored (static/), map tiles come
-     through the API's own caching proxy (tiles/). -->
+     enforces it): the one-host rule applies here too. Leaflet, MapLibre GL and the binding between
+     them are vendored (static/); the vector map's style, tiles, glyphs and sprites all come through
+     the API's own relay to our tile server (tiles/, ADR-046). -->
 <link rel="stylesheet" href="static/leaflet-1.9.4/leaflet.css">
+<link rel="stylesheet" href="static/maplibre-gl-5.24.1/maplibre-gl.css">
 <script src="static/leaflet-1.9.4/leaflet.js"></script>
+<script src="static/maplibre-gl-5.24.1/maplibre-gl.js"></script>
+<script src="static/maplibre-gl-leaflet-0.1.4/leaflet-maplibre-gl.js"></script>
 <style>
   :root {
     --bg: #f6f5f2; --panel: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #e2e0dc;
@@ -278,13 +282,34 @@ async function plan() {
   }
 }
 
+// The basemap style lives on our tile server and names that server's own address for its tiles,
+// glyphs and sprites. This page may only talk to the host it came from, so every one of those is
+// re-pointed at this API's relay (tiles/) before MapLibre sees the style.
+async function basemapStyle() {
+  const relay = new URL("tiles", location.href).href;
+  const dark = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches;
+  const r = await fetch(`tiles/styles/${dark ? "dark" : "light"}.json`);
+  if (!r.ok) throw new Error(`map style: ${r.status}`);
+  const upstream = await r.json();
+  const style = JSON.parse(JSON.stringify(upstream).replaceAll(new URL(upstream.glyphs).origin, relay));
+  for (const src of Object.values(style.sources)) {
+    if (src.type !== "vector") continue;
+    delete src.url;                       // TileJSON would name the tile server directly
+    src.tiles = [relay + "/{z}/{x}/{y}.mvt"];
+    src.maxzoom = 15;
+  }
+  return style;
+}
+
 let map, overlay;
 function drawMap(res) {
   if (!window.L) return;
   if (!map) {
-    map = L.map("map");
-    L.tileLayer("tiles/{z}/{x}/{y}.png", { maxZoom: 17, attribution: "&copy; OpenStreetMap contributors" }).addTo(map);
+    map = L.map("map", { maxZoom: 19 });
     overlay = L.layerGroup().addTo(map);
+    // Without a tile server (a dev run with no -tile-server) the route still draws, on a blank map.
+    if (L.maplibreGL) basemapStyle().then(style => L.maplibreGL({ style }).addTo(map))
+      .catch(err => console.error("basemap unavailable:", err));
   }
   map.invalidateSize();
   overlay.clearLayers();

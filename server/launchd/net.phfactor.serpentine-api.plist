@@ -27,9 +27,9 @@
              only; open it with sqlite3 on axiom. -->
         <string>-stats-db</string>
         <string>/Users/pfh/serpentine-api/stats.db</string>
-        <!-- Map tiles for the /v1/ test page, fetched once from OSM and cached here. -->
-        <string>-tile-cache</string>
-        <string>/Users/pfh/serpentine-api/tiles</string>
+        <!-- The /v1/ test page's map: /v1/tiles relays to our own vector tile server (ADR-046). -->
+        <string>-tile-server</string>
+        <string>https://tiles.phfactor.net</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

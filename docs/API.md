@@ -137,11 +137,22 @@ and out-and-backs — start presets / my location / lat,lon, distance, twistines
 starting charge — showing the route on a map and tappable Apple Maps / Google Maps / GPX links. Embedded in
 the binary from `server/web/index.html`; a CSP forbids loading anything from another host.
 
-## GET /tiles/{z}/{x}/{y}.png and /static/…
+## GET /tiles/… and /static/…
 
-Map support for the test page (ADR-016): OSM raster tiles through a caching proxy on axiom (z ≤ 17;
-404 when the server runs without `-tile-cache`), and vendored Leaflet under `/static/`. Not for the
-iOS app, which displays with MapKit.
+Map support for the test page (ADR-046). `/tiles/` relays to our own vector tile server and
+answers exactly four shapes, 404 for anything else and for everything when the server runs without
+`-tile-server`:
+
+- `/tiles/{z}/{x}/{y}.mvt` — vector tiles, z ≤ 15 (clients overzoom); 204 where the map is empty
+- `/tiles/styles/{light,dark,white,grayscale,black}.json` — MapLibre styles. They name the tile
+  server's own address, so a client must re-point `glyphs`, `sprite` and the vector source at
+  `/tiles/` itself, as the test page does
+- `/tiles/fonts/{fontstack}/{range}.pbf` — glyphs
+- `/tiles/sprites/v4/{name}[@2x].{json,png}` — icons
+
+Vendored Leaflet, MapLibre GL and the Leaflet binding are under `/static/`. Not used by the apps,
+which draw with MapKit and Google Maps. The earlier `/tiles/{z}/{x}/{y}.png` raster proxy
+(ADR-016) is gone.
 
 ## GET /plan/{id}.gpx[?for=all|waypoints|route|track]
 

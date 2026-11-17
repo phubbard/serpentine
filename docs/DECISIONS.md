@@ -1469,3 +1469,61 @@ event — `State change from RUN to STOP`, `Hibernating for 3600 sec`, `Board wa
 Wake Pin` — with the Beeline logging through it on its own battery. Six minutes of parking would
 otherwise have been fitted into the signal-delay rate. **A GPX alone cannot tell a traffic light
 from a coffee stop; the bike can.**
+
+## ADR-046 · 2026-11-16 · The test page's map comes from our own tile server, through this host
+
+ADR-016 called its cached OpenStreetMap rasters a stopgap, and the replacement now exists: a
+whole-planet Protomaps PMTiles archive on the Pi at `tiles.phfactor.net`, built the same day for
+this page, fiber-map and MapMyFriends (Memento `/services/tileserver.md`). It serves vector tiles,
+five MapLibre styles, glyphs and sprites, updates itself monthly, and answers browsers only when
+their page is on phfactor.net.
+
+**Decision.** The test page draws a vector basemap with MapLibre GL 5.24.1, added to the existing
+Leaflet map as one layer through `@maplibre/maplibre-gl-leaflet` 0.1.4, so the route line and the
+markers are untouched. Both are vendored and embedded like Leaflet. The page does **not** talk to
+`tiles.phfactor.net`. `/v1/tiles/…` in serpentine-api relays four shapes to it — tiles, styles,
+glyphs, sprites — and the page rewrites the style it receives so that every URL in it points back
+at `/v1/tiles/`. `tiles.go` shrank from a disk cache with single-flight fetching to a relay; the
+`-tile-cache` and `-tile-upstream` flags became `-tile-server`.
+
+**Why relay, when the tile server would have accepted the page directly.** Loading from
+`tiles.phfactor.net` was one line of JavaScript and it is what fiber-map does. But the rule here is
+one host (principle 1), the page's CSP says `connect-src 'self'` and a test asserts the page names
+no other host. A second hostname, even our own, would have meant loosening all three and
+re-wording the privacy page to explain why two is still one. The relay costs two LAN hops of about
+a millisecond each and keeps the sentence true as written. It also means the Caddy block needed no
+change: `/v1/*` already reaches the API and the access log already collapses `/v1/tiles/…`.
+
+**What the relay does not pass on.** It builds a fresh request with our User-Agent, `Accept-Encoding`
+and the caller's `If-None-Match`, and nothing else: no address, Origin, Referer or cookie
+(asserted in `TestTileRelayPassesTilesThroughUntouched`). Responses come back with five headers;
+the tile server's CORS header is dropped. Tiles are relayed still gzipped rather than unpacked and
+repacked. Paths outside the four shapes, a zoom past 15 or an x/y outside its level get 404 and
+never reach the tile server. The archive itself and the TileJSON are not relayed: the first is
+140 GB, the second names the tile server's address.
+
+**No cache.** ADR-016 cached because OSM's policy asks for it and because every miss was a request
+to someone else. Neither applies to our own server on the same LAN, and a 30-day cache would have
+served tiles a monthly update had already replaced. The tile server sets `Cache-Control` and
+`ETag`; browsers do the caching.
+
+**The CSP gained two words, on one page.** MapLibre decodes tiles in a worker it starts from a
+`blob:` URL and passes images as blobs, so the test page's policy adds `worker-src blob:`,
+`child-src blob:` and `blob:` under `img-src`. A blob worker inherits the page's policy, so its
+fetches are still held to `'self'`. The product, privacy and support pages keep the stricter
+policy; a test checks that neither policy names a host or allows `eval`.
+
+**Consequences.**
+- OpenStreetMap's servers are no longer contacted by anything in this project. Before, they saw
+  one request per tile from axiom. The privacy page's test-page paragraph says so.
+- The page now depends on the Pi's tile service as well as axiom. If it is down the route still
+  draws, on a blank map, and the browser console says why. Plans, GPX and the apps are unaffected.
+- The dashboard's "tiles / cached" pair became "map tiles / served": asked for, and answered
+  200, 204 or 304. Same two columns in `stats.db`, so no migration.
+- `~/serpentine-api/tiles` on axiom, the old raster cache, is no longer read. It can be deleted.
+- MapLibre GL stays on 5.x: 6.x is ESM-only with a separate worker file, which a page with plain
+  script tags and no build step cannot load.
+- The dark colour scheme gets the tile server's real dark style, chosen when the map is first
+  drawn.
+- Not done here: the apps. The relay already serves everything MapLibre Native would need, but
+  replacing MapKit or the Google Maps SDK is its own decision (principle 5, sync.md).

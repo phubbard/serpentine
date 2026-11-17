@@ -2,162 +2,124 @@ package main
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
+	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
-// Caching raster tile proxy for the test page's map (ADR-016). The browser only ever talks to
-// serpentine.phfactor.net; OSM's tile server sees one cached fetch per tile from axiom, never the
-// viewer. Stopgap until self-hosted vector tiles (roadmap). OSM tile usage policy: identify the
-// app, cache, at most 2 connections, show attribution (the page does).
+// Map relay for the test page (ADR-046, replacing ADR-016's cached OpenStreetMap rasters). The
+// page draws a vector map and asks this host for every piece of it: style, tiles, glyphs, sprites.
+// Each request is passed to our own tile server (tiles.phfactor.net, a PMTiles planet on the Pi)
+// and the answer handed back, so the browser still talks to serpentine.phfactor.net and nothing
+// else, and no map company sees anyone, not even this server. Nothing about the viewer travels
+// upstream: no address, Origin, Referer or cookie.
 
 const (
-	tileMaxZoom      = 17
-	tileMaxAge       = 30 * 24 * time.Hour // refetch after this; serve stale if upstream fails
-	tileUpstreamConc = 2
-	tileUserAgent    = "serpentine-test-page/1.0 (+https://serpentine.phfactor.net/v1/)"
-	tileDefaultURL   = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+	tileMaxZoom   = 15 // the archive's deepest level; MapLibre overzooms beyond it
+	tileUserAgent = "serpentine-api (+https://serpentine.phfactor.net/v1/)"
+	tileSet       = "planet"
+	tileBodyLimit = 8 << 20
 )
 
+// The four shapes a MapLibre map asks for, as they appear after /v1/tiles/. Anything else is a
+// 404 here and never reaches the tile server.
+var (
+	tilePath   = regexp.MustCompile(`^(\d{1,2})/(\d{1,7})/(\d{1,7})\.mvt$`)
+	stylePath  = regexp.MustCompile(`^styles/[a-z]{1,20}\.json$`)
+	glyphPath  = regexp.MustCompile(`^fonts/([A-Za-z0-9 ]{1,60})/(\d{1,5}-\d{1,5})\.pbf$`)
+	spritePath = regexp.MustCompile(`^sprites/v\d/[a-z]{1,20}(@2x)?\.(json|png)$`)
+)
+
+// Headers worth handing back. Content-Encoding is one of them: tiles arrive gzipped and are
+// relayed byte for byte rather than unpacked and repacked.
+var tileRelayHeaders = []string{"Content-Type", "Content-Encoding", "Content-Length", "ETag", "Cache-Control"}
+
 type tileProxy struct {
-	stats    *metrics
-	dir      string // cache root; "" disables the proxy
-	upstream string // URL template with {z} {x} {y}
-	http     *http.Client
-	sem      chan struct{}
-
-	mu       sync.Mutex
-	inflight map[string]*tileFetch
+	stats *metrics
+	base  string // tile server origin, e.g. https://tiles.phfactor.net; "" disables the relay
+	http  *http.Client
 }
 
-type tileFetch struct {
-	done chan struct{}
-	err  error
+func newTileProxy(base string) *tileProxy {
+	return &tileProxy{base: strings.TrimRight(base, "/"), http: &http.Client{Timeout: 20 * time.Second}}
 }
 
-func newTileProxy(dir, upstream string) *tileProxy {
-	return &tileProxy{
-		dir: dir, upstream: upstream,
-		http:     &http.Client{Timeout: 20 * time.Second},
-		sem:      make(chan struct{}, tileUpstreamConc),
-		inflight: map[string]*tileFetch{},
+// upstreamPath turns what follows /v1/tiles/ into a path on the tile server. ok is false for
+// anything outside the four shapes; isTile marks the requests that say where someone is looking.
+func upstreamPath(rest string) (path string, isTile, ok bool) {
+	if m := tilePath.FindStringSubmatch(rest); m != nil {
+		z, _ := strconv.Atoi(m[1])
+		x, _ := strconv.Atoi(m[2])
+		y, _ := strconv.Atoi(m[3])
+		if z > tileMaxZoom || x >= 1<<z || y >= 1<<z {
+			return "", true, false
+		}
+		return "/" + tileSet + "/" + rest, true, true
 	}
-}
-
-// parseTile validates z/x/y from the path; y arrives as "123.png".
-func parseTile(zs, xs, ys string) (z, x, y int, err error) {
-	ys, ok := strings.CutSuffix(ys, ".png")
-	if !ok {
-		return 0, 0, 0, errors.New("not a png tile")
+	if stylePath.MatchString(rest) || spritePath.MatchString(rest) {
+		return "/" + rest, false, true
 	}
-	if z, err = strconv.Atoi(zs); err != nil {
-		return
+	if m := glyphPath.FindStringSubmatch(rest); m != nil {
+		return "/fonts/" + url.PathEscape(m[1]) + "/" + m[2] + ".pbf", false, true
 	}
-	if x, err = strconv.Atoi(xs); err != nil {
-		return
-	}
-	if y, err = strconv.Atoi(ys); err != nil {
-		return
-	}
-	n := 1 << z
-	if z < 0 || z > tileMaxZoom || x < 0 || x >= n || y < 0 || y >= n {
-		return 0, 0, 0, errors.New("tile out of range")
-	}
-	return z, x, y, nil
-}
-
-func (t *tileProxy) path(z, x, y int) string {
-	return filepath.Join(t.dir, strconv.Itoa(z), strconv.Itoa(x), strconv.Itoa(y)+".png")
-}
-
-// fetch downloads one tile into the cache. Concurrent requests for the same tile share one fetch.
-func (t *tileProxy) fetch(ctx context.Context, z, x, y int) error {
-	key := fmt.Sprintf("%d/%d/%d", z, x, y)
-	t.mu.Lock()
-	if f, ok := t.inflight[key]; ok {
-		t.mu.Unlock()
-		<-f.done
-		return f.err
-	}
-	f := &tileFetch{done: make(chan struct{})}
-	t.inflight[key] = f
-	t.mu.Unlock()
-	defer func() {
-		t.mu.Lock()
-		delete(t.inflight, key)
-		t.mu.Unlock()
-		close(f.done)
-	}()
-
-	t.sem <- struct{}{}
-	defer func() { <-t.sem }()
-	url := strings.NewReplacer("{z}", strconv.Itoa(z), "{x}", strconv.Itoa(x), "{y}", strconv.Itoa(y)).Replace(t.upstream)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		f.err = err
-		return err
-	}
-	req.Header.Set("User-Agent", tileUserAgent)
-	resp, err := t.http.Do(req)
-	if err != nil {
-		f.err = err
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		f.err = fmt.Errorf("tile upstream %d", resp.StatusCode)
-		return f.err
-	}
-	data, err := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
-	if err != nil {
-		f.err = err
-		return err
-	}
-	p := t.path(z, x, y)
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-		f.err = err
-		return err
-	}
-	tmp := p + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		f.err = err
-		return err
-	}
-	f.err = os.Rename(tmp, p)
-	return f.err
+	return "", false, false
 }
 
 func (t *tileProxy) handle(w http.ResponseWriter, r *http.Request) {
-	if t == nil || t.dir == "" {
+	if t == nil || t.base == "" {
 		http.NotFound(w, r)
 		return
 	}
-	z, x, y, err := parseTile(r.PathValue("z"), r.PathValue("x"), r.PathValue("y"))
+	path, isTile, ok := upstreamPath(r.PathValue("rest"))
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, t.base+path, nil)
 	if err != nil {
-		http.NotFound(w, r)
+		http.Error(w, "map unavailable", http.StatusBadGateway)
 		return
 	}
-	p := t.path(z, x, y)
-	st, statErr := os.Stat(p)
-	t.stats.tile(statErr == nil && time.Since(st.ModTime()) <= tileMaxAge)
-	if statErr != nil || time.Since(st.ModTime()) > tileMaxAge {
-		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
-		ferr := t.fetch(ctx, z, x, y)
-		cancel()
-		if ferr != nil && statErr != nil { // nothing cached to fall back on
-			http.Error(w, "tile unavailable", http.StatusBadGateway)
-			return
+	// A fresh request, not a forwarded one: these three headers are all the tile server learns.
+	req.Header.Set("User-Agent", tileUserAgent)
+	req.Header.Set("Accept-Encoding", "gzip") // set by hand so Go relays the bytes instead of unpacking them
+	if inm := r.Header.Get("If-None-Match"); inm != "" {
+		req.Header.Set("If-None-Match", inm)
+	}
+	resp, err := t.http.Do(req)
+	if err != nil {
+		if isTile {
+			t.stats.tile(false)
+		}
+		http.Error(w, "map unavailable", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+	// 204 is the tile server's "nothing here" (open ocean), 304 its answer to If-None-Match.
+	served := resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusNotModified
+	if isTile {
+		t.stats.tile(served)
+	}
+	if !served {
+		if resp.StatusCode == http.StatusNotFound {
+			http.NotFound(w, r)
+		} else {
+			http.Error(w, "map unavailable", http.StatusBadGateway)
+		}
+		return
+	}
+	for _, h := range tileRelayHeaders {
+		if v := resp.Header.Get(h); v != "" {
+			w.Header().Set(h, v)
 		}
 	}
-	w.Header().Set("Content-Type", "image/png")
-	w.Header().Set("Cache-Control", "public, max-age=604800")
-	http.ServeFile(w, r, p)
+	w.Header().Set("Vary", "Accept-Encoding")
+	w.WriteHeader(resp.StatusCode)
+	_, _ = io.Copy(w, io.LimitReader(resp.Body, tileBodyLimit))
 }

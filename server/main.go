@@ -68,17 +68,24 @@ var vehicleCatalog []byte
 //go:embed rides.json
 var rideCatalog []byte
 
-// Vendored Leaflet for the test page's map, served at /v1/static/.
+// Vendored Leaflet, MapLibre GL and the binding between them for the test page's map, served at
+// /v1/static/.
 //
 //go:embed web/vendor
 var vendorFS embed.FS
 
-// testPageCSP forbids loading anything from anywhere else: the one-host rule holds for the page
-// too. Tiles come from our own /v1/tiles proxy.
+// testPageCSP forbids loading anything from anywhere else: the one-host rule holds for the pages
+// too.
 const testPageCSP = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'"
 
+// mapPageCSP is the same wall for the one page that draws a map. MapLibre GL runs its tile
+// decoding in a worker it starts from a blob: URL and hands images around as blobs, so those two
+// are let through; a blob worker inherits this policy, so its fetches are still held to 'self'.
+// Everything the map loads comes through our own /v1/tiles relay (ADR-046).
+const mapPageCSP = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:; worker-src blob:; child-src blob:; base-uri 'none'; form-action 'none'"
+
 type server struct {
-	tiles    *tileProxy // nil when -tile-cache is unset: /v1/tiles 404s
+	tiles    *tileProxy // nil when -tile-server is unset: /v1/tiles 404s
 	gh       *ghClient
 	nrel     *nrelClient   // nil when no key is configured: charging requests get 503
 	ocm      *ocmClient    // nil when no key is configured: plans simply carry no reliability data
@@ -99,15 +106,14 @@ func main() {
 	ocmKeyFile := flag.String("ocm-key-file", "", "file holding the Open Charge Map API key (or set OCM_API_KEY)")
 	statsDB := flag.String("stats-db", envOr("SERPENTINE_STATS_DB", ""), "SQLite file for hourly counters (empty: memory only)")
 	stationsFile := flag.String("stations-file", envOr("SERPENTINE_STATIONS", ""), "local copy of NREL's stations, refreshed daily (empty: call the API per plan)")
-	tileCache := flag.String("tile-cache", "", "directory for cached map tiles (enables /v1/tiles)")
-	tileURL := flag.String("tile-upstream", tileDefaultURL, "raster tile URL template")
+	tileServer := flag.String("tile-server", envOr("SERPENTINE_TILES", ""), "our vector tile server, e.g. https://tiles.phfactor.net (enables /v1/tiles)")
 	flag.Parse()
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	s := &server{gh: newGHClient(strings.TrimRight(*ghURL, "/")), cache: newPlanCache(500, planCacheTTL),
 		reach: newReachCache(200, reachTTL), stats: newMetrics(), limits: newLimiter(), log: log}
-	if *tileCache != "" {
-		s.tiles = newTileProxy(*tileCache, *tileURL)
+	if *tileServer != "" {
+		s.tiles = newTileProxy(*tileServer)
 		s.tiles.stats = s.stats
 	}
 	// A broken ride catalogue is a broken first screen, so it fails the deploy, not the rider.
@@ -243,7 +249,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("GET /{$}", servePage(aboutPage))
 	imgs, _ := fs.Sub(imgFS, "web/img")
 	mux.Handle("GET /v1/img/", http.StripPrefix("/v1/img/", staticHandler(http.FileServerFS(imgs))))
-	mux.HandleFunc("GET /v1/tiles/{z}/{x}/{y}", s.tiles.handle)
+	mux.HandleFunc("GET /v1/tiles/{rest...}", s.tiles.handle)
 	static, _ := fs.Sub(vendorFS, "web/vendor")
 	mux.Handle("GET /v1/static/", http.StripPrefix("/v1/static/", staticHandler(http.FileServerFS(static))))
 	mux.HandleFunc("GET /v1/health", s.handleHealth)
@@ -265,12 +271,16 @@ func staticHandler(h http.Handler) http.Handler {
 	})
 }
 
-func handleTestPage(w http.ResponseWriter, r *http.Request) { servePage(testPage)(w, r) }
+func handleTestPage(w http.ResponseWriter, r *http.Request) {
+	servePageWithCSP(testPage, mapPageCSP)(w, r)
+}
 
-func servePage(page []byte) http.HandlerFunc {
+func servePage(page []byte) http.HandlerFunc { return servePageWithCSP(page, testPageCSP) }
+
+func servePageWithCSP(page []byte, csp string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Content-Security-Policy", testPageCSP)
+		w.Header().Set("Content-Security-Policy", csp)
 		w.Header().Set("Cache-Control", "no-cache")
 		_, _ = w.Write(page)
 	}

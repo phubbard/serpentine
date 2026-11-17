@@ -4,6 +4,7 @@
 #   make deploy   test, cross-build, copy to axiom, (re)load the launchd job, health-check
 
 AXIOM   ?= axiom
+TILES   ?= https://tiles.phfactor.net
 LABEL   := net.phfactor.serpentine-api
 VERSION := $(shell git rev-list --count HEAD)-$(shell git rev-parse --short HEAD)
 LDFLAGS := -s -w -X main.version=$(VERSION)
@@ -18,7 +19,7 @@ build:
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/serpentine-api .
 
 run:
-	go run . -addr 127.0.0.1:18990 -gh http://$(AXIOM):8989
+	go run . -addr 127.0.0.1:18990 -gh http://$(AXIOM):8989 -tile-server $(TILES)
 
 # Plans every demo ride against a live server and asserts the plan contains the road the entry
 # names. An entry with slightly-wrong coordinates still plans -- it just rides somewhere else --

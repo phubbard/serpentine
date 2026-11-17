@@ -26,8 +26,10 @@ the reference for competitor and API facts; don't re-research what it already an
   `loop` and `out_and_back` plans, loop scoring, charge stops (NREL), Apple Maps handoff, GPX, and
   `/v1/reach` — chargers ranked by the share of the pack it takes to get to each (ADR-034). Browser test page with a
   map at `https://serpentine.phfactor.net/v1/`, product page `/v1/about` (also `/` via Caddy), support
-  `/v1/support`, privacy `/v1/privacy` (`server/web/`, embedded; tiles via a caching proxy in
-  `~/serpentine-api/tiles` on axiom — self-hosted vector tiles are the planned replacement).
+  `/v1/support`, privacy `/v1/privacy` (`server/web/`, embedded). The test page's map is vector
+  tiles from our own tile server since 2026-11-16 (ADR-046): `/v1/tiles/…` relays style, tiles,
+  glyphs and sprites to `https://tiles.phfactor.net` (`-tile-server`; Memento
+  `/services/tileserver.md`), so the page still talks to one host. No OSM proxy, no tile cache.
 - iOS app v0.1.0 in `ios/` (SwiftUI + MapKit, xcodegen; iPhone + iPad split view, Mac Catalyst planned): plan loop / out-and-back from location or
   search, charging, map + stats, Apple Maps handoff, GPX share, saved rides with rating/notes/last-ridden
   (ADR-033, local files under Application Support), "find a charger" for a low battery (ADR-034),
@@ -114,7 +116,9 @@ serpentine-api on axiom (Mac Studio M4 Max, 128 GB, .7)   ← phase 1, Go, :8990
    │     "direct" (the errand ride, ADR-031), both LM/hybrid
    ├─► NREL AFDC: the whole US fetched once a day into ~/serpentine-api/stations.json (ADR-028);
    │     corridor search is local. Key only on axiom, X-Api-Key. Per-plan calls are the fallback.
-   └─► (later) elevation, HPMS AADT, cached tiles
+   ├─► tiles.phfactor.net (PMTiles planet on the Pi): the test page's map, relayed under /v1/tiles
+   │     (ADR-046). The apps do not use it: they draw with MapKit and Google Maps.
+   └─► (later) elevation, HPMS AADT
 ```
 
 Principles that constrain every design choice here:
