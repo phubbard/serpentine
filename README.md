@@ -10,7 +10,7 @@ quick way plus however long you'll spend on better roads. For the trips that are
 (the helmet shop, the dealer), "just get me there" takes the freeway and still plans the charging.
 Quoted times allow for the signals, junctions and tight corners on the roads it actually picked
 rather than the free-flow figure most planners show — about a sixth more on a rural ride, closer to
-a third through town (ADR-045). Status: routing engine and API running in-house; app v0.1 on TestFlight (build 118) for iPhone, iPad
+a third through town (ADR-045). Status: routing engine and API running in-house; app v0.1 on TestFlight (build 128) for iPhone, iPad
 and Mac as "Serpentine EV". Product page: <https://serpentine.phfactor.net/v1/about>; support:
 <https://serpentine.phfactor.net/v1/support>; privacy policy: <https://serpentine.phfactor.net/v1/privacy>. `serpentine-api` plans
 point-to-point rides, scored loops and out-and-backs with charge stops (plus backup chargers) and an

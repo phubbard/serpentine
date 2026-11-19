@@ -41,6 +41,11 @@ GIT_SHA       := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 LOCAL = $(APP_NAME).local.xcconfig
 APP_STORE_KEY_ID    ?= $(shell awk -F'=' '/^APP_STORE_KEY_ID/ {gsub(/[ ;]/,"",$$2); print $$2; exit}' $(LOCAL) 2>/dev/null)
 APP_STORE_ISSUER_ID ?= $(shell awk -F'=' '/^APP_STORE_ISSUER_ID/ {gsub(/[ ;]/,"",$$2); print $$2; exit}' $(LOCAL) 2>/dev/null)
+# The App Store Connect app id, passed to altool so it does not look the app up by bundle id. That
+# lookup returns nothing whenever an agreement is outstanding, and altool then reports it as "create
+# this app in App Store Connect first" — a falsehood that cost an hour on build 128 (2026-11-18).
+# Not a secret, and as permanent as the bundle id.
+ASC_APP_ID ?= 6813768490
 TESTFLIGHT_GROUPS   ?= $(shell awk -F'=' '/^TESTFLIGHT_GROUPS/ {sub(/^[^=]*=/,""); gsub(/^[ \t]+|[ \t;]+$$/,""); print; exit}' $(LOCAL) 2>/dev/null)
 
 # Signing/provisioning for archive + export (ADR-036).
@@ -136,7 +141,7 @@ upload-testflight: archive-testflight
 	    -exportOptionsPlist $(TF_EXPORT_OPTS) $(ASC_AUTH) | grep -E "^(error|warning):|EXPORT" || true
 	@test -f $(IOS_EXPORT_DIR)/$(APP_NAME).ipa || { echo "error: no .ipa exported"; exit 1; }
 	@xcrun altool --upload-app --type ios --file $(IOS_EXPORT_DIR)/$(APP_NAME).ipa \
-	    --apiKey $(APP_STORE_KEY_ID) --apiIssuer $(APP_STORE_ISSUER_ID)
+	    --apiKey $(APP_STORE_KEY_ID) --apiIssuer $(APP_STORE_ISSUER_ID) --apple-id $(ASC_APP_ID)
 	@echo "✓ uploaded; TestFlight processing takes 10-30 min. Then: make testflight-notes"
 
 # Mac Catalyst: same App Store listing, a .pkg beside the .ipa, and TestFlight hands each device the

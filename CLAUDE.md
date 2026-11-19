@@ -237,7 +237,22 @@ Principles that constrain every design choice here:
   latest Program License Agreement". Apple invalidates cloud signing until the updated agreement is
   accepted at developer.apple.com, and then reports it as a missing certificate. Only the Account
   Holder can accept it, in a browser — no key, no CLI, and no agent can do it. Same shape as the
-  CoreSimulator trap above: the second error is the symptom, the first names the cause. `SIGN_WITH_KEY=1` signs with the ASC API key instead, but the App Manager key gets
+  CoreSimulator trap above: the second error is the symptom, the first names the cause.
+- **Signing and uploading are blocked by two different agreements, in two different places.**
+  Learned the hard way on build 128 (2026-11-18). The **Program License Agreement** at
+  developer.apple.com gates *signing*: until it is accepted, `exportArchive` fails. The **Free Apps
+  Agreement** under App Store Connect → Business gates *uploading*: with it unsigned, `altool`
+  returns `403 FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED`. Accepting the first makes the
+  export succeed and tells you nothing about the second. Allow a few minutes for acceptance to
+  reach the upload API. Do **not** sign the Paid Apps Agreement: it stays "New" by design (ADR-044,
+  no payment code anywhere) and signing it would mean handing over legal-entity and banking details
+  for a free app.
+- **`altool` reports an agreement block as a missing app.** Without `--apple-id` it looks the app up
+  by bundle ID, that lookup returns nothing while an agreement is outstanding, and it says
+  `Unable to find Apple ID for Bundle ID 'net.phfactor.serpentine' ... Either create this app in App
+  Store Connect first`. The app exists; it has since September. `make upload-testflight` now passes
+  `--apple-id $(ASC_APP_ID)` so the real 403 surfaces instead of a scary falsehood about the
+  listing. `SIGN_WITH_KEY=1` signs with the ASC API key instead, but the App Manager key gets
   "Cloud signing permission error" (cloud-managed distribution certs need an Admin-role key).
 - Mac screenshots: size the Catalyst window to 1440×900 points (`osascript -e 'tell application
   "System Events" to tell process "Serpentine" to set size of window 1 to {1440, 900}'`) and capture it
