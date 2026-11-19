@@ -108,13 +108,23 @@ func publicEndpoints(p *ghPath, n int) (int, int) {
 // would drift and silently empty the waypoints file.
 const (
 	chargePrefix    = "Charge: "
+	stopPrefix      = "Stop: "
 	turnaroundLabel = "Turnaround"
 )
+
+// stopLabel names an errand stop. Numbered, not named: the server is given coordinates and nothing
+// else, so the rider's own word for the place never leaves the phone.
+func stopLabel(n int) string { return fmt.Sprintf("%s%d", stopPrefix, n) }
 
 func chargeLabel(c charger) string { return chargePrefix + c.Name }
 
 // forcedWaypoint must be in the handoff whatever the road heuristic picks: a charge stop (at the
-// charger itself, off the polyline) or an out-and-back turnaround.
+// charger itself, off the polyline), an out-and-back turnaround, or an errand stop.
+//
+// Errand stops are the reason this matters beyond charging. Measured against production
+// 2026-11-18: a route through a pharmacy and a grocery handed Apple ["Balboa Avenue", "Genesee
+// Avenue"] and nothing else, so Apple would have driven the rider straight past both errands. A
+// point the route passes through is not a point the rider is told to stop at (ADR-047).
 type forcedWaypoint struct {
 	idx   int // polyline position, for ordering
 	pt    [2]float64

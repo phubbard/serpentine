@@ -27,7 +27,8 @@ Apple Maps handoff; try it at
 - `infra/` — GraphHopper 11 motorcycle profile (whole-US graph), docker-compose, Caddy site block,
   setup + smoke tests
 - `demo/`, `tools/` — a hardwired demo ride, the script that routes it, `calibrate_ride.py`, which
-  fits the ride-time and energy models against a logged GPX and the bike's own logs, and
+  fits the ride-time and energy models against a logged GPX and the bike's own logs,
+  `errand_ride.py`, which measures how much of a ride's curvy road survives having errands in it, and
   `arch_diagram.py`, which regenerates the architecture diagram in `docs/img/`
   (authored at 1024 px wide, the width WordPress serves; publish the `@2x` file)
 - `ios/AppStore/screenshots/` — App Store screenshots: 6.9" (1320×2868), 6.5" (1284×2778), 13" iPad
@@ -41,7 +42,7 @@ Apple Maps handoff; try it at
   stamp (date and commit) for bug reports
 - `sync.md`, `android-port-brief.md` — cross-platform parity matrix with the Android port, and the
   scoping doc the Android session reads first
-- `docs/` — roadmap, decisions (ADR-001..045, including what the charging research found and what it
+- `docs/` — roadmap, decisions (ADR-001..047, including what the charging research found and what it
   rules out), API contract, and `calibration.md`: what the time and energy constants are still
   estimates of, and what the first logged ride measured them at
 - `CLAUDE.md` — orientation for agents and future me: architecture, conventions, gotchas

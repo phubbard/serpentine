@@ -162,8 +162,8 @@ type wptPoint struct {
 //
 // Both ends come from the handoff, which has already moved them onto public road (`publicEndpoints`)
 // — a charger car park or a driveway is a bad place to ask a device to start. The middle comes from
-// the handoff's forced waypoints, which are by construction exactly the charge stops and an
-// out-and-back turnaround, already sorted into route order. Road-shaping waypoints stay out: each
+// the handoff's forced waypoints, which are by construction exactly the charge stops, the errand
+// stops and an out-and-back turnaround, already sorted into route order. Road-shaping waypoints stay out: each
 // one is a via-point the rider would have to skip past, and holding the roads is what the route
 // file is for.
 func rideStops(res *planResult) []wptPoint {
@@ -179,6 +179,8 @@ func rideStops(res *planResult) []wptPoint {
 		switch {
 		case label == turnaroundLabel:
 			out = append(out, wptPoint{lonLat: res.Handoff.Waypoints[i], name: turnaroundLabel})
+		case strings.HasPrefix(label, stopPrefix):
+			out = append(out, wptPoint{lonLat: res.Handoff.Waypoints[i], name: label})
 		case strings.HasPrefix(label, chargePrefix):
 			if c, ok := byLabel[label]; ok {
 				out = append(out, chargerPoint(c, res))

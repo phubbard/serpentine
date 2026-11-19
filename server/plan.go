@@ -22,13 +22,21 @@ const profileVersion = "base-v0.2/req-v1"
 // GraphHopper leg each, which is cheap.
 const maxVia = 24
 
+// maxStops is held well under maxHandoffWaypoints (10): every stop is a forced waypoint and spends
+// one of Apple's slots, and the slots left over are what hold the route to the roads we picked.
+const maxStops = 6
+
 type planRequest struct {
 	Mode  string      `json:"mode"`
 	Start *[2]float64 `json:"start"`
 	End   *[2]float64 `json:"end,omitempty"`
 	// Via: points the route must pass through, in order (ADR-035). Carrying on with a ride after a
 	// detour is the reason this exists — the rest of the original route, sampled.
-	Via        [][2]float64  `json:"via,omitempty"`
+	Via [][2]float64 `json:"via,omitempty"`
+	// Stops: places the rider actually gets off the bike — the errand ride. Unlike Via these
+	// become forced handoff and GPX waypoints, because a route that merely passes a pharmacy
+	// leaves Apple Maps free to drive past it (ADR-047).
+	Stops      [][2]float64  `json:"stops,omitempty"`
 	Turnaround *[2]float64   `json:"turnaround,omitempty"`
 	DistanceM  float64       `json:"distance_m,omitempty"`
 	DurationS  float64       `json:"duration_s,omitempty"`  // loop, out_and_back: ride time instead of distance
@@ -72,6 +80,20 @@ func (r *planRequest) normalize() error {
 		// enough points to hold the route to its original roads.
 		if len(r.Via) > maxVia {
 			return badf("at most %d via points", maxVia)
+		}
+		// Both put points in the middle of the route, for opposite reasons: via pins a resumed ride
+		// to the roads it was already on, stops are errands to be announced. Mixing them would make
+		// the order ambiguous and silently turn 16 route samples into 16 announced stops.
+		if len(r.Stops) > 0 && len(r.Via) > 0 {
+			return badf("stops and via cannot be combined")
+		}
+		if len(r.Stops) > maxStops {
+			return badf("at most %d stops", maxStops)
+		}
+		for i, v := range r.Stops {
+			if err := checkLonLat(fmt.Sprintf("stops[%d]", i), v); err != nil {
+				return err
+			}
 		}
 		for i, v := range r.Via {
 			if err := checkLonLat(fmt.Sprintf("via[%d]", i), v); err != nil {
@@ -117,7 +139,7 @@ func (r *planRequest) normalize() error {
 		return badf(`mode must be "loop", "out_and_back" or "point_to_point"`)
 	}
 	if r.Mode != "point_to_point" {
-		r.MaxExtraS, r.Style, r.Via = nil, "", nil
+		r.MaxExtraS, r.Style, r.Via, r.Stops = nil, "", nil, nil
 	}
 	if err := r.normalizeCharging(); err != nil {
 		return err
@@ -359,9 +381,21 @@ type planResult struct {
 	GPXURL       string           `json:"gpx_url"`
 }
 
+// nearestIdx is the polyline vertex closest to pt, which is how an off-route point (a charger, an
+// errand stop) gets a position in route order.
+func nearestIdx(coords [][]float64, pt [2]float64) int {
+	best, bestKM := 0, math.Inf(1)
+	for j, c := range coords {
+		if d := haversineKM(c, pt[:]); d < bestKM {
+			best, bestKM = j, d
+		}
+	}
+	return best
+}
+
 // buildResult assembles the response. stations is nil unless charging was requested; turnIdx is
 // the out-and-back turnaround's polyline index, or -1.
-func buildResult(id, mode, style string, p *ghPath, loop *loopInfo, ob *outBackInfo, turnIdx int, stations []nrelStation, co *chargingOpts, v *vehicle) *planResult {
+func buildResult(id, mode, style string, p *ghPath, loop *loopInfo, ob *outBackInfo, turnIdx int, stops [][2]float64, stations []nrelStation, co *chargingOpts, v *vehicle) *planResult {
 	coords := p.Points.Coordinates
 	cum := cumulativeKM(coords)
 	// GraphHopper's figure is free-flow; this is what the ride actually takes (ADR-045). Everything
@@ -376,6 +410,11 @@ func buildResult(id, mode, style string, p *ghPath, loop *loopInfo, ob *outBackI
 	)
 	if turnIdx >= 0 {
 		forced = append(forced, forcedWaypoint{idx: turnIdx, pt: lonLat(coords[turnIdx]), label: turnaroundLabel})
+	}
+	// The stop the rider asked for, not the nearest vertex to it: Apple should send them to the
+	// pharmacy door, and the polyline index is only for putting the stops in route order.
+	for i, s := range stops {
+		forced = append(forced, forcedWaypoint{idx: nearestIdx(coords, s), pt: s, label: stopLabel(i + 1)})
 	}
 	if co != nil {
 		sites = sitesFromStations(stations, acConnectors(v))
@@ -529,8 +568,9 @@ func (s *server) runTries(ctx context.Context, start [2]float64, tries []*loopTr
 // points is the sequence GraphHopper routes through: start, any via points in order, then the end.
 // A ride being carried on after a detour is start + the rest of its original route (ADR-035).
 func (r *planRequest) points() [][2]float64 {
-	pts := make([][2]float64, 0, len(r.Via)+2)
+	pts := make([][2]float64, 0, len(r.Via)+len(r.Stops)+2)
 	pts = append(pts, *r.Start)
+	pts = append(pts, r.Stops...)
 	pts = append(pts, r.Via...)
 	if r.End != nil {
 		pts = append(pts, *r.End)

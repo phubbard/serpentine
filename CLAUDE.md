@@ -72,6 +72,18 @@ the reference for competitor and API facts; don't re-research what it already an
   It costs a profile change, hence a 63-min re-import (ADR-009), plus slower prep and queries. Worth
   doing for route *legality* — an illegal turn makes Apple Maps silently re-route and breaks the
   handoff — but bundle it into the next re-import, and on that evidence, not this.
+- **Errands are `stops`, never `via` (ADR-047, 2026-11-18).** `via` only shapes the route, so a plan
+  whose errands were via points handed Apple `["Balboa Avenue", "Genesee Avenue"]` and would have
+  driven the rider straight past the pharmacy and the grocery — measured against production. `stops`
+  (<= 6, exclusive with `via`) are forced handoff *and* GPX waypoints. The two fields cannot be
+  combined: a resumed ride's 16 via samples must not become 16 announced stops.
+  **The fun half is designed, not built.** Measured four ways, the only construction that keeps it is
+  the errands as a short direct chain plus a real `round_trip` for the rest — **106 %** of a plain
+  loop's curvy km, against 54 % for one far waypoint (which is just an out-and-back: 52 of 142 km
+  retraced) and 18 % for a detour budget. **`max_extra_s` cannot manufacture a detour** — offered 45
+  min it spent 0.0/2.8/0.8 — because it only picks among paths between fixed endpoints. Needs a
+  `ghPath` stitch, which nothing does yet. `tools/errand_ride.py` reproduces it. Sobering number:
+  3.2 % curvy was the *ceiling* at 120 km from Clairemont, so check the region before promising.
 - Rate limits (ADR-030): 24 plans in flight, 20/min per caller (burst 8), 429 + Retry-After. Measured
   ceiling ~16 plans/s at 32 concurrent. `make -C server deploy` retries the launchd bootstrap: doing
   it immediately after a bootout fails with "Input/output error" and leaves the service down.

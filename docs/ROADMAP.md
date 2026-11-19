@@ -134,6 +134,16 @@ which the Pi's Caddy is the only thing that proxies.
       "Just get me there".
 - [ ] Watch whether our errand routes match Apple's in practice; if not, hand the destination straight
       to Apple when no charge stop is needed.
+- [~] **Errands, but fun** — `stops` shipped 2026-11-18 (ADR-047): errands are forced handoff and GPX
+      waypoints, so Apple is told to stop at them rather than driving past (which it did).
+      *Still to do:* the ride half. Measured, the only construction that keeps the fun is the errands
+      as a short direct chain plus a real `round_trip` for the rest of the budget — 106 % of a plain
+      loop's curvy kilometres, against 54 % for a far waypoint and 18 % for a detour budget. It needs
+      a path stitch (two `ghPath`s, their coordinates, instructions, details and cumulative
+      distances), which nothing does yet. `tools/errand_ride.py` reproduces the comparison.
+      Acceptance: a 120 km errand ride keeps >= 90 % of the curvy kilometres of a plain loop of the
+      same length from the same start, and retraces no more of itself than that loop does.
+      **Check the region first:** 3.2 % curvy was the ceiling from Clairemont at 120 km.
 
 ## Coverage
 

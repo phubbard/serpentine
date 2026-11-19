@@ -126,7 +126,7 @@ func TestRideTimeOnFixtures(t *testing.T) {
 // screen contradicts itself.
 func TestInstructionTimesSumToCorrectedTotal(t *testing.T) {
 	p := fixturePath(t, "gh_palomar.json")
-	res := buildResult("t", "loop", "", p, nil, nil, -1, nil, nil, nil)
+	res := buildResult("t", "loop", "", p, nil, nil, -1, nil, nil, nil, nil)
 
 	sum := 0.0
 	for _, i := range res.Instructions {
@@ -170,7 +170,7 @@ func TestChargingSpendsCorrectedRideTime(t *testing.T) {
 	}
 	for _, startSoc := range []float64{1.0, 0.5} {
 		o := opts(startSoc, 0.15, 0.9)
-		res := buildResult("t", "loop", "", p, nil, nil, -1, stations, &o, &bike)
+		res := buildResult("t", "loop", "", p, nil, nil, -1, nil, stations, &o, &bike)
 		if res.Energy == nil {
 			t.Fatalf("soc %.1f: no energy summary", startSoc)
 		}

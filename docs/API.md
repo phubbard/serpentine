@@ -23,6 +23,9 @@ Status: `point_to_point`, `loop`, `out_and_back`, `charging` and `POST /reach` i
   "via": [[-116.7, 33.0]],          // point_to_point: points the route must pass through, in order
                                     //   (<= 24). Carrying on with a paused ride (ADR-035) is the
                                     //   reason this exists: the rest of its route, sampled.
+  "stops": [[-117.135, 32.835]],    // point_to_point: errands. The route passes through these AND
+                                    //   the rider is told to stop at each (<= 6, ADR-047).
+                                    //   Exclusive with "via".
   "max_extra_s": 900,               // point_to_point: seconds of detour allowed over the quick way
                                     //   (0 – 7200); see "detour" in the response
   "style": "curvy",                 // point_to_point: "curvy" (default), "direct" — the errand ride:
@@ -461,3 +464,21 @@ between the pins — a good ride, but not the one that was interrupted.
 
 The rejoin point is chosen by the app as the nearest vertex of what is *left*, never the spot the
 ride was put down: routing back there would ride the detour to the charger twice.
+
+## Errands (`stops`)
+
+`stops` are places the rider gets off the bike: the route passes through them in the order given,
+**and** each becomes a forced waypoint in the Apple Maps handoff and a waypoint in the GPX, so the
+rider is actually told to stop. At most 6.
+
+That distinction is the whole reason the field exists. `via` only shapes the route, so a plan whose
+errands were via points handed Apple `["Balboa Avenue", "Genesee Avenue"]` and would have driven
+straight past both errands (measured 2026-11-18, ADR-047). The two fields are therefore **mutually
+exclusive**: a resumed ride's 16 via samples must not become 16 announced stops.
+
+Each stop costs one of Apple's ten waypoint slots, and the rest are what hold the route to the roads
+we chose — so a plan with 6 stops has 4 left for its roads.
+
+`max_extra_s` is **not** how you make an errand ride fun: measured, it spends essentially none of
+whatever it is offered, because a detour budget only picks among paths between fixed endpoints.
+See ADR-047 for the four constructions and what they measured.

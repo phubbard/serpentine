@@ -1554,3 +1554,78 @@ split on whitespace, so a regular expression with a literal space in it is silen
 (use `\x20`); and `sudo caddy validate` creates any new log file as root, which makes the next
 reload fail, so validate as the `caddy` user. In both cases the guard that validates a candidate
 config before it replaces the live one is what kept the site up.
+
+## ADR-047 · 2026-11-18 · The errand ride can be fun, but not by stretching it
+
+**Context.** Paul asked for errands with a ride attached: a start, one or two places he has to go
+(pharmacy, ATM, grocery, school), and the best ride those stops allow. The API looked ready —
+`point_to_point` already takes `via` points in order (ADR-035) and a detour budget (`max_extra_s`,
+ADR-019), and nothing forbids `end` equal to `start`. Three measurements against production said
+otherwise, and two of them killed a design.
+
+**The handoff was broken, and that is the part that matters.** Only a turnaround and charge stops
+became forced handoff waypoints, so a route through two errands handed Apple Maps
+`["Balboa Avenue", "Genesee Avenue"]` — roads, picked by length — and Apple would have driven the
+rider **straight past the pharmacy and the grocery**. A point the route passes through is not a
+point the rider is told to stop at. This is the ADR-031 class of bug: correct in every routing unit
+test, useless on the road. Fixed here, and `server/stops_test.go` fails without the fix.
+
+**A detour budget cannot manufacture a detour.** Offered 45 minutes on three errand layouts, the
+budget spent **0.0, 2.8 and 0.8 minutes**. `max_extra_s` chooses among paths between fixed
+endpoints; riding out to a canyon and back is pure cost in that cost function with no reward, so it
+never does it. The Ramona run is the clearest: 99.7 km through the best motorcycling country in the
+county returned **0.34 km of curvy road and 29.6 km retraced**, because home → errand → home on a
+chain is an out-and-back on SR-67. ADR-031 called a detour budget on an errand a contradiction and
+hid the control; it was righter than its own reasoning.
+
+**So the fun has to be generated, not budgeted.** Four constructions, same house in Clairemont, the
+same two errands, 120 km target, twistiness 0.9. `tools/errand_ride.py` reproduces all of it:
+
+| construction | curvy road | retraced | keeps |
+|---|---|---|---|
+| plain loop, no errands (the ceiling) | 3.48 km (3.2 %) | 3.5 km | — |
+| **errands direct, then a real `round_trip`** | **3.68 km (3.2 %)** | **3.2 km** | **106 %** |
+| errands + one scored far turnaround | 1.86 km (1.3 %) | 51.7 km | 54 % |
+| errands with a detour budget (the chain) | 0.64 km (2.7 %) | 2.6 km | 18 % |
+
+**Decision.** Errands are *stops*, not via points, and the fun is a stitched loop.
+
+`stops` is a new field on `point_to_point`: points the route passes through **and** which become
+forced handoff and GPX waypoints. Capped at 6, because each one spends a slot out of Apple's ten and
+what is left is what holds the route to the roads we picked. It is deliberately exclusive with
+`via` — both insert mid-route points, for opposite reasons, and mixing them would silently turn a
+resumed ride's 16 route samples into 16 announced stops.
+
+The ride itself is **the errands as a short direct chain, then the remaining budget handed to the
+loop generator**, whose `round_trip` is the only thing here that produces a genuine circuit. It
+measured at 106 % of a plain loop's curvy kilometres, so **the errands cost nothing**. Starting the
+loop from the last errand rather than from home costs nothing either: 102.5 km at 3.1 % against
+109.1 km at 3.2 %. The price is a path stitch in the server — joining two `ghPath`s, their
+coordinates, instructions, details and cumulative distances — which nothing in the tree does yet,
+and the reason this ADR stops at the design.
+
+**Rejected: insert one far waypoint and score the candidates.** This was the first proposal of the
+session and the measurement refuted it. A single distant via point makes an out-and-back and scores
+like one: 54 % of the curvy road and **52 of 142 km retraced**. It also exposed a second problem —
+from Clairemont six of eight candidate bearings are unroutable (ocean to the west and southwest,
+Mexico to the south, nothing reachable 48 km east), so candidate generation needs the fallback that
+`round_trip` already has internally. Reinventing `out_and_back` and then getting `out_and_back`'s
+numbers is the whole lesson.
+
+**What is not settled.**
+
+* **The regional ceiling, which is the uncomfortable one.** 3.2 % curvy is the *best* any
+  construction managed at 120 km from Clairemont, and a 40 km loop from the same house did better
+  at 7.7 %. The feature works; San Diego's suburbs are the limit. Nothing should promise a fun
+  errand ride without checking what is in reach of the rider's own house.
+* **Opening hours.** Plan ninety minutes of riding and arrive at 21:05 at a pharmacy that shut at
+  21:00, and we have broken the kind of promise ADR-014 says loses riders fastest. OSM
+  `opening_hours` is too patchy to claim. The cheap honest version is to show the arrival time at
+  each stop and let the rider judge.
+* **Stop names.** `stops` carries coordinates only, so a GPX waypoint reads `Stop: 2` rather than
+  "Grocery". Names would read better on a device, and they are the rider's own words about where
+  they go; the server has no use for them today, so it does not get them.
+* **Errand order.** Stops are visited in the order given. Which order is right is rider knowledge —
+  ice cream last, cash before the farmers' market, school at 15:10 — not something to infer. With
+  two or three stops there are only 2–6 permutations, so brute-forcing them is cheap once there is
+  a reason to.
