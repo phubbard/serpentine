@@ -229,7 +229,15 @@ Principles that constrain every design choice here:
     distribution cert is cloud-managed and **never** sits in the keychain, working or not
     (`/skills/apple-testflight-signing-auth.md` in Memento), so its absence proves nothing.
   The archive survives the failed export, so after signing in, re-running `make upload-testflight`
-  is quick and the build number does not move. `SIGN_WITH_KEY=1` signs with the ASC API key instead, but the App Manager key gets
+  is quick and the build number does not move.
+  **Read the line above it before believing any of that.** On 2026-11-18 build 127 failed the export
+  with the same `No "iOS Distribution" signing certificate ... matching team ID NSR65JVW9F` text, and
+  the session was fine. The real cause was one line earlier: `error: exportArchive Unable to process
+  request - PLA Update available` / "your team's Account Holder, Paul HUBBARD, must agree to the
+  latest Program License Agreement". Apple invalidates cloud signing until the updated agreement is
+  accepted at developer.apple.com, and then reports it as a missing certificate. Only the Account
+  Holder can accept it, in a browser — no key, no CLI, and no agent can do it. Same shape as the
+  CoreSimulator trap above: the second error is the symptom, the first names the cause. `SIGN_WITH_KEY=1` signs with the ASC API key instead, but the App Manager key gets
   "Cloud signing permission error" (cloud-managed distribution certs need an Admin-role key).
 - Mac screenshots: size the Catalyst window to 1440×900 points (`osascript -e 'tell application
   "System Events" to tell process "Serpentine" to set size of window 1 to {1440, 900}'`) and capture it
