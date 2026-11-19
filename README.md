@@ -34,8 +34,9 @@ Apple Maps handoff; try it at
 - `ios/AppStore/screenshots/` — App Store screenshots: 6.9" (1320×2868), 6.5" (1284×2778), 13" iPad
   (2064×2752), Mac (2880×1800); `upload/` holds the opaque JPEGs ASC takes
 - `ios/` — the SwiftUI app: one-tap demo rides on famous roads (ADR-043), "find a charger" when the battery is low (chargers ranked by the share
-  of the pack needed to reach each, not by distance), pause a ride mid-route and carry on with the
-  rest after a charging detour, saved rides (star rating, notes, when you last
+  of the pack needed to reach each, not by distance), errands on the way — up to six reorderable
+  stops that Apple Maps is actually told to stop at (ADR-047) — pause a ride mid-route and carry on
+  with the rest after a charging detour, saved rides (star rating, notes, when you last
   rode it — kept on the device), place search showing each match's town, postcode and distance from the
   start, GPX export carrying the whole route and the charge stops in one file (verified against a
   Beeline Moto II on iPhone and Mac: a 97-mile loop imported within 0.1 mi of the plan), an About panel with the build
