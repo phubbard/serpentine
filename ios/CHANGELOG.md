@@ -7,6 +7,16 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
 ## [0.1.0]
 
+- Errands, without a second app. On "Go somewhere" there's now a **Stops on the way** list: add the
+  pharmacy, the ATM, the school, and Serpentine routes through them in the order you set — drag to
+  reorder, because which order is right is your call and the cold shopping goes last. "Finish where
+  I started" saves you searching for your own address. Charging is planned around the stops, and the
+  GPX carries them so a Beeline counts them down.
+
+  The part that matters is that **Apple Maps is now told to stop at each one.** Until this build a
+  route through a pharmacy handed Apple two road names and nothing else, so it would have ridden you
+  straight past the shop. Up to six stops.
+
 - Riding a 2020–22 Zero SR/S? It's in the garage now as **Zero SR/S ZF14.4 Premium** — a different
   bike from today's SR/S: 12.2 kWh of usable battery against 15.1, and the Premium's 6 kW charger.
   On a 132-mile loop from 90% that's two charge stops and over three hours plugged in, where the
@@ -43,14 +53,4 @@ User-facing notes; `make testflight-notes` copies the `## [X.Y.Z]` section for t
 
   On a loop the start and the finish are the same place, so pausing right next to either leaves
   Serpentine guessing. It shows you how it split the ride — tap "Not right" if it got it wrong.
-
-- Low on battery? Tap the bolt at the top of the plan screen, tell it what charge you have left, and
-  Serpentine lists the public chargers it thinks you can still reach — sorted by how much of your
-  battery the ride there would take, not by how close they are. Those are different lists: a charger
-  over a hill can cost more than one twice as far on the flat. Each one shows what it needs and what
-  you'd arrive with; tap it for the route that spends the least getting there. Anything out of reach
-  is marked rather than hidden, and if nothing is in range you still get the nearest.
-
-  The estimates lean cautious and come from a charge figure you type in. They have not yet been
-  checked against a real ride — please tell me how close they land.
 

@@ -135,7 +135,9 @@ which the Pi's Caddy is the only thing that proxies.
 - [ ] Watch whether our errand routes match Apple's in practice; if not, hand the destination straight
       to Apple when no charge stop is needed.
 - [~] **Errands, but fun** — `stops` shipped 2026-11-18 (ADR-047): errands are forced handoff and GPX
-      waypoints, so Apple is told to stop at them rather than driving past (which it did).
+      waypoints, so Apple is told to stop at them rather than driving past (which it did). The iOS
+      half shipped the same day: "Stops on the way" on Go somewhere, up to 6, reorderable, plus
+      "Finish where I started".
       *Still to do:* the ride half. Measured, the only construction that keeps the fun is the errands
       as a short direct chain plus a real `round_trip` for the rest of the budget — 106 % of a plain
       loop's curvy kilometres, against 54 % for a far waypoint and 18 % for a detour budget. It needs

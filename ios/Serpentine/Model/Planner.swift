@@ -71,6 +71,11 @@ final class Planner {
     /// "Go somewhere" comes in two flavours: the ride, and the errand (ADR-031). An errand takes
     /// freeways and asks Apple Maps not to avoid them.
     var directRoute = false
+    /// Errands to run on the way, in the order they'll be ridden (ADR-047).
+    var stops: [StartPoint] = []
+    /// Each stop spends one of Apple Maps' ten waypoint slots, and the rest are what hold the
+    /// route to the roads we picked. The server enforces the same cap.
+    static let maxStops = 6
 
     private(set) var isPlanning = false
     /// True when the ride on screen is the rest of one that was put down earlier (ADR-035). Only
@@ -96,6 +101,7 @@ final class Planner {
             mode: mode,
             start: start.coordinate.lonLat,
             via: nil,
+            stops: goingSomewhere && !stops.isEmpty ? stops.map(\.coordinate.lonLat) : nil,
             end: goingSomewhere ? destination?.coordinate.lonLat : nil,
             turnaround: nil,
             distanceM: goingSomewhere || budget == .time ? nil : distanceKm * 1000,

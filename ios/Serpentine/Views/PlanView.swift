@@ -9,6 +9,7 @@ struct PlanView: View {
     @State private var showingDemoRides = false
     @State private var demoRides = DemoRides()
     @State private var searchingDestination = false
+    @State private var searchingStop = false
     @State private var showingGarage = false
     @State private var showingAbout = false
     @State private var showingRides = false
@@ -70,6 +71,14 @@ struct PlanView: View {
                 if planner.mode == .pointToPoint {
                     destinationRow
                     Button("Choose destination", systemImage: "magnifyingglass") { searchingDestination = true }
+                    // Errands nearly always end back at the house, and making the rider search for
+                    // their own address to say so is a silly amount of work.
+                    if let start = planner.start, planner.destination != start {
+                        Button("Finish where I started", systemImage: "arrow.uturn.left") {
+                            planner.destination = start
+                        }
+                        .font(.footnote)
+                    }
                     Toggle("Just get me there", isOn: $planner.directRoute).tint(.accentColor)
                     if !planner.directRoute {
                         LabeledContent("Extra time", value: "+\(Int(planner.maxExtraMin)) min")
@@ -104,6 +113,27 @@ struct PlanView: View {
                     Text(planner.directRoute
                          ? "Fastest way, freeways and all — for the errand, not the ride. Charge stops are still planned."
                          : "The quickest way, plus up to the extra time you allow spent on better roads.")
+                }
+            }
+
+            // Errands (ADR-047). Only on "Go somewhere": a loop has no endpoints to put them
+            // between, and the server drops the field on other modes anyway.
+            if planner.mode == .pointToPoint {
+                Section {
+                    ForEach(planner.stops) { stop in
+                        Label(stop.name, systemImage: "bag.circle.fill")
+                    }
+                    .onDelete { planner.stops.remove(atOffsets: $0) }
+                    .onMove { planner.stops.move(fromOffsets: $0, toOffset: $1) }
+                    if planner.stops.count < Planner.maxStops {
+                        Button("Add a stop", systemImage: "plus.circle") { searchingStop = true }
+                    }
+                } header: {
+                    Text("Stops on the way")
+                } footer: {
+                    Text(planner.stops.isEmpty
+                         ? "The pharmacy, the ATM, the school. Apple Maps is told to stop at each one, and charging is planned around them."
+                         : "Ridden in this order — swipe to remove, drag to reorder. Which order is right is your call: the cold shopping goes last.")
                 }
             }
 
@@ -187,6 +217,13 @@ struct PlanView: View {
                 planner.destination = $0
             }
         }
+        .sheet(isPresented: $searchingStop) {
+            // Searched near the start rather than the destination: errands are things near home,
+            // and ranking them by distance from the far end of the ride buries the right one.
+            PlaceSearchView(title: "Stop at", near: planner.start?.coordinate ?? location.coordinate) {
+                if planner.stops.count < Planner.maxStops { planner.stops.append($0) }
+            }
+        }
     }
 
     @ViewBuilder private var startRow: some View {
@@ -231,7 +268,12 @@ struct PlanView: View {
         switch planner.mode {
         case .loop: "Plan loop"
         case .outAndBack: "Plan out and back"
-        case .pointToPoint: planner.directRoute ? "Get me there" : "Plan the way there"
+        case .pointToPoint:
+            if planner.stops.isEmpty {
+                planner.directRoute ? "Get me there" : "Plan the way there"
+            } else {
+                planner.directRoute ? "Run the errands" : "Plan the errand ride"
+            }
         }
     }
 

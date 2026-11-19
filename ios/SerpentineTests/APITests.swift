@@ -149,6 +149,38 @@ private func fixture(_ name: String) throws -> PlanResult {
     #expect(p.request(seed: 1)?.style == nil)
 }
 
+// Via only shapes a route; stops are announced. Sending errands as via points had the server hand
+// Apple Maps two road names and nothing else, so it would have ridden straight past the pharmacy
+// and the grocery (measured 2026-11-18, ADR-047). The field they go in is the whole fix.
+@MainActor @Test func errandsTravelAsStopsNotVia() throws {
+    let home = StartPoint(name: "Home", coordinate: [-117.19, 32.82].coordinate)
+    let p = Planner()
+    p.mode = .pointToPoint
+    p.start = home
+    p.destination = home
+    p.directRoute = true
+    p.stops = [StartPoint(name: "Pharmacy", coordinate: [-117.135, 32.835].coordinate),
+               StartPoint(name: "Grocery", coordinate: [-117.16, 32.79].coordinate)]
+
+    let req = try #require(p.request(seed: 1))
+    #expect(req.stops == [[-117.135, 32.835], [-117.16, 32.79]], "in the order the rider set")
+    #expect(req.via == nil, "the server rejects stops and via together")
+
+    let json = try #require(try JSONSerialization.jsonObject(
+        with: SerpentineAPI.encoder().encode(req)) as? [String: Any])
+    #expect((json["stops"] as? [[Double]])?.count == 2)
+    #expect(json["via"] == nil, "nil is omitted, not null")
+
+    // A loop has no endpoints to put errands between, and the server drops the field there.
+    p.mode = .loop
+    #expect(p.request(seed: 1)?.stops == nil)
+
+    // No errands is the ordinary A→B ride, and must not send an empty array.
+    p.mode = .pointToPoint
+    p.stops = []
+    #expect(p.request(seed: 1)?.stops == nil)
+}
+
 // MARK: - Search results
 
 @Test func searchResultCarriesAddressAndDistance() {

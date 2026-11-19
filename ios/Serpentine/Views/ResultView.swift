@@ -243,7 +243,10 @@ struct ResultView: View {
         switch plan.mode {
         case "loop": return "Loop"
         case "out_and_back": return "Out and back"
-        default: return "The way there"
+        default:
+            // An errand ride that comes home again has no "there" to be the way to (ADR-047).
+            return plan.handoff.waypointRoads.contains { $0.hasPrefix("Stop: ") }
+                ? "The errand ride" : "The way there"
         }
     }
 
@@ -257,7 +260,8 @@ struct ResultView: View {
 
     private var footnote: String {
         let curvy = Format.distance(km: plan.stats.curvyKm)
-        var s = "\(curvy) of properly twisty road. Apple Maps gets \(plan.handoff.waypoints.count) stops so it follows this route."
+        let stops = plan.handoff.waypoints.count
+        var s = "\(curvy) of properly twisty road. Apple Maps gets \(stops) stop\(stops == 1 ? "" : "s") so it follows this route."
         if let d = plan.detour {
             s += d.extraS < 60
                 ? " No better roads were worth a detour here: this is the quick way."
@@ -289,6 +293,10 @@ struct RouteMap: View {
                 let (point, name) = pair
                 if name == "Turnaround" {
                     Marker("Turnaround", systemImage: "arrow.uturn.backward", coordinate: point.coordinate).tint(.orange)
+                } else if name.hasPrefix("Stop: ") {
+                    // An errand (ADR-047). The server numbers them; the rider's own name for the
+                    // place never left the phone, so there is nothing better to show here.
+                    Marker(name, systemImage: "bag.fill", coordinate: point.coordinate).tint(.orange)
                 }
             }
             ForEach((plan.chargers ?? []).filter(\.stop)) { c in

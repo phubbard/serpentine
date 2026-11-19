@@ -37,7 +37,8 @@ the reference for competitor and API facts; don't re-research what it already an
 - iOS app v0.1.0 in `ios/` (SwiftUI + MapKit, xcodegen; iPhone + iPad split view, Mac Catalyst planned): plan loop / out-and-back from location or
   search, charging, map + stats, Apple Maps handoff, GPX share, saved rides with rating/notes/last-ridden
   (ADR-033, local files under Application Support), "find a charger" for a low battery (ADR-034),
-  pause a ride and carry on with the rest after a detour (ADR-035). `make -C ios build|test|run`.
+  pause a ride and carry on with the rest after a detour (ADR-035), errands on the way — up to six
+  reorderable stops Apple Maps is actually told to stop at (ADR-047). `make -C ios build|test|run`.
   On TestFlight since 2026-09-18 (0.1.0 build 99, 2026-10-17) as **"Serpentine EV"** (ASC app id 6813768490;
   home-screen name stays "Serpentine"), internal group "Internal" with automatic distribution. `make -C server test|run|deploy|logs`. No app code yet.
 - GitHub: `git@github.com:phubbard/serpentine.git`, branch `main`.
@@ -77,6 +78,7 @@ the reference for competitor and API facts; don't re-research what it already an
   driven the rider straight past the pharmacy and the grocery — measured against production. `stops`
   (<= 6, exclusive with `via`) are forced handoff *and* GPX waypoints. The two fields cannot be
   combined: a resumed ride's 16 via samples must not become 16 announced stops.
+  The iOS half shipped the same day ("Stops on the way" on Go somewhere).
   **The fun half is designed, not built.** Measured four ways, the only construction that keeps it is
   the errands as a short direct chain plus a real `round_trip` for the rest — **106 %** of a plain
   loop's curvy km, against 54 % for one far waypoint (which is just an out-and-back: 52 of 142 km

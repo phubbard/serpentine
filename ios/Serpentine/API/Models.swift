@@ -21,6 +21,11 @@ struct PlanRequest: Encodable, Sendable {
     /// Points the route must pass through, in order (ADR-035). Carrying on with a paused ride is
     /// what this is for: the rest of the original route, sampled.
     var via: [[Double]]?
+    /// Errands: places the rider actually gets off the bike (ADR-047). The route passes through
+    /// these *and* each becomes a stop Apple Maps is told to make. Never send an errand as `via` —
+    /// via only shapes the route, and Apple will drive straight past it. At most 6; the server
+    /// rejects them combined with `via`.
+    var stops: [[Double]]?
     var end: [Double]?
     /// The far end of an out-and-back. The planner picks one from `distanceM` when this is nil,
     /// which is what the plan form does; a demo ride names the road's own end instead (ADR-043).

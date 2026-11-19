@@ -55,7 +55,7 @@ question to [Open questions](#open-questions).
 | Plan by distance | ✅ | 🟡 | `distance_m`, 20–500 km. |
 | Plan by time ("two hours on Saturday") | ✅ | 🟡 | `duration_s` (ADR-018). Server does the speed guessing and rescaling. |
 | Ride times allow for signals and corners | ✅ | ✅ | ADR-045 (2026-11-06), server-side: both clients get it for free and **neither should do its own time arithmetic**. `time_s` is already corrected; `free_flow_time_s` and `delay_s` are diagnostics, not for display. |
-| Errand stops Apple is told to stop at | 🟡 | 🟡 | `stops` on `point_to_point` (ADR-047), server-side since 2026-11-18. No UI on either client yet. Send errands as `stops`, **never** as `via` — via only shapes the route and Apple drives past it. |
+| Errand stops Apple is told to stop at | ✅ | 🟡 | `stops` on `point_to_point` (ADR-047). iOS: "Stops on the way" on Go somewhere, up to 6, reorderable, plus "Finish where I started". Send errands as `stops`, **never** as `via` — via only shapes the route and Apple drives past it. |
 | Twistiness slider | ✅ | 🟡 | 0..1 → per-request custom model server-side. |
 | Direction ("head north") | ✅ | 🟡 | `heading_deg`, or omit for "any". |
 | "Another ride like this" | ✅ | 🟡 | Seed stepping; server plans seeds n and n+1, so the client steps by two. |
